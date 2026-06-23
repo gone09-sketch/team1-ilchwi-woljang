@@ -14,7 +14,7 @@ class CartTest {
     @Test
     void createInitializesMemberProductAndQuantity() {
         Member member = Member.create("member@example.com", "password", "회원", "010-1234-5678");
-        Product product = Product.create("상품", 1_000, 10, ProductStatus.ON_SALE);
+        Product product = Product.create("상품", 1_000, 10, ProductStatus.ON_SALE, "설명", null);
 
         Cart cart = Cart.create(member, product, 2);
 
@@ -27,7 +27,7 @@ class CartTest {
     void increaseQuantityAddsPositiveQuantity() {
         Cart cart = Cart.create(
                 Member.create("member@example.com", "password", "회원", "010-1234-5678"),
-                Product.create("상품", 1_000, 10, ProductStatus.ON_SALE),
+                Product.create("상품", 1_000, 10, ProductStatus.ON_SALE, "설명", null),
                 2
         );
 
