@@ -1,8 +1,9 @@
 package com.team1ilchwiwoljang.domain.cart.controller;
 
 import com.team1ilchwiwoljang.common.response.ApiResponse;
-import com.team1ilchwiwoljang.domain.cart.dto.CartAddResponse;
+import com.team1ilchwiwoljang.domain.cart.dto.response.CartAddResponse;
 import com.team1ilchwiwoljang.domain.cart.dto.CartCreateRequest;
+import com.team1ilchwiwoljang.domain.cart.dto.response.CartResponse;
 import com.team1ilchwiwoljang.domain.cart.service.CartService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,13 +26,13 @@ public class CartController {
             @Valid @RequestBody CartCreateRequest request
             ){
         CartAddResponse response = cartService.addCartItem(memberId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
 
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<CartResponse>> getCarts(@RequestParam Long memberId) {
         CartResponse response = cartService.getCart(memberId);
-        return ResponseEntity.ok(ApiResponse.of(response));
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
