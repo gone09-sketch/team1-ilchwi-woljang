@@ -118,27 +118,9 @@ Issue 제목은 아래 형식을 사용합니다.
 - `[docs] 환불 API 문서 추가`
 - `[test] 회원 가입 서비스 테스트 추가`
 
-Issue 본문은 아래 형식을 사용합니다.
+Issue 본문 형식은 아래 템플릿 파일을 단일 기준으로 사용합니다.
 
-### 작업 목적
-
--
-
-### 작업 내용
-
--
-
-### 완료 조건
-
-- [ ]
-
-### 연결 Milestone
-
--
-
-### 참고 사항
-
--
+→ [`.github/ISSUE_TEMPLATE/api_task.md`](../.github/ISSUE_TEMPLATE/api_task.md)
 
 Issue는 생성 후 적절한 Milestone에 연결합니다.
 
