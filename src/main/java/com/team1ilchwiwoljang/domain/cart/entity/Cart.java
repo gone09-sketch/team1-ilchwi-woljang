@@ -36,7 +36,7 @@ public class Cart extends BaseEntity {
     @JoinColumn(name = "product_id")
     private Product product;
 
-    @Column(nullable = false, columnDefinition = "int UNSIGNED DEFAULT 1")
+    @Column(nullable = false)
     private int quantity;
 
     private Cart(Member member, Product product, int quantity) {
