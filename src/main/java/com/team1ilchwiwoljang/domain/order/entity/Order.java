@@ -1,13 +1,6 @@
 package com.team1ilchwiwoljang.domain.order.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-
-@Entity
+// TODO: 주문 도메인 작업자가 구현 예정
+// @Entity
 public class Order {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
 }
