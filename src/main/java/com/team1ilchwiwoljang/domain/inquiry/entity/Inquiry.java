@@ -7,6 +7,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "inquiries")
 @Getter
@@ -30,8 +32,11 @@ public class Inquiry extends BaseEntity {
     @Column
     private Long adminId; // 관리자 ID (답변 완료 시 설정, nullable)
 
-    @Column(length = 1000)
+    @Column(name = "answer_content", length = 1000)
     private String answer; // 관리자 답변 내용 (nullable)
+
+    @Column
+    private LocalDateTime answeredAt; // 답변 완료 일시 (nullable)
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
