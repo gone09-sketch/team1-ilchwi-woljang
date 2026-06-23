@@ -123,11 +123,11 @@ docs/conventions/
 프로젝트에서 사용하는 에이전트 지침 파일은 다음과 같습니다.
 
 ```text
-AGENTS.md        # Codex
-CLAUDE.md        # Claude Code
-GEMINI.md        # Gemini
-ANTIGRAVITY.md   # Antigravity
+AGENTS.md        # 공통 에이전트 지침
+CLAUDE.md        # Claude Code 전용 보조 지침
 ```
+
+`CLAUDE.md`는 `AGENTS.md`를 참조하고, Claude Code에만 필요한 차이점만 별도로 둡니다.
 
 공용 skill 원본은 아래 경로입니다.
 
