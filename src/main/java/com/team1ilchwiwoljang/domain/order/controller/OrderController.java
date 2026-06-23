@@ -7,8 +7,8 @@ import com.team1ilchwiwoljang.domain.order.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 
 @RestController
 @RequestMapping("/api/orders")
@@ -18,11 +18,12 @@ public class OrderController {
     private final OrderService orderService;
 
     @PostMapping("/direct")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<OrderResponse> createDirectOrder(@Valid @RequestBody DirectOrderRequest request) {
+    public ResponseEntity<ApiResponse<OrderResponse>> createDirectOrder(@Valid @RequestBody DirectOrderRequest request) {
         // JWT 완성되면 @AuthenticationPrincipal로 교체
         Long memberId = 1L;
         OrderResponse response = orderService.createDirectOrder(memberId, request);
-        return ApiResponse.of(response);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response));
     }
 }
