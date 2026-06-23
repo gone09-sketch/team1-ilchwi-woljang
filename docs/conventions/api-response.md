@@ -21,13 +21,19 @@ API 응답 형식을 일관되게 유지한다.
 기본 필드:
 
 - `success`
+- `message`
 - `data`
+
+`message` 기본값은 `"요청이 성공했습니다."`를 사용한다.
+
+`data`가 `null`인 경우 JSON 응답에서 제외된다.
 
 예시:
 
 ```json
 {
   "success": true,
+  "message": "요청이 성공했습니다.",
   "data": {
     "userId": 1,
     "email": "user@example.com",
