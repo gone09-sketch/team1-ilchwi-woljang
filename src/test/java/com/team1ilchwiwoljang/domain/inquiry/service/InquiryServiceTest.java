@@ -8,7 +8,7 @@ import com.team1ilchwiwoljang.domain.inquiry.entity.Inquiry;
 import com.team1ilchwiwoljang.domain.inquiry.entity.InquiryStatus;
 import com.team1ilchwiwoljang.domain.inquiry.repository.InquiryRepository;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
-import com.team1ilchwiwoljang.domain.member.repository.MemberRepository;
+import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,7 +34,7 @@ class InquiryServiceTest {
     private InquiryRepository inquiryRepository;
 
     @Mock
-    private MemberRepository memberRepository;
+    private MemberService memberService;
 
     @Test
     @DisplayName("가입된 이메일과 올바른 요청이 주어지면 문의 생성에 성공한다")
@@ -44,7 +44,7 @@ class InquiryServiceTest {
         InquiryCreateRequest request = new InquiryCreateRequest("문의 제목", "문의 내용");
         Member member = Member.create(email, "encodedPassword", "홍길동", "010-1234-5678");
 
-        given(memberRepository.findByEmail(email)).willReturn(Optional.of(member));
+        given(memberService.findByEmail(email)).willReturn(Optional.of(member));
 
         // when
         InquiryCreateResponse response = inquiryService.createInquiry(email, request);
@@ -63,7 +63,7 @@ class InquiryServiceTest {
         String email = "nonexistent@example.com";
         InquiryCreateRequest request = new InquiryCreateRequest("문의 제목", "문의 내용");
 
-        given(memberRepository.findByEmail(email)).willReturn(Optional.empty());
+        given(memberService.findByEmail(email)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> inquiryService.createInquiry(email, request))
