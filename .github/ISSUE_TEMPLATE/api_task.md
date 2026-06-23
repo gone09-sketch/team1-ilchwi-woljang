@@ -28,8 +28,6 @@ assignees: ""
 |---|---|
 | API Path |  |
 | HTTP Method | GET / POST / PATCH / DELETE |
-| Request DTO |  |
-| Response DTO |  |
 
 ## 완료 조건
 
@@ -39,10 +37,6 @@ assignees: ""
 - [ ] Request DTO와 Response DTO가 분리되어 있어야 합니다.
 - [ ] 기본 예외 처리가 적용되어 있어야 합니다.
 - [ ] Postman 또는 test code로 API 동작을 확인해야 합니다.
-
-## 연결 Milestone
-
-- v1.0.0 - 기본 CRUD 구현
 
 ## 관련 이슈
 
