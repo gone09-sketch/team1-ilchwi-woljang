@@ -1,7 +1,9 @@
 package com.team1ilchwiwoljang.domain.member.repository;
 
-import org.springframework.stereotype.Repository;
+import com.team1ilchwiwoljang.domain.member.entity.Member;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-@Repository
-public interface MemberRepository {
+public interface MemberRepository extends JpaRepository<Member, Long> {
+
+    boolean existsByEmail(String email);
 }
