@@ -19,4 +19,8 @@ public record ApiResponse<T> (
                 data
         );
     }
+
+    public static <T> ApiResponse<T> of(T data) {
+        return success(data);
+    }
 }
