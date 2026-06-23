@@ -7,7 +7,7 @@ import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryCreateResponse;
 import com.team1ilchwiwoljang.domain.inquiry.entity.Inquiry;
 import com.team1ilchwiwoljang.domain.inquiry.repository.InquiryRepository;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
-import com.team1ilchwiwoljang.domain.member.repository.MemberRepository;
+import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,11 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class InquiryService {
 
     private final InquiryRepository inquiryRepository;
-    private final MemberRepository memberRepository;
+    private final MemberService memberService;
 
     @Transactional
     public InquiryCreateResponse createInquiry(String email, InquiryCreateRequest request) {
-        Member member = memberRepository.findByEmail(email)
+        Member member = memberService.findByEmail(email)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         Inquiry inquiry = Inquiry.create(member, request.title(), request.content());
