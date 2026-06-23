@@ -17,7 +17,7 @@ public class CategoryService {
     @Transactional(readOnly = true)
     public List<CategoryResponse> getCategories() {
         return categoryRepository.findAllRootWithChildren().stream()
-                .map(CategoryResponse::from)
+                .map(CategoryResponse::fromRoot)
                 .toList();
     }
 }

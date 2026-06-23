@@ -13,6 +13,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
             from Category c
             left join fetch c.children
             where c.parent is null
+            order by c.id asc
             """)
     List<Category> findAllRootWithChildren();
 }
