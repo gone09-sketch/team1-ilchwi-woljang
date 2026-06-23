@@ -20,6 +20,21 @@ PR 생성, push, commit, merge, rebase는 하지 않는다.
 - 이슈 번호가 확인되면 PR 본문에 GitHub closing keyword를 포함한다.
 - 이슈 번호가 확인되지 않으면 임의로 만들지 않고 확인 필요로 표시한다.
 
+## 이슈 생성 규칙
+
+`gh issue create`로 이슈를 생성할 때는 반드시 `--assignee @me`를 포함한다.
+
+```bash
+gh issue create --title "[feat] 작업 내용" --assignee @me
+```
+
+이유:
+- GitHub 이슈 템플릿의 `assignees` 필드는 동적 할당을 지원하지 않는다.
+- `--assignee @me`를 사용하면 현재 인증된 사용자가 자동으로 Assignee에 추가된다.
+- 웹 UI에서 생성하는 경우에는 GitHub Action(`auto-assign-issue.yml`)이 자동으로 처리한다.
+
+---
+
 ## 확인 절차
 
 먼저 변경 범위를 확인한다.
