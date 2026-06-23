@@ -53,10 +53,8 @@ class CategoryServiceTest {
     @DisplayName("루트 카테고리에 자식이 있으면 자식까지 포함한 응답을 반환한다")
     void givenRootWithChildren_whenGetCategories_thenReturnsNestedResponse() {
         Category root = Category.createRoot("패션");
-        Category child1 = Category.createChild("상의", root);
-        Category child2 = Category.createChild("하의", root);
-        root.getChildren().add(child1);
-        root.getChildren().add(child2);
+        Category.createChild("상의", root);
+        Category.createChild("하의", root);
         given(categoryRepository.findAllRootWithChildren()).willReturn(List.of(root));
 
         List<CategoryResponse> result = categoryService.getCategories();

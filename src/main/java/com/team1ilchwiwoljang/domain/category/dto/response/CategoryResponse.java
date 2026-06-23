@@ -10,13 +10,21 @@ public record CategoryResponse(
         List<CategoryResponse> children
 ) {
 
-    public static CategoryResponse from(Category category) {
+    public static CategoryResponse fromRoot(Category root) {
         return new CategoryResponse(
-                category.getId(),
-                category.getName(),
-                category.getChildren().stream()
-                        .map(CategoryResponse::from)
+                root.getId(),
+                root.getName(),
+                root.getChildren().stream()
+                        .map(CategoryResponse::fromChild)
                         .toList()
+        );
+    }
+
+    private static CategoryResponse fromChild(Category child) {
+        return new CategoryResponse(
+                child.getId(),
+                child.getName(),
+                List.of()
         );
     }
 }
