@@ -50,4 +50,8 @@ public class Product extends BaseEntity {
     public boolean isOnSale() {
         return status == ProductStatus.ON_SALE;
     }
+
+    public void decreaseStock(int quantity) {
+        this.stock -= quantity;
+    }
 }
