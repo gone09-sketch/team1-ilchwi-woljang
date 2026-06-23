@@ -20,6 +20,6 @@ public class CartController {
     @GetMapping
     public ResponseEntity<ApiResponse<CartResponse>> getCarts(@RequestParam Long memberId) {
         CartResponse response = cartService.getCart(memberId);
-        return ResponseEntity.ok(ApiResponse.of(response));
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
