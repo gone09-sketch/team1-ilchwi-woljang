@@ -1,7 +1,7 @@
 package com.team1ilchwiwoljang.domain.cart.service;
 
 import com.team1ilchwiwoljang.domain.cart.dto.CartCreateRequest;
-import com.team1ilchwiwoljang.domain.cart.dto.CartResponse;
+import com.team1ilchwiwoljang.domain.cart.dto.CartAddResponse;
 import com.team1ilchwiwoljang.domain.cart.entity.Cart;
 import com.team1ilchwiwoljang.domain.cart.repository.CartRepository;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
@@ -21,7 +21,7 @@ public class CartService {
     private final ProductService productService;
 
     @Transactional
-    public CartResponse addCartItem(
+    public CartAddResponse addCartItem(
             Long memberId, CartCreateRequest request){
         Member member = memberService.getMember(memberId);
         Product product = productService.getProduct(request.productId());
@@ -31,7 +31,7 @@ public class CartService {
 
         cart.increaseQuantity(request.quantity());
 
-        return CartResponse.from(cart);
+        return CartAddResponse.from(cart);
     }
 
 }
