@@ -19,17 +19,20 @@ public class Order extends BaseEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id")
+    @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
+    @Column(nullable = false, length = 40)
     private String orderNumber;
 
+    @Column(nullable = false)
     private Long totalAmount;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private OrderStatus orderStatus;
 
+    @Column(nullable = false)
     private Long pgAmount;
 
     private LocalDateTime paidAt;
