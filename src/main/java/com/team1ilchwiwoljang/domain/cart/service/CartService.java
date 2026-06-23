@@ -1,6 +1,6 @@
 package com.team1ilchwiwoljang.domain.cart.service;
 
-import com.team1ilchwiwoljang.domain.cart.dto.CartAddResponse;
+import com.team1ilchwiwoljang.domain.cart.dto.response.CartAddResponse;
 import com.team1ilchwiwoljang.domain.cart.dto.response.CartItemResponse;
 import com.team1ilchwiwoljang.domain.cart.dto.response.CartResponse;
 import com.team1ilchwiwoljang.domain.cart.entity.Cart;

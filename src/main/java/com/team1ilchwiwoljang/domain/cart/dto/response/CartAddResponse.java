@@ -1,4 +1,4 @@
-package com.team1ilchwiwoljang.domain.cart.dto;
+package com.team1ilchwiwoljang.domain.cart.dto.response;
 
 import com.team1ilchwiwoljang.domain.cart.entity.Cart;
 
