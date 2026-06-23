@@ -33,7 +33,7 @@ public class Cart extends BaseEntity {
     private Member member;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = true)
+    @JoinColumn(name = "product_id")
     private Product product;
 
     @Column(nullable = false, columnDefinition = "int UNSIGNED DEFAULT 1")
