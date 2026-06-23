@@ -3,7 +3,6 @@ package com.team1ilchwiwoljang.domain.cart.controller;
 import com.team1ilchwiwoljang.common.response.ApiResponse;
 import com.team1ilchwiwoljang.domain.cart.dto.CartAddResponse;
 import com.team1ilchwiwoljang.domain.cart.dto.CartCreateRequest;
-import com.team1ilchwiwoljang.domain.cart.dto.response.CartResponse;
 import com.team1ilchwiwoljang.domain.cart.service.CartService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

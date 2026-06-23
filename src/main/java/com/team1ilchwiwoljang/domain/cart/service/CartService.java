@@ -12,7 +12,6 @@ import java.util.List;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import com.team1ilchwiwoljang.domain.cart.dto.CartCreateRequest;
-import com.team1ilchwiwoljang.domain.cart.dto.CartResponse;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
