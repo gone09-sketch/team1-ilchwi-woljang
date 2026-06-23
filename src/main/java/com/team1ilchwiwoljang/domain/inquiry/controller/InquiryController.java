@@ -10,8 +10,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Principal;
-
 @RestController
 @RequestMapping("/api/members/inquiry")
 @RequiredArgsConstructor
@@ -21,10 +19,11 @@ public class InquiryController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<InquiryCreateResponse>> createInquiry(
-            @Valid @RequestBody InquiryCreateRequest request,
-            Principal principal
+            @Valid @RequestBody InquiryCreateRequest request
     ) {
-        InquiryCreateResponse response = inquiryService.createInquiry(principal.getName(), request);
+        // TODO: 로그인 공통 모듈 완성 시 실제 세션/JWT 이메일 연동 예정
+        String tempEmail = "test@example.com";
+        InquiryCreateResponse response = inquiryService.createInquiry(tempEmail, request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response));
