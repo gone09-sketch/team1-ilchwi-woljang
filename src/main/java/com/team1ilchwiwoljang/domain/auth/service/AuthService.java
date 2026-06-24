@@ -54,7 +54,7 @@ public class AuthService {
         // 기존 활성 토큰을 먼저 폐기 후, 새 토큰을 발급합니다.
         refreshTokenService.revokeAllByMember(member);
 
-        String accessToken = jwtTokenProvider.createAccessToken(member.getId());
+        String accessToken = jwtTokenProvider.createAccessToken(member.getId(), member.getRole());
         String refreshToken = refreshTokenService.createRefreshToken(member);
 
         // Controller에서 Access Token은 body로, Refresh Token은 Cookie로 내려보낼 수 있게 반환
@@ -71,7 +71,7 @@ public class AuthService {
 
         refreshTokenService.revokeAllByMember(member);
 
-        String newAccessToken = jwtTokenProvider.createAccessToken(member.getId());
+        String newAccessToken = jwtTokenProvider.createAccessToken(member.getId(), member.getRole());
         String newRefreshToken = refreshTokenService.createRefreshToken(member);
 
         return new LoginResult(newAccessToken, newRefreshToken);
