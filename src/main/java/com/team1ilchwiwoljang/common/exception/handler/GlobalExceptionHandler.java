@@ -33,6 +33,7 @@ public class GlobalExceptionHandler {
                         fieldError.getDefaultMessage()
                 ))
                 .toList();
+
         ErrorResponse response = ErrorResponse.of(errorCode.name(), errorCode.getMessage(), errors);
         return ResponseEntity.status(errorCode.getStatus()).body(response);
     }
