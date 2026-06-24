@@ -2,6 +2,7 @@ package com.team1ilchwiwoljang.common.security;
 
 import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -65,6 +66,19 @@ public class JwtTokenProvider {
                 .parseSignedClaims(token)
                 .getPayload();
 
-        return MemberRole.valueOf(claims.get("role", String.class));
+        // JWT 안의 role claim 값을 꺼냅니다.
+        String roleClaim = claims.get("role", String.class);
+
+        // 외부에 상세 원인을 노출하지 않기 위해 메시지는 일반적으로 둡니다.
+        if (roleClaim == null || roleClaim.isBlank()) {
+            throw new JwtException("Invalid JWT");
+        }
+
+        try {
+            return MemberRole.valueOf(roleClaim);
+        } catch (IllegalArgumentException e) {
+            // 알 수 없는 role 값도 동일하게 인증 실패로 처리합니다.
+            throw new JwtException("Invalid JWT", e);
+        }
     }
 }
