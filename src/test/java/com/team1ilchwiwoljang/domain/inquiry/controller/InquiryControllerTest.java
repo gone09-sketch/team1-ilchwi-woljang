@@ -10,7 +10,6 @@ import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryCreateRequest;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryCreateResponse;
 import com.team1ilchwiwoljang.domain.inquiry.entity.InquiryStatus;
 import com.team1ilchwiwoljang.domain.inquiry.service.InquiryService;
-import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,12 +21,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -75,7 +72,7 @@ class InquiryControllerTest {
         );
 
         given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
-        given(memberService.findById(MEMBER_ID)).willReturn(Optional.of(mock(Member.class)));
+        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
 
         given(inquiryService.createInquiry(eq(MEMBER_ID), any(InquiryCreateRequest.class)))
                 .willReturn(response);
@@ -102,7 +99,7 @@ class InquiryControllerTest {
         InquiryCreateRequest request = new InquiryCreateRequest("", "문의 내용");
 
         given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
-        given(memberService.findById(MEMBER_ID)).willReturn(Optional.of(mock(Member.class)));
+        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
 
         // when & then
         mockMvc.perform(post("/api/members/inquiry")
@@ -123,7 +120,7 @@ class InquiryControllerTest {
         InquiryCreateRequest request = new InquiryCreateRequest("문의 제목", " ");
 
         given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
-        given(memberService.findById(MEMBER_ID)).willReturn(Optional.of(mock(Member.class)));
+        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
 
         // when & then
         mockMvc.perform(post("/api/members/inquiry")

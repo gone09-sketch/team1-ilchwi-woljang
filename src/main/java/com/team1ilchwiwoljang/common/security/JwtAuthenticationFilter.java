@@ -77,7 +77,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // JWT를 검증하고, subject에 들어 있는 memberId를 꺼냅니다.
             Long memberId = jwtTokenProvider.getMemberId(accessToken);
 
-            if (memberService.findById(memberId).isEmpty()) {
+            if (!memberService.existsActiveMember(memberId)) {
                 log.warn("Authenticated member does not exist or is deleted");
 
                 sendUnauthorizedResponse(response);

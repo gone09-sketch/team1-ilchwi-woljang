@@ -22,4 +22,8 @@ public class MemberService {
     public Optional<Member> findById(Long memberId) {
         return memberRepository.findByIdAndDeletedAtIsNull(memberId);
     }
+
+    public boolean existsActiveMember(Long memberId) {
+        return memberRepository.existsByIdAndDeletedAtIsNull(memberId);
+    }
 }
