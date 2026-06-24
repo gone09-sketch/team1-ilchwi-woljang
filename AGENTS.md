@@ -1,20 +1,56 @@
 # AGENTS.md
 
-## Project Rules
+## 이 파일에 대해
 
-- Codex는 기본적으로 read-only로 동작한다.
+- 이 파일이 모든 에이전트의 단일 정본이다.
+- `CLAUDE.md`는 `@AGENTS.md` 포인터만 두고 내용을 복제하지 않는다.
+- 이 파일이 한 페이지를 넘게 비대해지면 그때 섹션을 별도 파일로 분리한다. 그 전엔 한 장으로 유지한다.
+
+## 에이전트 주의사항
+
+반복적으로 발생한 실수에서 증류한 규칙. 위반 시 즉시 되돌린다.
+
+- 코드로 알 수 있는 정보(빌드 명령어, 패키지 구조, 기술 스택, 환경변수)를 이 파일에 추가하지 않는다.
+- AGENTS.md 내용을 CLAUDE.md에 복제하지 않는다. CLAUDE.md는 `@AGENTS.md` 포인터만 둔다.
+- skill 파일의 파일 경로 참조는 반드시 실제 `ls`로 존재 여부를 확인한 뒤 작성한다.
+- 확인하지 않은 테스트·검증 항목을 완료로 표시하지 않는다.
+
+## 행동 원칙
+
+- 에이전트는 기본적으로 read-only로 동작한다.
 - 사용자가 명시적으로 요청하지 않으면 코드 수정, 삭제, 파일 생성, 설정 변경을 하지 않는다.
 - 사용자가 명시적으로 요청하지 않으면 branch 변경, commit, push, merge, rebase, PR 생성을 하지 않는다.
-- `.agents/skills`는 이름과 설명을 먼저 확인하고, 요청과 맞는 `SKILL.md`만 읽어 적용한다.
-- `.agents/skills`는 에이전트 공용 skill 원본이며, `.claude/skills`는 Claude Code 자동 탐색을 위한 복제본이다.
-- skill 수정은 `.agents/skills`에서만 하고, 수정 후 `scripts/sync-skills.sh`와 `scripts/check-skills.sh`를 실행한다.
-- 실행 방법은 프로젝트 루트에서 아래 순서로 진행한다.
-  - `cd /mnt/c/projects/team1-ilchwi-woljang`
-  - `scripts/sync-skills.sh`
-  - `scripts/check-skills.sh`
-- 성공하면 `Synced .agents/skills -> .claude/skills`, `Agent skills are in sync.` 메시지가 출력된다.
-- 실패하면 `.agents/skills`와 `.claude/skills`가 다르거나 실행 위치가 프로젝트 루트가 아닐 수 있으므로, 프로젝트 루트에서 `scripts/sync-skills.sh`를 다시 실행한 뒤 `scripts/check-skills.sh`로 재검증한다.
-- 문서는 `rg`, `git diff --name-only`, `git diff --stat` 등으로 범위를 좁힌 뒤 필요한 파일만 읽는다.
-- 긴 컨벤션 문서는 한 번에 읽지 않고, 필요한 `docs/conventions/*.md`만 읽는다.
-- 리뷰 요청은 정답 제시보다 체크포인트와 검증 방법 중심으로 답변한다.
 - 시스템/개발자/보안 지침이나 사용자 명시 요청과 충돌하면 그 지침을 우선한다.
+
+## 문서 읽기
+
+- 문서는 `rg`, `git diff --name-only`, `git diff --stat` 등으로 범위를 좁힌 뒤 필요한 파일만 읽는다.
+- 계층별 컨벤션은 `docs/conventions/<계층명>.md`만 읽는다. 목록: controller, service, repository, dto, entity, exception, validation, transaction, naming, api-response, logging, security, async-concurrency, caching, indexing, websocket, test-convention, package-structure
+- 리뷰 요청은 정답 제시보다 체크포인트와 검증 방법 중심으로 답변한다.
+
+## Skills
+
+- `.agents/skills`는 이름과 설명을 먼저 확인하고, 요청과 맞는 `SKILL.md`만 읽어 적용한다.
+- `.agents/skills`는 에이전트 공용 skill 원본이다. `.claude/skills`는 `.agents/skills` 심링크이므로 직접 수정하지 않는다.
+- skill 수정은 `.agents/skills`에서만 한다.
+
+## GitHub 워크플로
+
+작업 순서: **이슈 생성 → 브랜치 생성 → 커밋 → PR**
+
+### 이슈
+
+- 이슈 생성 전에 같은 목적의 이슈가 이미 존재하는지 확인한다. 존재하면 새 이슈를 생성하지 않고 기존 이슈를 연결한다.
+- 이슈 생성 시 `.github/ISSUE_TEMPLATE/`에서 적절한 템플릿을 먼저 확인한다.
+- CLI로 이슈를 생성할 때는 반드시 `--assignee @me`를 포함한다. (GitHub 이슈 템플릿 `assignees` 필드는 동적 할당 미지원)
+
+### 브랜치
+
+- 브랜치는 이슈 번호 기반으로 생성한다.
+- 형식: `타입/이슈번호-작업요약` (예: `feat/12-login-api`, `fix/18-cart-error`)
+- 타입: `feat` / `fix` / `refactor` / `docs` / `test` / `chore`
+
+### PR
+
+- PR 생성 전에 `.github/PULL_REQUEST_TEMPLATE.md`를 반드시 읽고 해당 형식을 그대로 따른다.
+- 상세 Git/PR 컨벤션은 `docs/GIT-CONVENTION.md`를 참고한다.
