@@ -58,7 +58,7 @@ class OrderServiceTest {
         Member member = Member.create("test@example.com", "password", "홍길동", "010-1234-5678");
         ReflectionTestUtils.setField(member, "id", memberId);
 
-        Product product = Product.create("상품명", 10000, 10, ProductStatus.ON_SALE);
+        Product product = Product.create("상품명", 10000, 10, ProductStatus.ON_SALE, "상품 설명", null);
         ReflectionTestUtils.setField(product, "id", 1L);
 
         given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
@@ -127,7 +127,7 @@ class OrderServiceTest {
         Member member = Member.create("test@example.com", "password", "홍길동", "010-1234-5678");
         ReflectionTestUtils.setField(member, "id", memberId);
 
-        Product product = Product.create("상품명", 10000, 3, ProductStatus.ON_SALE);
+        Product product = Product.create("상품명", 10000, 3, ProductStatus.ON_SALE, "상품 설명", null);
         ReflectionTestUtils.setField(product, "id", 1L);
 
         given(memberRepository.findById(memberId)).willReturn(Optional.of(member));
