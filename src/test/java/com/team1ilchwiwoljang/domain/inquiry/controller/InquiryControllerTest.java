@@ -10,6 +10,7 @@ import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryCreateRequest;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryCreateResponse;
 import com.team1ilchwiwoljang.domain.inquiry.entity.InquiryStatus;
 import com.team1ilchwiwoljang.domain.inquiry.service.InquiryService;
+import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -72,6 +73,7 @@ class InquiryControllerTest {
         );
 
         given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
+        given(jwtTokenProvider.getRole(ACCESS_TOKEN)).willReturn(MemberRole.MEMBER);
         given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
 
         given(inquiryService.createInquiry(eq(MEMBER_ID), any(InquiryCreateRequest.class)))
@@ -99,6 +101,7 @@ class InquiryControllerTest {
         InquiryCreateRequest request = new InquiryCreateRequest("", "문의 내용");
 
         given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
+        given(jwtTokenProvider.getRole(ACCESS_TOKEN)).willReturn(MemberRole.MEMBER);
         given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
 
         // when & then
@@ -120,6 +123,7 @@ class InquiryControllerTest {
         InquiryCreateRequest request = new InquiryCreateRequest("문의 제목", " ");
 
         given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
+        given(jwtTokenProvider.getRole(ACCESS_TOKEN)).willReturn(MemberRole.MEMBER);
         given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
 
         // when & then
