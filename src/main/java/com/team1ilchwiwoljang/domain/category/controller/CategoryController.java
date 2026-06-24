@@ -1,6 +1,7 @@
 package com.team1ilchwiwoljang.domain.category.controller;
 
 import com.team1ilchwiwoljang.common.response.ApiResponse;
+import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.category.dto.response.CategoryResponse;
 import com.team1ilchwiwoljang.domain.category.service.CategoryService;
 import com.team1ilchwiwoljang.domain.product.dto.ProductResponse;
@@ -32,11 +33,13 @@ public class CategoryController {
      * 특정 카테고리에 속한 상품 목록 조회
      */
     @GetMapping("/{categoryId}/products")
-    public ResponseEntity<ApiResponse<List<ProductResponse>>> getProductsByCategory(
+    public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> getProductsByCategory(
             @PathVariable Long categoryId,
-            @RequestParam(defaultValue = "newest") String sort
+            @RequestParam(defaultValue = "newest") String sort,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
-        List<ProductResponse> responses = productService.getProductsByCategory(categoryId, sort);
+        PageResponse<ProductResponse> responses = PageResponse.from(productService.getProductsByCategory(categoryId, sort, page, size));
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 }

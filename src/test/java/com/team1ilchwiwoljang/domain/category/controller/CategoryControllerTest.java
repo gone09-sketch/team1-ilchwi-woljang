@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -48,14 +49,14 @@ class CategoryControllerTest {
                 new ProductResponse(2L, "맨투맨", 20000, 50, ProductStatus.ON_SALE, "따뜻한 맨투맨")
         );
 
-        given(productService.getProductsByCategory(eq(categoryId), anyString())).willReturn(responses);
+        given(productService.getProductsByCategory(eq(categoryId), anyString(), anyInt(), anyInt())).willReturn(new org.springframework.data.domain.PageImpl<>(responses));
 
         // when & then
         mockMvc.perform(get("/api/categories/{categoryId}/products", categoryId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data").isArray())
-                .andExpect(jsonPath("$.data[0].name").value("티셔츠"))
-                .andExpect(jsonPath("$.data[1].name").value("맨투맨"));
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.content[0].name").value("티셔츠"))
+                .andExpect(jsonPath("$.data.content[1].name").value("맨투맨"));
     }
 }

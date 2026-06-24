@@ -7,6 +7,9 @@ import com.team1ilchwiwoljang.domain.product.dto.ProductResponse;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,23 +35,19 @@ public class ProductService {
                 .collect(Collectors.toList());
     }
 
-    public List<ProductResponse> getProducts(String sort) {
-        Sort sortOption = resolveSort(sort);
-        return productRepository.findByStatus(ProductStatus.ON_SALE, sortOption)
-                .stream()
-                .map(ProductResponse::from)
-                .collect(Collectors.toList());
+    public Page<ProductResponse> getProducts(String sort, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, resolveSort(sort));
+        return productRepository.findByStatus(ProductStatus.ON_SALE, pageable)
+                .map(ProductResponse::from);
     }
 
-    public List<ProductResponse> getProductsByCategory(Long categoryId, String sort) {
+    public Page<ProductResponse> getProductsByCategory(Long categoryId, String sort, int page, int size) {
         if (!categoryRepository.existsById(categoryId)) {
             throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
         }
-        Sort sortOption = resolveSort(sort);
-        return productRepository.findByCategoryIdAndStatus(categoryId, ProductStatus.ON_SALE, sortOption)
-                .stream()
-                .map(ProductResponse::from)
-                .collect(Collectors.toList());
+        Pageable pageable = PageRequest.of(page, size, resolveSort(sort));
+        return productRepository.findByCategoryIdAndStatus(categoryId, ProductStatus.ON_SALE, pageable)
+                .map(ProductResponse::from);
     }
 
     private Sort resolveSort(String sort) {
