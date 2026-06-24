@@ -1,4 +1,4 @@
-package com.team1ilchwiwoljang.domain.order.controller;
+package com.team1ilchwiwoljang.common.security;
 
 import com.team1ilchwiwoljang.common.security.auth.AuthMember;
 import com.team1ilchwiwoljang.domain.member.entity.MemberRole;

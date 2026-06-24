@@ -1,5 +1,6 @@
 package com.team1ilchwiwoljang.domain.order.controller;
 
+import com.team1ilchwiwoljang.common.security.WithMockAuthMember;
 import com.team1ilchwiwoljang.common.config.SecurityConfig;
 import com.team1ilchwiwoljang.common.security.JwtAuthenticationFilter;
 import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
