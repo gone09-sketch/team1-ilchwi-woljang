@@ -14,12 +14,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,7 +39,27 @@ class ProductServiceTest {
     private CategoryRepository categoryRepository;
 
     @Test
-    @DisplayName("카테고리 ID로 상품 목록을 정상적으로 조회한다.")
+    @DisplayName("전체 ON_SALE 상품 목록을 페이지네이션으로 조회한다.")
+    void getProducts() {
+        // given
+        Category category = Category.create("상의", null);
+        Product product1 = Product.create("티셔츠", 10000, 100, ProductStatus.ON_SALE, "편안한 티셔츠", category);
+        Product product2 = Product.create("맨투맨", 20000, 50, ProductStatus.ON_SALE, "따뜻한 맨투맨", category);
+
+        given(productRepository.findByStatus(eq(ProductStatus.ON_SALE), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of(product1, product2)));
+
+        // when
+        Page<ProductResponse> result = productService.getProducts("newest", 0, 20);
+
+        // then
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).name()).isEqualTo("티셔츠");
+        assertThat(result.getContent().get(1).name()).isEqualTo("맨투맨");
+    }
+
+    @Test
+    @DisplayName("카테고리 ID로 ON_SALE 상품 목록을 페이지네이션으로 조회한다.")
     void getProductsByCategory() {
         // given
         Long categoryId = 1L;
@@ -44,15 +68,16 @@ class ProductServiceTest {
         Product product2 = Product.create("맨투맨", 20000, 50, ProductStatus.ON_SALE, "따뜻한 맨투맨", category);
 
         given(categoryRepository.existsById(categoryId)).willReturn(true);
-        given(productRepository.findByCategoryId(categoryId)).willReturn(List.of(product1, product2));
+        given(productRepository.findByCategoryIdAndStatus(eq(categoryId), eq(ProductStatus.ON_SALE), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of(product1, product2)));
 
         // when
-        List<ProductResponse> result = productService.getProductsByCategory(categoryId);
+        Page<ProductResponse> result = productService.getProductsByCategory(categoryId, "newest", 0, 20);
 
         // then
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).name()).isEqualTo("티셔츠");
-        assertThat(result.get(1).name()).isEqualTo("맨투맨");
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).name()).isEqualTo("티셔츠");
+        assertThat(result.getContent().get(1).name()).isEqualTo("맨투맨");
     }
 
     @Test
@@ -63,7 +88,7 @@ class ProductServiceTest {
         given(categoryRepository.existsById(invalidCategoryId)).willReturn(false);
 
         // when & then
-        assertThatThrownBy(() -> productService.getProductsByCategory(invalidCategoryId))
+        assertThatThrownBy(() -> productService.getProductsByCategory(invalidCategoryId, "newest", 0, 20))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.CATEGORY_NOT_FOUND);

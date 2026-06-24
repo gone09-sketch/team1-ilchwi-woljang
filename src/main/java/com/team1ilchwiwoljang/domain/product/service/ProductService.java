@@ -14,8 +14,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -24,16 +22,6 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
-
-    public List<ProductResponse> getProductsByCategory(Long categoryId) {
-        if (!categoryRepository.existsById(categoryId)) {
-            throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
-        }
-
-        return productRepository.findByCategoryId(categoryId).stream()
-                .map(ProductResponse::from)
-                .collect(Collectors.toList());
-    }
 
     public Page<ProductResponse> getProducts(String sort, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, resolveSort(sort));
