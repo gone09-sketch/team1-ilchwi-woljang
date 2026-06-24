@@ -19,6 +19,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,6 +43,9 @@ class InquiryServiceTest {
 
     @Mock
     private MemberService memberService;
+
+    @Mock
+    private Clock clock;
 
     @Test
     @DisplayName("회원 ID와 올바른 요청이 주어지면 문의 생성에 성공한다")
@@ -103,7 +110,12 @@ class InquiryServiceTest {
         Inquiry inquiry = Inquiry.create(member, "문의 제목", "문의 내용");
         ReflectionTestUtils.setField(inquiry, "id", inquiryId);
 
+        given(memberService.findById(adminId)).willReturn(Optional.of(mock(Member.class)));
         given(inquiryRepository.findById(inquiryId)).willReturn(Optional.of(inquiry));
+
+        Instant fixedInstant = Instant.parse("2026-06-24T08:00:00Z");
+        given(clock.instant()).willReturn(fixedInstant);
+        given(clock.getZone()).willReturn(ZoneId.of("UTC"));
 
         // when
         InquiryAnswerResponse response = inquiryService.answerInquiry(adminId, request);
@@ -114,7 +126,7 @@ class InquiryServiceTest {
         assertThat(response.adminId()).isEqualTo(adminId);
         assertThat(response.answer()).isEqualTo("답변 내용");
         assertThat(response.status()).isEqualTo(InquiryStatus.ANSWERED);
-        assertThat(response.answeredAt()).isNotNull();
+        assertThat(response.answeredAt()).isEqualTo(LocalDateTime.of(2026, 6, 24, 8, 0, 0));
     }
 
     @Test
@@ -125,6 +137,7 @@ class InquiryServiceTest {
         Long adminId = 1L;
         InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "답변 내용");
 
+        given(memberService.findById(adminId)).willReturn(Optional.of(mock(Member.class)));
         given(inquiryRepository.findById(inquiryId)).willReturn(Optional.empty());
 
         // when & then
@@ -146,13 +159,30 @@ class InquiryServiceTest {
 
         Inquiry inquiry = Inquiry.create(member, "문의 제목", "문의 내용");
         ReflectionTestUtils.setField(inquiry, "id", inquiryId);
-        inquiry.answer(adminId, "기존 답변 내용");
+        inquiry.answer(adminId, "기존 답변 내용", LocalDateTime.now());
 
+        given(memberService.findById(adminId)).willReturn(Optional.of(mock(Member.class)));
         given(inquiryRepository.findById(inquiryId)).willReturn(Optional.of(inquiry));
 
         // when & then
         assertThatThrownBy(() -> inquiryService.answerInquiry(adminId, request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ALREADY_ANSWERED_INQUIRY);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 관리자 ID로 답변을 등록하려 하면 MEMBER_NOT_FOUND 예외를 던진다")
+    void given_nonExistentAdminId_whenAnswerInquiry_thenThrowMemberNotFound() {
+        // given
+        Long inquiryId = 1L;
+        Long adminId = 999L;
+        InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "답변 내용");
+
+        given(memberService.findById(adminId)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> inquiryService.answerInquiry(adminId, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.MEMBER_NOT_FOUND);
     }
 }

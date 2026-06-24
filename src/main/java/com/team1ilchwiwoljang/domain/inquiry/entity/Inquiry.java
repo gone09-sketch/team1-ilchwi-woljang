@@ -51,10 +51,14 @@ public class Inquiry extends BaseEntity {
         return inquiry;
     }
 
-    public void answer(Long adminId, String answerContent) {
+    public boolean isAnswered() {
+        return this.status == InquiryStatus.ANSWERED;
+    }
+
+    public void answer(Long adminId, String answerContent, LocalDateTime answeredAt) {
         this.adminId = adminId;
         this.answer = answerContent;
         this.status = InquiryStatus.ANSWERED;
-        this.answeredAt = LocalDateTime.now();
+        this.answeredAt = answeredAt;
     }
 }
