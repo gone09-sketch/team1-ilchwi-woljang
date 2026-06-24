@@ -9,5 +9,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     boolean existsByEmail(String email);
 
-    Optional<Member> findByEmail(String email);
+    // 로그인 시, 탈퇴하지 않은 회원만 조회합니다.
+    Optional<Member> findByEmailAndDeletedAtIsNull(String email);
+
+    Optional<Member> findByIdAndDeletedAtIsNull(Long memberId);
 }
