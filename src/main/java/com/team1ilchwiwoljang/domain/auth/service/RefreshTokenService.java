@@ -31,21 +31,13 @@ public class RefreshTokenService {
     @Value("${jwt.refresh-token-expiration}")
     private Duration refreshTokenExpiration;
 
-    /**
-     * 기존 Refresh Token을 제거한 뒤 새 Refresh Token을 발급합니다.
-     * DB에는 RefreshToken 엔티티를 저장하고, 반환값은 실제 토큰 문자열입니다.
-     */
     @Transactional
     public String createRefreshToken(Member member) {
-        // 회원당 Refresh Token 1개만 유지합니다.
-        refreshTokenRepository.deleteByMember(member);
-
         String token = generateRandomToken();
 
         // UTC 기준 현재 시각에서 만료 시간을 계산합니다.
         Instant expiresAt = Instant.now(clock)
                 .plus(refreshTokenExpiration);
-
 
         RefreshToken refreshToken = RefreshToken.createRefreshToken(member, token, expiresAt);
 
@@ -58,38 +50,34 @@ public class RefreshTokenService {
      * Refresh Token이 유효한지 검증하고 유효하다면 해당 토큰의 회원정보를 반환합니다.
      * Access Token 재발급 시 사용
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public Member validateAndGetMember(String token) {
         if (token == null || token.isBlank()) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
-        // revoked 가 true인 토큰은 이미 로그아웃 혹은 만료 처리된 토큰으로 봅니다.
         RefreshToken refreshToken = refreshTokenRepository.findByTokenAndRevokedFalse(token)
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
 
-        // UTC 기준 현재 시각으로 가져옵니다.
-        Instant now = Instant.now(clock);
-
-        if (refreshToken.isExpired(now)) {
-            refreshToken.revoke();
+        if (refreshToken.isExpired(Instant.now(clock))) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
         return refreshToken.getMember();
     }
 
-    /**
-     * 로그아웃 시 사용
-     */
     @Transactional
     public void revoke(String token) {
         if (token == null || token.isBlank()) {
             return;
         }
 
-        refreshTokenRepository.findByTokenAndRevokedFalse(token)
-                .ifPresent(RefreshToken::revoke);
+        refreshTokenRepository.revokeByToken(token);
+    }
+
+    @Transactional
+    public void revokeAllByMember(Member member) {
+        refreshTokenRepository.revokeAllByMemberId(member.getId());
     }
 
     /**
