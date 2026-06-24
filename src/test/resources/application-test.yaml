@@ -13,3 +13,8 @@ spring:
     properties:
       hibernate:
         format_sql: false
+
+jwt:
+  secret: test-jwt-secret-must-be-at-least-32-characters
+  access-token-expiration: 1h
+  refresh-token-expiration: 14d
