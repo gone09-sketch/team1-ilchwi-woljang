@@ -33,12 +33,4 @@ public class Admin extends BaseEntity {
     @Column
     private LocalDateTime deletedAt;
 
-    public static Admin create(String email, String encodedPassword, String name, String phone) {
-        Admin admin = new Admin();
-        admin.email = email;
-        admin.password = encodedPassword;
-        admin.name = name;
-        admin.phone = phone;
-        return admin;
-    }
 }
