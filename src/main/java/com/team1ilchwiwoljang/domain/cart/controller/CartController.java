@@ -9,7 +9,6 @@ import com.team1ilchwiwoljang.domain.cart.dto.response.CartResponse;
 import com.team1ilchwiwoljang.domain.cart.service.CartService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,28 +25,8 @@ public class CartController {
             @Auth AuthMember authMember,
             @Valid @RequestBody CartCreateRequest request
     ) {
-        CartAddResponse response = addCartItemWithRetry(authMember.memberId(), request);
+        CartAddResponse response = cartService.addCartItem(authMember.memberId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
-    }
-
-    private CartAddResponse addCartItemWithRetry(Long memberId, CartCreateRequest request) {
-        int maxRetries = 3;
-        for (int i = 0; i < maxRetries; i++) {
-            try {
-                return cartService.addCartItem(memberId, request);
-            } catch (DataIntegrityViolationException e) {
-                if (i == maxRetries - 1) {
-                    throw e;
-                }
-                try {
-                    Thread.sleep(50);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw e;
-                }
-            }
-        }
-        throw new DataIntegrityViolationException("Failed to add cart item due to concurrent conflicts");
     }
 
     @GetMapping
