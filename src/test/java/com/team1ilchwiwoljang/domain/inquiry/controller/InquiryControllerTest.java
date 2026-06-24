@@ -2,6 +2,7 @@ package com.team1ilchwiwoljang.domain.inquiry.controller;
 
 import com.team1ilchwiwoljang.common.config.SecurityConfig;
 import com.team1ilchwiwoljang.common.security.JwtAuthenticationFilter;
+import com.team1ilchwiwoljang.common.security.JwtTokenPayload;
 import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
 import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
 import org.springframework.http.HttpHeaders;
@@ -72,9 +73,7 @@ class InquiryControllerTest {
                 LocalDateTime.now()
         );
 
-        given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
-        given(jwtTokenProvider.getRole(ACCESS_TOKEN)).willReturn(MemberRole.MEMBER);
-        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
+        givenValidAccessToken();
 
         given(inquiryService.createInquiry(eq(MEMBER_ID), any(InquiryCreateRequest.class)))
                 .willReturn(response);
@@ -100,9 +99,7 @@ class InquiryControllerTest {
         // given
         InquiryCreateRequest request = new InquiryCreateRequest("", "문의 내용");
 
-        given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
-        given(jwtTokenProvider.getRole(ACCESS_TOKEN)).willReturn(MemberRole.MEMBER);
-        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
+        givenValidAccessToken();
 
         // when & then
         mockMvc.perform(post("/api/members/inquiry")
@@ -122,9 +119,7 @@ class InquiryControllerTest {
         // given
         InquiryCreateRequest request = new InquiryCreateRequest("문의 제목", " ");
 
-        given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
-        given(jwtTokenProvider.getRole(ACCESS_TOKEN)).willReturn(MemberRole.MEMBER);
-        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
+        givenValidAccessToken();
 
         // when & then
         mockMvc.perform(post("/api/members/inquiry")
@@ -150,5 +145,11 @@ class InquiryControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    private void givenValidAccessToken() {
+        given(jwtTokenProvider.parseAccessToken(ACCESS_TOKEN))
+                .willReturn(new JwtTokenPayload(MEMBER_ID, MemberRole.MEMBER));
+        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
     }
 }

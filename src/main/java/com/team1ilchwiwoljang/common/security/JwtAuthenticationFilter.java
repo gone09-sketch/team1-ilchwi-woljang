@@ -76,9 +76,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
-            // JWT를 검증하고, subject에 들어 있는 memberId를 꺼냅니다.
-            Long memberId = jwtTokenProvider.getMemberId(accessToken);
-            MemberRole role = jwtTokenProvider.getRole(accessToken);
+            // Access Token을 한 번만 검증/파싱해서 인증에 필요한 값을 꺼냅니다.
+            JwtTokenPayload tokenPayload = jwtTokenProvider.parseAccessToken(accessToken);
+
+            Long memberId = tokenPayload.memberId();
+            MemberRole role = tokenPayload.role();
 
             if (!memberService.existsActiveMember(memberId)) {
                 log.warn("Authenticated member does not exist or is deleted");
