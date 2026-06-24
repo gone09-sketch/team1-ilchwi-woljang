@@ -1,6 +1,8 @@
 package com.team1ilchwiwoljang.domain.order.controller;
 
 import com.team1ilchwiwoljang.common.response.ApiResponse;
+import com.team1ilchwiwoljang.common.security.annotation.Auth;
+import com.team1ilchwiwoljang.common.security.auth.AuthMember;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
 import com.team1ilchwiwoljang.domain.order.service.OrderService;
@@ -18,10 +20,11 @@ public class OrderController {
     private final OrderService orderService;
 
     @PostMapping("/direct")
-    public ResponseEntity<ApiResponse<OrderResponse>> createDirectOrder(@Valid @RequestBody DirectOrderRequest request) {
-        // JWT 완성되면 @AuthenticationPrincipal로 교체
-        Long memberId = 1L;
-        OrderResponse response = orderService.createDirectOrder(memberId, request);
+    public ResponseEntity<ApiResponse<OrderResponse>> createDirectOrder(
+            @Auth AuthMember authMember,
+            @Valid @RequestBody DirectOrderRequest request
+    ) {
+        OrderResponse response = orderService.createDirectOrder(authMember.memberId(), request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response));
