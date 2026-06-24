@@ -27,7 +27,7 @@ public class OrderController {
      * cartIds가 없으면 회원의 전체 장바구니를 대상으로 미리보기를 생성하고,
      * cartIds가 있으면 선택된 장바구니 상품만 대상으로 미리보기를 생성합니다.
      */
-    @GetMapping("/preview")
+    @GetMapping("/carts/preview")
     public ResponseEntity<ApiResponse<OrderPreviewResponse>> previewOrder(
             @Auth AuthMember authMember,
             @RequestParam(required = false) List<Long> cartIds
