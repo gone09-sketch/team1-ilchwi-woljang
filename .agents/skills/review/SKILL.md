@@ -43,14 +43,12 @@ git diff 전체 출력은 파일 목록과 통계를 본 뒤 필요한 파일 �
 
 문서는 아래 조건에 맞을 때만 읽는다.
 
-- docs/CODE_CONVENTION.md
+- docs/CODE-CONVENTION.md
     - 사용자가 컨벤션 리뷰를 요청했거나, 코드 변경이 컨벤션과 직접 관련될 때
     - 이 파일은 인덱스로만 사용하고, 실제 내용은 관련된 docs/conventions/*.md만 개별적으로 읽는다.
 - docs/conventions/*.md
     - 변경된 코드와 직접 관련된 컨벤션만 읽는다.
     - 모든 컨벤션 문서를 한 번에 읽지 않는다.
-- docs/api/*.md
-    - Controller, Request/Response DTO, endpoint, status code, error code, auth 요구사항이 바뀌었거나 문서 정합성 리뷰가 필요할 때
 
 ## 리뷰 기준
 
