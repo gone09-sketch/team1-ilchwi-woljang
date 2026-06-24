@@ -29,7 +29,13 @@ public enum ErrorCode {
     DUPLICATE_CART_ITEM(HttpStatus.CONFLICT, "이미 장바구니에 담긴 상품입니다. 잠시 후 다시 시도해 주세요."),
 
     // category
-    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다.");
+    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다."),
+
+    // product
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
+
+    // order
+    OUT_OF_STOCK(HttpStatus.BAD_REQUEST, "재고가 부족합니다.");
 
     private final HttpStatus status;
     private final String message;
