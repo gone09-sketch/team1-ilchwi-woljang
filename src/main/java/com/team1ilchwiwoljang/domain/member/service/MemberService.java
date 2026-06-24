@@ -12,20 +12,22 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class MemberService {
 
     private final MemberRepository memberRepository;
 
+    @Transactional(readOnly = true)
     public Member getMember(Long memberId){
         return memberRepository.findById(memberId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
     }
 
+    @Transactional(readOnly = true)
     public Optional<Member> findById(Long memberId) {
         return memberRepository.findByIdAndDeletedAtIsNull(memberId);
     }
 
+    @Transactional(readOnly = true)
     public boolean existsActiveMember(Long memberId) {
         return memberRepository.existsByIdAndDeletedAtIsNull(memberId);
     }
