@@ -49,27 +49,31 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    public Long getMemberId(String token) {
-        Claims claims = Jwts.parser()
+    public JwtTokenPayload parseAccessToken(String token) {
+        // JWT 서명 검증과 디코딩은 비용이 있는 작업이므로 한 번만 수행합니다.
+        Claims claims = parseClaims(token);
+
+        return new JwtTokenPayload(
+                getMemberId(claims),
+                getRole(claims)
+        );
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
 
+    private Long getMemberId(Claims claims) {
         return Long.valueOf(claims.getSubject());
     }
 
-    public MemberRole getRole(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(secretKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-
-        // JWT 안의 role claim 값을 꺼냅니다.
+    private MemberRole getRole(Claims claims) {
         String roleClaim = claims.get("role", String.class);
 
-        // 외부에 상세 원인을 노출하지 않기 위해 메시지는 일반적으로 둡니다.
         if (roleClaim == null || roleClaim.isBlank()) {
             throw new JwtException("Invalid JWT");
         }
@@ -77,7 +81,6 @@ public class JwtTokenProvider {
         try {
             return MemberRole.valueOf(roleClaim);
         } catch (IllegalArgumentException e) {
-            // 알 수 없는 role 값도 동일하게 인증 실패로 처리합니다.
             throw new JwtException("Invalid JWT", e);
         }
     }
