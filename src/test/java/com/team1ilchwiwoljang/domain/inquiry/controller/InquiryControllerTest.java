@@ -151,12 +151,11 @@ class InquiryControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "admin@example.com")
     @DisplayName("관리자가 올바른 답변 요청을 보내면 200 OK와 함께 답변 처리된 문의 응답을 반환한다")
     void given_validAnswerRequest_whenAnswerInquiry_thenStatus200() throws Exception {
         // given
         Long inquiryId = 1L;
-        Long adminId = 1L;
+        Long adminId = MEMBER_ID;
         InquiryAnswerRequest request = new InquiryAnswerRequest("답변 내용");
         InquiryAnswerResponse response = new InquiryAnswerResponse(
                 inquiryId,
@@ -170,12 +169,15 @@ class InquiryControllerTest {
                 LocalDateTime.now()
         );
 
-        given(inquiryService.answerInquiry(eq(inquiryId), eq(adminId), any(InquiryAnswerRequest.class)))
+        given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
+        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
+        given(inquiryService.answerInquiry(eq(inquiryId), eq(MEMBER_ID), any(InquiryAnswerRequest.class)))
                 .willReturn(response);
 
         // when & then
         mockMvc.perform(post("/api/admins/inquiry/{inquiryId}/answer", inquiryId)
                         .with(csrf())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -188,21 +190,39 @@ class InquiryControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "admin@example.com")
     @DisplayName("답변 내용이 빈 값이면 400 Bad Request를 반환한다")
     void given_blankAnswer_whenAnswerInquiry_thenStatus400() throws Exception {
         // given
         Long inquiryId = 1L;
         InquiryAnswerRequest request = new InquiryAnswerRequest("");
 
+        given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
+        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
+
         // when & then
         mockMvc.perform(post("/api/admins/inquiry/{inquiryId}/answer", inquiryId)
                         .with(csrf())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.errors[0].field").value("answer"));
+    }
+
+    @Test
+    @DisplayName("인증되지 않은 사용자가 답변 등록 요청을 보내면 401 Unauthorized를 반환한다")
+    void given_noAuth_whenAnswerInquiry_thenStatus401() throws Exception {
+        // given
+        Long inquiryId = 1L;
+        InquiryAnswerRequest request = new InquiryAnswerRequest("답변 내용");
+
+        // when & then
+        mockMvc.perform(post("/api/admins/inquiry/{inquiryId}/answer", inquiryId)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
     }
 }
