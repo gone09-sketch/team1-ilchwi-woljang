@@ -1,5 +1,6 @@
 package com.team1ilchwiwoljang.common.security;
 
+import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -31,7 +32,7 @@ public class JwtTokenProvider {
         this.clock = clock;
     }
 
-    public String createAccessToken(Long memberId) {
+    public String createAccessToken(Long memberId, MemberRole role) {
         // 토큰이 발급된 현재 시각
         Instant now = clock.instant();
 
@@ -40,6 +41,7 @@ public class JwtTokenProvider {
 
         return Jwts.builder()
                 .subject(String.valueOf(memberId))
+                .claim("role", role.name())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiration))
                 .signWith(secretKey)
@@ -54,5 +56,15 @@ public class JwtTokenProvider {
                 .getPayload();
 
         return Long.valueOf(claims.getSubject());
+    }
+
+    public MemberRole getRole(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        return MemberRole.valueOf(claims.get("role", String.class));
     }
 }
