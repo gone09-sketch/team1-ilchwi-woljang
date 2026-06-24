@@ -32,13 +32,12 @@ public class InquiryController {
                 .body(ApiResponse.success(response));
     }
 
-    @PostMapping("/api/admins/inquiry/{inquiryId}/answer")
+    @PostMapping("/api/admins/inquiry")
     public ResponseEntity<ApiResponse<InquiryAnswerResponse>> answerInquiry(
             @Auth AuthMember authMember,
-            @PathVariable Long inquiryId,
             @Valid @RequestBody InquiryAnswerRequest request
     ) {
-        InquiryAnswerResponse response = inquiryService.answerInquiry(inquiryId, authMember.memberId(), request);
+        InquiryAnswerResponse response = inquiryService.answerInquiry(authMember.memberId(), request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

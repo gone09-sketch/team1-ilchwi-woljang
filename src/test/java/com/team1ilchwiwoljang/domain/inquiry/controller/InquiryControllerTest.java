@@ -156,7 +156,7 @@ class InquiryControllerTest {
         // given
         Long inquiryId = 1L;
         Long adminId = MEMBER_ID;
-        InquiryAnswerRequest request = new InquiryAnswerRequest("답변 내용");
+        InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "답변 내용");
         InquiryAnswerResponse response = new InquiryAnswerResponse(
                 inquiryId,
                 1L,
@@ -171,11 +171,11 @@ class InquiryControllerTest {
 
         given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
         given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
-        given(inquiryService.answerInquiry(eq(inquiryId), eq(MEMBER_ID), any(InquiryAnswerRequest.class)))
+        given(inquiryService.answerInquiry(eq(MEMBER_ID), any(InquiryAnswerRequest.class)))
                 .willReturn(response);
 
         // when & then
-        mockMvc.perform(post("/api/admins/inquiry/{inquiryId}/answer", inquiryId)
+        mockMvc.perform(post("/api/admins/inquiry")
                         .with(csrf())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -194,13 +194,13 @@ class InquiryControllerTest {
     void given_blankAnswer_whenAnswerInquiry_thenStatus400() throws Exception {
         // given
         Long inquiryId = 1L;
-        InquiryAnswerRequest request = new InquiryAnswerRequest("");
+        InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "");
 
         given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
         given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
 
         // when & then
-        mockMvc.perform(post("/api/admins/inquiry/{inquiryId}/answer", inquiryId)
+        mockMvc.perform(post("/api/admins/inquiry")
                         .with(csrf())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -212,14 +212,35 @@ class InquiryControllerTest {
     }
 
     @Test
+    @DisplayName("문의 ID가 누락되면 400 Bad Request를 반환한다")
+    void given_nullInquiryId_whenAnswerInquiry_thenStatus400() throws Exception {
+        // given
+        InquiryAnswerRequest request = new InquiryAnswerRequest(null, "답변 내용");
+
+        given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
+        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
+
+        // when & then
+        mockMvc.perform(post("/api/admins/inquiry")
+                        .with(csrf())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("inquiryId"));
+    }
+
+    @Test
     @DisplayName("인증되지 않은 사용자가 답변 등록 요청을 보내면 401 Unauthorized를 반환한다")
     void given_noAuth_whenAnswerInquiry_thenStatus401() throws Exception {
         // given
         Long inquiryId = 1L;
-        InquiryAnswerRequest request = new InquiryAnswerRequest("답변 내용");
+        InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "답변 내용");
 
         // when & then
-        mockMvc.perform(post("/api/admins/inquiry/{inquiryId}/answer", inquiryId)
+        mockMvc.perform(post("/api/admins/inquiry")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))

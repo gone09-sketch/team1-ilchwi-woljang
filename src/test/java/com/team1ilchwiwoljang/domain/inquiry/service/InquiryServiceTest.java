@@ -95,7 +95,7 @@ class InquiryServiceTest {
         // given
         Long inquiryId = 1L;
         Long adminId = 1L;
-        InquiryAnswerRequest request = new InquiryAnswerRequest("답변 내용");
+        InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "답변 내용");
 
         Member member = Member.create("test@example.com", "password", "홍길동", "010-1234-5678");
         ReflectionTestUtils.setField(member, "id", 1L);
@@ -106,7 +106,7 @@ class InquiryServiceTest {
         given(inquiryRepository.findById(inquiryId)).willReturn(Optional.of(inquiry));
 
         // when
-        InquiryAnswerResponse response = inquiryService.answerInquiry(inquiryId, adminId, request);
+        InquiryAnswerResponse response = inquiryService.answerInquiry(adminId, request);
 
         // then
         assertThat(response.id()).isEqualTo(inquiryId);
@@ -123,13 +123,36 @@ class InquiryServiceTest {
         // given
         Long inquiryId = 999L;
         Long adminId = 1L;
-        InquiryAnswerRequest request = new InquiryAnswerRequest("답변 내용");
+        InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "답변 내용");
 
         given(inquiryRepository.findById(inquiryId)).willReturn(Optional.empty());
 
         // when & then
-        assertThatThrownBy(() -> inquiryService.answerInquiry(inquiryId, adminId, request))
+        assertThatThrownBy(() -> inquiryService.answerInquiry(adminId, request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INQUIRY_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("이미 답변 완료된 문의에 답변을 등록하려 하면 ALREADY_ANSWERED_INQUIRY 예외를 던진다")
+    void given_alreadyAnsweredInquiry_whenAnswerInquiry_thenThrowAlreadyAnsweredInquiry() {
+        // given
+        Long inquiryId = 1L;
+        Long adminId = 1L;
+        InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "답변 내용");
+
+        Member member = Member.create("test@example.com", "password", "홍길동", "010-1234-5678");
+        ReflectionTestUtils.setField(member, "id", 1L);
+
+        Inquiry inquiry = Inquiry.create(member, "문의 제목", "문의 내용");
+        ReflectionTestUtils.setField(inquiry, "id", inquiryId);
+        inquiry.answer(adminId, "기존 답변 내용");
+
+        given(inquiryRepository.findById(inquiryId)).willReturn(Optional.of(inquiry));
+
+        // when & then
+        assertThatThrownBy(() -> inquiryService.answerInquiry(adminId, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ALREADY_ANSWERED_INQUIRY);
     }
 }
