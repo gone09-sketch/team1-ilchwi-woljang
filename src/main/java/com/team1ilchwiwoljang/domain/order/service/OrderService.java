@@ -9,6 +9,7 @@ import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
 import com.team1ilchwiwoljang.domain.order.entity.Order;
 import com.team1ilchwiwoljang.domain.order.entity.OrderItem;
+import com.team1ilchwiwoljang.domain.order.entity.OrderStatus;
 import com.team1ilchwiwoljang.domain.order.repository.OrderItemRepository;
 import com.team1ilchwiwoljang.domain.order.repository.OrderRepository;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
@@ -61,5 +62,12 @@ public class OrderService {
 
         List<OrderItemResponse> orderItems = List.of(OrderItemResponse.from(orderItem));
         return OrderResponse.from(order, orderItems);
+    }
+    @Transactional
+    public void updateOrderStatus(Long memberId, Long orderId, OrderStatus orderStatus) {
+        Order order = orderRepository.findByIdAndMemberId(orderId, memberId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+        order.updateStatus(orderStatus);
     }
 }

@@ -1,6 +1,8 @@
 package com.team1ilchwiwoljang.domain.order.entity;
 
 import com.team1ilchwiwoljang.common.entity.BaseEntity;
+import com.team1ilchwiwoljang.common.exception.BusinessException;
+import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -47,5 +49,18 @@ public class Order extends BaseEntity {
         order.pgAmount = pgAmount;
         order.orderStatus = OrderStatus.PENDING;
         return order;
+    }
+
+    // 상태 변경 메서드 추가
+    public void updateStatus(OrderStatus orderStatus){
+        this.orderStatus = orderStatus;
+
+        if(orderStatus == OrderStatus.PAID){
+            this.paidAt = LocalDateTime.now();
+        }
+
+        if (orderStatus == OrderStatus.CANCELLED){
+            this.canceledAt = LocalDateTime.now();
+        }
     }
 }
