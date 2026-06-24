@@ -22,8 +22,8 @@ public class InquiryService {
     private final MemberService memberService;
 
     @Transactional
-    public InquiryCreateResponse createInquiry(String email, InquiryCreateRequest request) {
-        Member member = memberService.findByEmail(email)
+    public InquiryCreateResponse createInquiry(Long memberId, InquiryCreateRequest request) {
+        Member member = memberService.findById(memberId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         Inquiry inquiry = Inquiry.create(member, request.title(), request.content());
