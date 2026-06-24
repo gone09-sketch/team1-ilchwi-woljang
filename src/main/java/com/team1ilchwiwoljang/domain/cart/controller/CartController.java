@@ -9,7 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,12 +21,31 @@ public class CartController {
 
     @PostMapping("/items")
     public ResponseEntity<ApiResponse<CartAddResponse>> addCartItem(
-            @AuthenticationPrincipal Long memberId,
+            @RequestParam Long memberId,
             @Valid @RequestBody CartCreateRequest request
             ){
-        CartAddResponse response = cartService.addCartItem(memberId, request);
+        CartAddResponse response = addCartItemWithRetry(memberId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+    }
 
+    private CartAddResponse addCartItemWithRetry(Long memberId, CartCreateRequest request) {
+        int maxRetries = 3;
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                return cartService.addCartItem(memberId, request);
+            } catch (DataIntegrityViolationException e) {
+                if (i == maxRetries - 1) {
+                    throw e;
+                }
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+            }
+        }
+        throw new DataIntegrityViolationException("Failed to add cart item due to concurrent conflicts");
     }
 
     @GetMapping

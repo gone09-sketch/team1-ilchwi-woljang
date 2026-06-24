@@ -11,6 +11,7 @@ import com.team1ilchwiwoljang.domain.product.service.ProductService;
 import com.team1ilchwiwoljang.domain.cart.dto.response.CartItemResponse;
 import com.team1ilchwiwoljang.domain.cart.dto.response.CartResponse;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,10 +30,15 @@ public class CartService {
         Member member = memberService.getMember(memberId);
         Product product = productService.getProduct(request.productId());
 
-        Cart cart = cartRepository.findByMemberIdAndProductId(memberId, product.getId())
-                .orElseGet(() -> cartRepository.save(Cart.create(member, product, 0)));
-
-        cart.increaseQuantity(request.quantity());
+        Optional<Cart> optionalCart = cartRepository.findByMemberIdAndProductId(memberId, product.getId());
+        Cart cart;
+        if (optionalCart.isPresent()) {
+            cart = optionalCart.get();
+            cart.increaseQuantity(request.quantity());
+        } else {
+            cart = Cart.create(member, product, request.quantity());
+            cart = cartRepository.save(cart);
+        }
 
         return CartAddResponse.from(cart);
     }
