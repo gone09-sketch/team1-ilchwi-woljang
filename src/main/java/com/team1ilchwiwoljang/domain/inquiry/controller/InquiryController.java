@@ -1,7 +1,9 @@
 package com.team1ilchwiwoljang.domain.inquiry.controller;
 
 import com.team1ilchwiwoljang.common.response.ApiResponse;
+import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryAnswerRequest;
 import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryCreateRequest;
+import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryAnswerResponse;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryCreateResponse;
 import com.team1ilchwiwoljang.domain.inquiry.service.InquiryService;
 import jakarta.validation.Valid;
@@ -11,13 +13,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/members/inquiry")
 @RequiredArgsConstructor
 public class InquiryController {
 
     private final InquiryService inquiryService;
 
-    @PostMapping
+    @PostMapping("/api/members/inquiry")
     public ResponseEntity<ApiResponse<InquiryCreateResponse>> createInquiry(
             @Valid @RequestBody InquiryCreateRequest request
     ) {
@@ -27,5 +28,17 @@ public class InquiryController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response));
+    }
+
+    @PostMapping("/api/admins/inquiry/{inquiryId}/answer")
+    public ResponseEntity<ApiResponse<InquiryAnswerResponse>> answerInquiry(
+            @PathVariable Long inquiryId,
+            @Valid @RequestBody InquiryAnswerRequest request
+    ) {
+        // TODO: 로그인 공통 모듈 완성 시 실제 세션/JWT 관리자 ID 연동 예정
+        Long tempAdminId = 1L;
+
+        InquiryAnswerResponse response = inquiryService.answerInquiry(inquiryId, tempAdminId, request);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

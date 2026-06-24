@@ -1,7 +1,9 @@
 package com.team1ilchwiwoljang.domain.inquiry.controller;
 
 import tools.jackson.databind.ObjectMapper;
+import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryAnswerRequest;
 import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryCreateRequest;
+import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryAnswerResponse;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryCreateResponse;
 import com.team1ilchwiwoljang.domain.inquiry.entity.InquiryStatus;
 import com.team1ilchwiwoljang.domain.inquiry.service.InquiryService;
@@ -116,5 +118,61 @@ class InquiryControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(username = "admin@example.com")
+    @DisplayName("관리자가 올바른 답변 요청을 보내면 200 OK와 함께 답변 처리된 문의 응답을 반환한다")
+    void given_validAnswerRequest_whenAnswerInquiry_thenStatus200() throws Exception {
+        // given
+        Long inquiryId = 1L;
+        Long adminId = 1L;
+        InquiryAnswerRequest request = new InquiryAnswerRequest("답변 내용");
+        InquiryAnswerResponse response = new InquiryAnswerResponse(
+                inquiryId,
+                1L,
+                "문의 제목",
+                "문의 내용",
+                adminId,
+                "답변 내용",
+                InquiryStatus.ANSWERED,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+
+        given(inquiryService.answerInquiry(eq(inquiryId), eq(adminId), any(InquiryAnswerRequest.class)))
+                .willReturn(response);
+
+        // when & then
+        mockMvc.perform(post("/api/admins/inquiry/{inquiryId}/answer", inquiryId)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("요청이 성공했습니다."))
+                .andExpect(jsonPath("$.data.id").value(inquiryId))
+                .andExpect(jsonPath("$.data.adminId").value(adminId))
+                .andExpect(jsonPath("$.data.answer").value("답변 내용"))
+                .andExpect(jsonPath("$.data.status").value("ANSWERED"));
+    }
+
+    @Test
+    @WithMockUser(username = "admin@example.com")
+    @DisplayName("답변 내용이 빈 값이면 400 Bad Request를 반환한다")
+    void given_blankAnswer_whenAnswerInquiry_thenStatus400() throws Exception {
+        // given
+        Long inquiryId = 1L;
+        InquiryAnswerRequest request = new InquiryAnswerRequest("");
+
+        // when & then
+        mockMvc.perform(post("/api/admins/inquiry/{inquiryId}/answer", inquiryId)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("answer"));
     }
 }
