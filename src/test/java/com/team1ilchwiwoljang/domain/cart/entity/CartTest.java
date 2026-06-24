@@ -5,6 +5,7 @@ import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.lang.reflect.Field;
 import org.junit.jupiter.api.Test;
@@ -47,12 +48,15 @@ class CartTest {
     }
 
     @Test
-    void productJoinColumnAllowsNullForErdCompatibility() throws NoSuchFieldException {
+    void productRelationRequiresProduct() throws NoSuchFieldException {
         Field productField = Cart.class.getDeclaredField("product");
+        ManyToOne manyToOne = productField.getAnnotation(ManyToOne.class);
         JoinColumn joinColumn = productField.getAnnotation(JoinColumn.class);
 
+        assertThat(manyToOne).isNotNull();
+        assertThat(manyToOne.optional()).isFalse();
         assertThat(joinColumn).isNotNull();
         assertThat(joinColumn.name()).isEqualTo("product_id");
-        assertThat(joinColumn.nullable()).isTrue();
+        assertThat(joinColumn.nullable()).isFalse();
     }
 }
