@@ -63,4 +63,11 @@ public class Product extends BaseEntity {
     public boolean isOnSale() {
         return status == ProductStatus.ON_SALE;
     }
+
+    public void decreaseStock(int quantity) {
+        if (this.stock < quantity) {
+            throw new IllegalArgumentException("재고가 부족합니다.");
+        }
+        this.stock -= quantity;
+    }
 }
