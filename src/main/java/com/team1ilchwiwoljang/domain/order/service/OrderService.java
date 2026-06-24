@@ -81,9 +81,8 @@ public class OrderService {
                 .toList();
 
         long totalOrderAmount = calculateTotalOrderAmount(orderItems);
-        long finalPaymentAmount = calculateFinalPaymentAmount(totalOrderAmount);
 
-        return OrderPreviewResponse.of(orderItems, totalOrderAmount, finalPaymentAmount);
+        return OrderPreviewResponse.of(orderItems, totalOrderAmount);
     }
 
     /**
@@ -102,7 +101,7 @@ public class OrderService {
      */
     private OrderPreviewItemResponse createOrderPreviewItemResponse(Product product, int quantity) {
         long productPrice = product.getPrice();
-        long productTotalAmount = calculateProductTotalAmount(productPrice, quantity);
+        long productTotalAmount = productPrice * quantity;
 
         return OrderPreviewItemResponse.of(
                 product.getName(),
@@ -113,28 +112,12 @@ public class OrderService {
     }
 
     /**
-     * 상품 1종의 주문 금액을 계산합니다.
-     */
-    private long calculateProductTotalAmount(long productPrice, int quantity) {
-        return productPrice * quantity;
-    }
-
-    /**
      * 주문서 미리보기의 총 상품 금액을 계산합니다.
      */
     private long calculateTotalOrderAmount(List<OrderPreviewItemResponse> orderItems) {
         return orderItems.stream()
                 .mapToLong(OrderPreviewItemResponse::productTotalAmount)
                 .sum();
-    }
-
-    /**
-     * 최종 결제 금액을 계산합니다.
-     * 현재는 할인/쿠폰/포인트/배송비 정책이 없으므로 최종 결제 금액은 상품 총액과 동일합니다.
-     * 추후 결제 정책이 추가되면 이 메서드에서 최종 결제 금액 계산 규칙을 확장합니다.
-     */
-    private long calculateFinalPaymentAmount(long totalOrderAmount) {
-        return totalOrderAmount;
     }
 
     /**

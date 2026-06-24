@@ -4,16 +4,14 @@ import java.util.List;
 
 public record OrderPreviewResponse(
         List<OrderPreviewItemResponse> orderItems,
-        long totalOrderAmount,
-        long finalPaymentAmount
+        long totalOrderAmount
 ) {
 
     public static OrderPreviewResponse of(
             List<OrderPreviewItemResponse> orderItems,
-            long totalOrderAmount,
-            long finalPaymentAmount
+            long totalOrderAmount
     ) {
-        return new OrderPreviewResponse(orderItems, totalOrderAmount, finalPaymentAmount);
+        return new OrderPreviewResponse(orderItems, totalOrderAmount);
     }
 
     public record OrderPreviewItemResponse(

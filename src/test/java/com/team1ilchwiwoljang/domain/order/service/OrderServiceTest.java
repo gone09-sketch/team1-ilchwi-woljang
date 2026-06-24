@@ -154,7 +154,6 @@ class OrderServiceTest {
         assertThat(response.orderItems().get(0).quantity()).isEqualTo(2);
         assertThat(response.orderItems().get(0).productTotalAmount()).isEqualTo(20_000L);
         assertThat(response.totalOrderAmount()).isEqualTo(25_000L);
-        assertThat(response.finalPaymentAmount()).isEqualTo(25_000L);
     }
 
     @Test
@@ -171,7 +170,6 @@ class OrderServiceTest {
 
         assertThat(response.orderItems()).hasSize(2);
         assertThat(response.totalOrderAmount()).isEqualTo(15_000L);
-        assertThat(response.finalPaymentAmount()).isEqualTo(15_000L);
     }
 
     @Test
