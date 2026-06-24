@@ -72,6 +72,16 @@ Settings > Editor > Code Style > Line separator: Unix and macOS (\n)
 ./gradlew test
 ```
 
+| 작업 | macOS/Linux | Windows PowerShell |
+| --- | --- | --- |
+| 빌드 | `./gradlew build` | `.\gradlew.bat build` |
+| 실행 | `./gradlew bootRun` | `.\gradlew.bat bootRun` |
+| 실행 전제 | 로컬 MySQL/datasource 및 Redis 설정 필요 | 로컬 MySQL/datasource 및 Redis 설정 필요 |
+| 테스트 | `./gradlew test` | `.\gradlew.bat test` |
+| 단일 테스트 | `./gradlew test --tests "패키지.클래스명"` | `.\gradlew.bat test --tests "패키지.클래스명"` |
+| 포맷 검사 | `./gradlew spotlessCheck` | `.\gradlew.bat spotlessCheck` |
+| 포맷 | `./gradlew spotlessApply` | `.\gradlew.bat spotlessApply` |
+
 의존성 확인:
 
 ```bash
