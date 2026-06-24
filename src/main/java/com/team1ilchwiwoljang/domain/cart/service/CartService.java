@@ -26,7 +26,7 @@ public class CartService {
 
     @Transactional
     public CartAddResponse addCartItem(
-            Long memberId, CartCreateRequest request){
+            Long memberId, CartCreateRequest request) {
         Member member = memberService.getMember(memberId);
         Product product = productService.getProduct(request.productId());
 
