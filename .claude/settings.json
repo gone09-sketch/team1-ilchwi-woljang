@@ -1,0 +1,35 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(gh pr create*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[hook] PR 템플릿 자동 로드 — 아래 형식을 반드시 따르세요' && echo '---' && cat .github/PULL_REQUEST_TEMPLATE.md"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash(gh issue create*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[hook] 이슈 템플릿 자동 로드' && echo '---' && cat .github/ISSUE_TEMPLATE/api_task.md"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit(AGENTS.md)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "lines=$(wc -l < AGENTS.md) && echo \"[hook] AGENTS.md ${lines}줄\" && [ \"$lines\" -gt 60 ] && echo '⚠ 60줄 초과 — 한 페이지 원칙 검토 필요' || true"
+          }
+        ]
+      }
+    ]
+  }
+}
