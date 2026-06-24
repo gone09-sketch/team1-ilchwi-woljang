@@ -9,6 +9,8 @@ import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryCreateResponse;
 import com.team1ilchwiwoljang.domain.inquiry.entity.Inquiry;
 import com.team1ilchwiwoljang.domain.inquiry.entity.InquiryStatus;
 import com.team1ilchwiwoljang.domain.inquiry.repository.InquiryRepository;
+import com.team1ilchwiwoljang.domain.admin.entity.Admin;
+import com.team1ilchwiwoljang.domain.admin.service.AdminService;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import org.junit.jupiter.api.DisplayName;
@@ -43,6 +45,9 @@ class InquiryServiceTest {
 
     @Mock
     private MemberService memberService;
+
+    @Mock
+    private AdminService adminService;
 
     @Mock
     private Clock clock;
@@ -110,7 +115,7 @@ class InquiryServiceTest {
         Inquiry inquiry = Inquiry.create(member, "문의 제목", "문의 내용");
         ReflectionTestUtils.setField(inquiry, "id", inquiryId);
 
-        given(memberService.findById(adminId)).willReturn(Optional.of(mock(Member.class)));
+        given(adminService.findById(adminId)).willReturn(Optional.of(mock(Admin.class)));
         given(inquiryRepository.findById(inquiryId)).willReturn(Optional.of(inquiry));
 
         Instant fixedInstant = Instant.parse("2026-06-24T08:00:00Z");
@@ -137,7 +142,7 @@ class InquiryServiceTest {
         Long adminId = 1L;
         InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "답변 내용");
 
-        given(memberService.findById(adminId)).willReturn(Optional.of(mock(Member.class)));
+        given(adminService.findById(adminId)).willReturn(Optional.of(mock(Admin.class)));
         given(inquiryRepository.findById(inquiryId)).willReturn(Optional.empty());
 
         // when & then
@@ -161,7 +166,7 @@ class InquiryServiceTest {
         ReflectionTestUtils.setField(inquiry, "id", inquiryId);
         inquiry.answer(adminId, "기존 답변 내용", LocalDateTime.now());
 
-        given(memberService.findById(adminId)).willReturn(Optional.of(mock(Member.class)));
+        given(adminService.findById(adminId)).willReturn(Optional.of(mock(Admin.class)));
         given(inquiryRepository.findById(inquiryId)).willReturn(Optional.of(inquiry));
 
         // when & then
@@ -171,18 +176,18 @@ class InquiryServiceTest {
     }
 
     @Test
-    @DisplayName("존재하지 않는 관리자 ID로 답변을 등록하려 하면 MEMBER_NOT_FOUND 예외를 던진다")
-    void given_nonExistentAdminId_whenAnswerInquiry_thenThrowMemberNotFound() {
+    @DisplayName("존재하지 않는 관리자 ID로 답변을 등록하려 하면 ADMIN_NOT_FOUND 예외를 던진다")
+    void given_nonExistentAdminId_whenAnswerInquiry_thenThrowAdminNotFound() {
         // given
         Long inquiryId = 1L;
         Long adminId = 999L;
         InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "답변 내용");
 
-        given(memberService.findById(adminId)).willReturn(Optional.empty());
+        given(adminService.findById(adminId)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> inquiryService.answerInquiry(adminId, request))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.MEMBER_NOT_FOUND);
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ADMIN_NOT_FOUND);
     }
 }

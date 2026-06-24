@@ -9,6 +9,7 @@ import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryCreateResponse;
 import com.team1ilchwiwoljang.domain.inquiry.entity.Inquiry;
 import com.team1ilchwiwoljang.domain.inquiry.repository.InquiryRepository;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
+import com.team1ilchwiwoljang.domain.admin.service.AdminService;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
 
@@ -23,6 +24,7 @@ public class InquiryService {
 
     private final InquiryRepository inquiryRepository;
     private final MemberService memberService;
+    private final AdminService adminService;
     private final Clock clock;
 
     @Transactional
@@ -38,8 +40,8 @@ public class InquiryService {
 
     @Transactional
     public InquiryAnswerResponse answerInquiry(Long adminId, InquiryAnswerRequest request) {
-        memberService.findById(adminId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        adminService.findById(adminId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ADMIN_NOT_FOUND));
 
         Inquiry inquiry = inquiryRepository.findById(request.inquiryId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INQUIRY_NOT_FOUND));
