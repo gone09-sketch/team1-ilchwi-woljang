@@ -19,6 +19,7 @@ public enum ErrorCode {
     // member
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
+    INVALID_MEMBER_ROLE(HttpStatus.BAD_REQUEST, "유효하지 않은 회원 권한입니다."),
 
     // product
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
@@ -30,9 +31,6 @@ public enum ErrorCode {
 
     // category
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다."),
-
-    // product
-    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
 
     // order
     OUT_OF_STOCK(HttpStatus.BAD_REQUEST, "재고가 부족합니다.");
