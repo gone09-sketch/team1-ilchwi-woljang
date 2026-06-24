@@ -2,7 +2,9 @@ package com.team1ilchwiwoljang.domain.inquiry.service;
 
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
+import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryAnswerRequest;
 import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryCreateRequest;
+import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryAnswerResponse;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryCreateResponse;
 import com.team1ilchwiwoljang.domain.inquiry.entity.Inquiry;
 import com.team1ilchwiwoljang.domain.inquiry.repository.InquiryRepository;
@@ -28,5 +30,15 @@ public class InquiryService {
         inquiryRepository.save(inquiry);
 
         return InquiryCreateResponse.from(inquiry);
+    }
+
+    @Transactional
+    public InquiryAnswerResponse answerInquiry(Long inquiryId, Long adminId, InquiryAnswerRequest request) {
+        Inquiry inquiry = inquiryRepository.findById(inquiryId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INQUIRY_NOT_FOUND));
+
+        inquiry.answer(adminId, request.answer());
+
+        return InquiryAnswerResponse.from(inquiry);
     }
 }
