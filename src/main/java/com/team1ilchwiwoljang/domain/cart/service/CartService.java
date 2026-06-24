@@ -1,5 +1,7 @@
 package com.team1ilchwiwoljang.domain.cart.service;
 
+import com.team1ilchwiwoljang.common.exception.BusinessException;
+import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.domain.cart.dto.CartCreateRequest;
 import com.team1ilchwiwoljang.domain.cart.dto.response.CartAddResponse;
 import com.team1ilchwiwoljang.domain.cart.dto.response.CartItemResponse;
@@ -15,6 +17,7 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,13 +45,26 @@ public class CartService {
         Cart cart;
         if (optionalCart.isPresent()) {
             cart = optionalCart.get();
+            int newQuantity = cart.getQuantity() + request.quantity();
+            if (newQuantity > product.getStock()) {
+                throw new BusinessException(ErrorCode.CART_ITEM_QUANTITY_EXCEEDED);
+            }
             cart.increaseQuantity(request.quantity());
         } else {
+            if (request.quantity() > product.getStock()) {
+                throw new BusinessException(ErrorCode.CART_ITEM_QUANTITY_EXCEEDED);
+            }
             cart = Cart.create(member, product, request.quantity());
             cart = cartRepository.save(cart);
         }
 
         return CartAddResponse.from(cart);
+    }
+
+    @Recover
+    public CartAddResponse recoverAddCartItem(
+            DataIntegrityViolationException e, Long memberId, CartCreateRequest request) {
+        throw new BusinessException(ErrorCode.DUPLICATE_CART_ITEM);
     }
 
     @Transactional(readOnly = true)
