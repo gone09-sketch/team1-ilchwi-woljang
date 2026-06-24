@@ -3,13 +3,15 @@ package com.team1ilchwiwoljang.domain.cart.controller;
 import com.team1ilchwiwoljang.common.response.ApiResponse;
 import com.team1ilchwiwoljang.common.security.annotation.Auth;
 import com.team1ilchwiwoljang.common.security.auth.AuthMember;
+import com.team1ilchwiwoljang.domain.cart.dto.CartCreateRequest;
+import com.team1ilchwiwoljang.domain.cart.dto.response.CartAddResponse;
 import com.team1ilchwiwoljang.domain.cart.dto.response.CartResponse;
 import com.team1ilchwiwoljang.domain.cart.service.CartService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/carts")
@@ -17,6 +19,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class CartController {
 
     private final CartService cartService;
+
+    @PostMapping("/items")
+    public ResponseEntity<ApiResponse<CartAddResponse>> addCartItem(
+            @Auth AuthMember authMember,
+            @Valid @RequestBody CartCreateRequest request
+    ) {
+        CartAddResponse response = cartService.addCartItem(authMember.memberId(), request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<CartResponse>> getCarts(@Auth AuthMember authMember) {

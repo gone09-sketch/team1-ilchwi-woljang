@@ -3,7 +3,7 @@ package com.team1ilchwiwoljang.domain.cart.dto.response;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 
 public record CartItemResponse(
-        Long cartId,
+        Long cartItemId,
         Long productId,
         String productName,
         int productPrice,
