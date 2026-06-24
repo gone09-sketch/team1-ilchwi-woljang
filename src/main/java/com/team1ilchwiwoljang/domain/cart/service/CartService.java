@@ -13,6 +13,7 @@ import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -77,6 +78,37 @@ public class CartService {
                 .sum();
 
         return new CartResponse(items, cartTotalPrice);
+    }
+
+    /**
+     * 주문서 미리보기에 사용할 장바구니 상품 목록을 조회합니다.
+     * cartIds가 null이거나 비어 있으면 회원의 전체 장바구니를 조회합니다.
+     * cartIds가 있으면 선택된 장바구니 상품만 조회합니다.
+     */
+    @Transactional(readOnly = true)
+    public List<Cart> getOrderPreviewCartItems(Long memberId, List<Long> cartIds) {
+        if (cartIds == null || cartIds.isEmpty()) {
+            return cartRepository.findAllByMemberIdWithProduct(memberId);
+        }
+
+        // 같은 cartId가 중복으로 들어와도 한 번만 조회되도록 정리합니다.
+        List<Long> selectedCartIds = cartIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        if (selectedCartIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND);
+        }
+
+        List<Cart> cartItems = cartRepository.findAllByMemberIdAndIdInWithProduct(memberId, selectedCartIds);
+
+        // 다른 회원의 장바구니 ID나 존재하지 않는 ID가 섞이면 조회 개수가 줄어듭니다.
+        if (cartItems.size() != selectedCartIds.size()) {
+            throw new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND);
+        }
+
+        return cartItems;
     }
 
     private CartItemResponse toItemResponse(Cart cart) {
