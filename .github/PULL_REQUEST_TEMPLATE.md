@@ -13,6 +13,10 @@
 
 ## 테스트 결과
 
+- `./gradlew test`
+- `./gradlew spotlessCheck`
+- `./gradlew spotlessApply` (필요한 경우에만)
+
 - [ ] 로컬 실행 확인
 - [ ] 단위 테스트 통과
 - [ ] API 테스트 확인

@@ -14,6 +14,16 @@
 - AGENTS.md 내용을 CLAUDE.md에 복제하지 않는다. CLAUDE.md는 `@AGENTS.md` 포인터만 둔다.
 - skill 파일의 파일 경로 참조는 반드시 실제 `ls`로 존재 여부를 확인한 뒤 작성한다.
 - 확인하지 않은 테스트·검증 항목을 완료로 표시하지 않는다.
+- PR을 마무리할 때는 `./gradlew test`와 `./gradlew spotlessCheck`를 실제로 통과시킨 뒤에만 완료로 판단한다.
+- `spotlessCheck`가 실패하면 `./gradlew spotlessApply`를 먼저 실행하고, 다시 `spotlessCheck`로 재확인한다.
+- PR 작성 요청에 응답할 때는 포함 커밋 ID를 함께 명시한다.
+- PR을 올릴 때는 draft로 만들지 않는다.
+- 도구 출력이 압축되거나 일부만 표시된 파일은 읽은 것으로 간주하지 않는다. 필요한 범위를 줄 단위로 다시 읽고 확인한 뒤 진행한다.
+- PR 생성·수정 시 템플릿을 추정해서 작성하지 않는다. `.github/PULL_REQUEST_TEMPLATE.md`의 모든 섹션을 확인하고 1:1로 맞춘다.
+- PR을 올릴 때는 draft로 만들지 않는다.
+- PR 생성 전에 기준 브랜치 대비 커밋 ID 목록을 확인한다.
+- `gh pr create/edit`에서 긴 본문을 `--body` 문자열로 직접 넘기지 않는다. 셸이 백틱·따옴표를 해석할 수 있으므로 본문 파일을 만들고 `--body-file`을 사용한다.
+- `git branch`, `git switch` 등에서 `.git/*.lock` 생성 실패나 `Operation not permitted`가 발생하면 다른 브랜치/PR 전략으로 우회하지 않는다. 원래 의도한 git 작업을 권한 문제로 판단해 같은 명령을 승인받아 재시도하거나 멈추고 보고한다.
 
 ## 행동 원칙
 

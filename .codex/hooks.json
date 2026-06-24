@@ -1,0 +1,14 @@
+{
+  "PreToolUse": [
+    {
+      "matcher": ".*gh pr (create|edit).*",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "scripts/guard-pr-template.sh"
+        }
+      ]
+    }
+  ]
+}
+
