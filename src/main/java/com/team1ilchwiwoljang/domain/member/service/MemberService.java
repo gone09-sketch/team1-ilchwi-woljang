@@ -21,9 +21,9 @@ public class MemberService {
     public Member getMember(Long memberId){
         return memberRepository.findById(memberId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+    }
 
-    public Optional<Member> findByEmail(String email) {
+    public Optional<Member> findByEmail(String email){
         return memberRepository.findByEmail(email);
-
     }
 }
