@@ -10,6 +10,7 @@ import com.team1ilchwiwoljang.domain.auth.service.AuthService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -24,6 +25,12 @@ import java.time.Duration;
 public class AuthController {
 
     private final AuthService authService;
+
+    @Value("${jwt.refresh-token-expiration}")
+    private Duration refreshTokenExpiration;
+
+    @Value("${cookie.secure:false}")
+    private boolean cookieSecure;
 
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<SignupResponse>> signup(
@@ -46,22 +53,10 @@ public class AuthController {
 
         LoginResult result = authService.login(request);
 
-        // Refresh Token은 JavaScript에서 읽지 못하도록 HttpOnly Cookie로 내려보냅니다.
-        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", result.refreshToken())
-                // JavaScript로 쿠키를 읽지 못하게 막습니다.
-                .httpOnly(true)
-
-                // NOTE: 실서비스 HTTPS 환경에서는 true 로 바꾸기
-                .secure(false)
-                .path("/api/auth")
-                .sameSite("Strict")
-                .maxAge(Duration.ofDays(14))
-
-                // Cookie 문자열로 변환합니다.
-                .build();
-
-        // 응답 헤더에 Set-Cookie를 추가합니다.
-        servletResponse.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+        servletResponse.addHeader(
+                HttpHeaders.SET_COOKIE,
+                createRefreshTokenCookie(result.refreshToken()).toString()
+        );
 
         // Access Token만 응답 body로 내려줍니다.
         return ResponseEntity.ok(ApiResponse.success(LoginResponse.from(result.accessToken())));
@@ -69,12 +64,27 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<LoginResponse>> refresh(
-            @CookieValue(name = "refreshToken", required = false) String refreshToken
+            @CookieValue(name = "refreshToken", required = false) String refreshToken,
+            HttpServletResponse servletResponse
     ) {
 
-        LoginResponse response = authService.reissueAccessToken(refreshToken);
+        LoginResult result = authService.reissueToken(refreshToken);
 
-        // 새 Access Token을 응답 body로 반환합니다.
-        return ResponseEntity.ok(ApiResponse.success(response));
+        servletResponse.addHeader(
+                HttpHeaders.SET_COOKIE,
+                createRefreshTokenCookie(result.refreshToken()).toString()
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(LoginResponse.from(result.accessToken())));
+    }
+
+    private ResponseCookie createRefreshTokenCookie(String refreshToken) {
+        return ResponseCookie.from("refreshToken", refreshToken)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/api/auth")
+                .sameSite("Strict")
+                .maxAge(refreshTokenExpiration)
+                .build();
     }
 }

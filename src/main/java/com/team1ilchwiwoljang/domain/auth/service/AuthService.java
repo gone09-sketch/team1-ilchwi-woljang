@@ -51,22 +51,29 @@ public class AuthService {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
 
-        String accessToken = jwtTokenProvider.createAccessToken(member.getId());
+        // 기존 활성 토큰을 먼저 폐기 후, 새 토큰을 발급합니다.
+        refreshTokenService.revokeAllByMember(member);
 
+        String accessToken = jwtTokenProvider.createAccessToken(member.getId());
         String refreshToken = refreshTokenService.createRefreshToken(member);
 
         // Controller에서 Access Token은 body로, Refresh Token은 Cookie로 내려보낼 수 있게 반환
         return new LoginResult(accessToken, refreshToken);
     }
 
-    @Transactional(readOnly = true)
-    public LoginResponse reissueAccessToken(String refreshToken) {
+    /**
+     * Refresh Token이 유효하면 새 Access Token을 발급하고
+     * 기존 Refresh Token 폐기 후 재발급
+     */
+    @Transactional
+    public LoginResult reissueToken(String refreshToken) {
         Member member = refreshTokenService.validateAndGetMember(refreshToken);
 
-        String accessToken = jwtTokenProvider.createAccessToken(member.getId());
+        refreshTokenService.revokeAllByMember(member);
 
-        // 응답 body에는 Access Token만 담습니다.
-        return LoginResponse.from(accessToken);
+        String newAccessToken = jwtTokenProvider.createAccessToken(member.getId());
+        String newRefreshToken = refreshTokenService.createRefreshToken(member);
+
+        return new LoginResult(newAccessToken, newRefreshToken);
     }
-
 }
