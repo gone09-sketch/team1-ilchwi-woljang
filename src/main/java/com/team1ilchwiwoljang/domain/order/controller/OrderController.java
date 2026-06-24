@@ -29,4 +29,8 @@ public class OrderController {
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response));
     }
+
+    @PatchMapping("/{orderId}/status")
+    public ResponseEntity
+
 }
