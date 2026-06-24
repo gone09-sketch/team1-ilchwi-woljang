@@ -4,7 +4,6 @@ import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
 import com.team1ilchwiwoljang.domain.auth.dto.request.LoginRequest;
-import com.team1ilchwiwoljang.domain.auth.dto.response.LoginResponse;
 import com.team1ilchwiwoljang.domain.auth.dto.response.LoginResult;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.repository.MemberRepository;
@@ -32,6 +31,7 @@ class AuthServiceTest {
     private static final String ENCODED_PASSWORD = "encoded-password";
     private static final String ACCESS_TOKEN = "access-token";
     private static final String REFRESH_TOKEN = "refresh-token";
+    private static final String NEW_REFRESH_TOKEN = "new-refresh-token";
 
     @InjectMocks
     private AuthService authService;
@@ -68,6 +68,7 @@ class AuthServiceTest {
         // then
         assertThat(result.accessToken()).isEqualTo(ACCESS_TOKEN);
         assertThat(result.refreshToken()).isEqualTo(REFRESH_TOKEN);
+        verify(refreshTokenService).revokeAllByMember(member);
     }
 
     @Test
@@ -83,6 +84,7 @@ class AuthServiceTest {
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.UNAUTHORIZED);
 
         verify(passwordEncoder, never()).matches(anyString(), anyString());
+        verify(refreshTokenService, never()).revokeAllByMember(any());
         verify(jwtTokenProvider, never()).createAccessToken(anyLong());
         verify(refreshTokenService, never()).createRefreshToken(any());
     }
@@ -104,38 +106,44 @@ class AuthServiceTest {
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.UNAUTHORIZED);
 
         verify(jwtTokenProvider, never()).createAccessToken(anyLong());
+        verify(refreshTokenService, never()).revokeAllByMember(any());
         verify(refreshTokenService, never()).createRefreshToken(any());
     }
 
     @Test
-    @DisplayName("유효한 Refresh Token이면 새 Access Token을 발급한다")
-    void givenValidRefreshToken_whenReissueAccessToken_thenReturnNewAccessToken() {
+    @DisplayName("유효한 Refresh Token이면 Access Token과 Refresh Token을 재발급한다")
+    void givenValidRefreshToken_whenReissueToken_thenReturnNewTokens() {
         // given
         Member member = mock(Member.class);
 
         given(refreshTokenService.validateAndGetMember(REFRESH_TOKEN)).willReturn(member);
         given(member.getId()).willReturn(MEMBER_ID);
         given(jwtTokenProvider.createAccessToken(MEMBER_ID)).willReturn(ACCESS_TOKEN);
+        given(refreshTokenService.createRefreshToken(member)).willReturn(NEW_REFRESH_TOKEN);
 
         // when
-        LoginResponse response = authService.reissueAccessToken(REFRESH_TOKEN);
+        LoginResult result = authService.reissueToken(REFRESH_TOKEN);
 
         // then
-        assertThat(response.accessToken()).isEqualTo(ACCESS_TOKEN);
+        assertThat(result.accessToken()).isEqualTo(ACCESS_TOKEN);
+        assertThat(result.refreshToken()).isEqualTo(NEW_REFRESH_TOKEN);
+        verify(refreshTokenService).revokeAllByMember(member);
     }
 
     @Test
     @DisplayName("유효하지 않은 Refresh Token이면 UNAUTHORIZED 예외를 그대로 전달한다")
-    void givenInvalidRefreshToken_whenReissueAccessToken_thenThrowUnauthorized() {
+    void givenInvalidRefreshToken_whenReissueToken_thenThrowUnauthorized() {
         // given
         given(refreshTokenService.validateAndGetMember(REFRESH_TOKEN))
                 .willThrow(new BusinessException(ErrorCode.UNAUTHORIZED));
 
         // when & then
-        assertThatThrownBy(() -> authService.reissueAccessToken(REFRESH_TOKEN))
+        assertThatThrownBy(() -> authService.reissueToken(REFRESH_TOKEN))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.UNAUTHORIZED);
 
         verify(jwtTokenProvider, never()).createAccessToken(anyLong());
+        verify(refreshTokenService, never()).revokeAllByMember(any());
+        verify(refreshTokenService, never()).createRefreshToken(any());
     }
 }
