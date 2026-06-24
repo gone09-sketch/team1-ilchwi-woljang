@@ -3,6 +3,7 @@ package com.team1ilchwiwoljang.common.exception.handler;
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.common.response.ErrorResponse;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -17,6 +18,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
         ErrorCode errorCode = e.getErrorCode();
+        ErrorResponse response = ErrorResponse.of(errorCode.name(), errorCode.getMessage());
+        return ResponseEntity.status(errorCode.getStatus()).body(response);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
+            DataIntegrityViolationException e) {
+        ErrorCode errorCode = ErrorCode.DUPLICATE_CART_ITEM;
         ErrorResponse response = ErrorResponse.of(errorCode.name(), errorCode.getMessage());
         return ResponseEntity.status(errorCode.getStatus()).body(response);
     }
