@@ -7,6 +7,7 @@ import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryCreateRequest;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryAnswerResponse;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryCreateResponse;
 import com.team1ilchwiwoljang.domain.inquiry.entity.Inquiry;
+import com.team1ilchwiwoljang.domain.inquiry.entity.InquiryStatus;
 import com.team1ilchwiwoljang.domain.inquiry.repository.InquiryRepository;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
@@ -33,9 +34,13 @@ public class InquiryService {
     }
 
     @Transactional
-    public InquiryAnswerResponse answerInquiry(Long inquiryId, Long adminId, InquiryAnswerRequest request) {
-        Inquiry inquiry = inquiryRepository.findById(inquiryId)
+    public InquiryAnswerResponse answerInquiry(Long adminId, InquiryAnswerRequest request) {
+        Inquiry inquiry = inquiryRepository.findById(request.inquiryId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INQUIRY_NOT_FOUND));
+
+        if (inquiry.getStatus() == InquiryStatus.ANSWERED) {
+            throw new BusinessException(ErrorCode.ALREADY_ANSWERED_INQUIRY);
+        }
 
         inquiry.answer(adminId, request.answer());
 
