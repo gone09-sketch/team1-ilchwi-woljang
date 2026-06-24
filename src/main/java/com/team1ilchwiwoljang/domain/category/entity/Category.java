@@ -1,7 +1,16 @@
 package com.team1ilchwiwoljang.domain.category.entity;
 
 import com.team1ilchwiwoljang.common.entity.BaseEntity;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -39,7 +48,16 @@ public class Category extends BaseEntity {
         Category category = new Category();
         category.name = name;
         category.parent = parent;
-        parent.children.add(category);
+        if (parent != null) {
+            parent.getChildren().add(category);
+        }
         return category;
+    }
+
+    public static Category create(String name, Category parent) {
+        if (parent == null) {
+            return createRoot(name);
+        }
+        return createChild(name, parent);
     }
 }
