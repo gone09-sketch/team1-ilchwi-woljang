@@ -3,19 +3,16 @@ package com.team1ilchwiwoljang.domain.cart.controller;
 import com.team1ilchwiwoljang.common.response.ApiResponse;
 import com.team1ilchwiwoljang.common.security.annotation.Auth;
 import com.team1ilchwiwoljang.common.security.auth.AuthMember;
-import com.team1ilchwiwoljang.domain.cart.dto.response.CartAddResponse;
 import com.team1ilchwiwoljang.domain.cart.dto.CartCreateRequest;
+import com.team1ilchwiwoljang.domain.cart.dto.response.CartAddResponse;
 import com.team1ilchwiwoljang.domain.cart.dto.response.CartResponse;
 import com.team1ilchwiwoljang.domain.cart.service.CartService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/carts")
@@ -26,10 +23,10 @@ public class CartController {
 
     @PostMapping("/items")
     public ResponseEntity<ApiResponse<CartAddResponse>> addCartItem(
-            @RequestParam Long memberId,
+            @Auth AuthMember authMember,
             @Valid @RequestBody CartCreateRequest request
-            ){
-        CartAddResponse response = addCartItemWithRetry(memberId, request);
+    ) {
+        CartAddResponse response = addCartItemWithRetry(authMember.memberId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
     }
 

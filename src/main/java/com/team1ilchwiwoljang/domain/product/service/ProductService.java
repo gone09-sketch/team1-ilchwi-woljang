@@ -21,9 +21,9 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
 
     @Transactional(readOnly = true)
-    public Product getProduct(Long productId){
+    public Product getProduct(Long productId) {
         return productRepository.findById(productId)
-            .orElseThrow(()-> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
     }
 
     public List<ProductResponse> getProductsByCategory(Long categoryId) {
