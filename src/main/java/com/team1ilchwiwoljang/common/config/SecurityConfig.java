@@ -91,7 +91,7 @@ public class SecurityConfig {
                                         "/api/products/**"
                                 ).permitAll()
 
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admins/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
 
