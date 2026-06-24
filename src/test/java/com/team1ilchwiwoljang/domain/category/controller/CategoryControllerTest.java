@@ -15,6 +15,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -46,7 +48,7 @@ class CategoryControllerTest {
                 new ProductResponse(2L, "맨투맨", 20000, 50, ProductStatus.ON_SALE, "따뜻한 맨투맨")
         );
 
-        given(productService.getProductsByCategory(categoryId)).willReturn(responses);
+        given(productService.getProductsByCategory(eq(categoryId), anyString())).willReturn(responses);
 
         // when & then
         mockMvc.perform(get("/api/categories/{categoryId}/products", categoryId))

@@ -7,10 +7,7 @@ import com.team1ilchwiwoljang.domain.product.dto.ProductResponse;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -36,9 +33,10 @@ public class CategoryController {
      */
     @GetMapping("/{categoryId}/products")
     public ResponseEntity<ApiResponse<List<ProductResponse>>> getProductsByCategory(
-            @PathVariable Long categoryId
+            @PathVariable Long categoryId,
+            @RequestParam(defaultValue = "newest") String sort
     ) {
-        List<ProductResponse> responses = productService.getProductsByCategory(categoryId);
+        List<ProductResponse> responses = productService.getProductsByCategory(categoryId, sort);
         return ResponseEntity.ok(ApiResponse.success(responses));
     }
 }
