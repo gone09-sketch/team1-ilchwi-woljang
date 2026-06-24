@@ -21,7 +21,7 @@ class CartEntityTest {
     @Test
     void createRejectsZeroOrNegativeQuantity() {
         Member member = Member.create("test@example.com", "password", "테스터", "010-1234-5678");
-        Product product = Product.create("상품", 1_000, 10, ProductStatus.ON_SALE);
+        Product product = Product.create("상품", 1_000, 10, ProductStatus.ON_SALE, "설명", null);
 
         assertThatThrownBy(() -> Cart.create(member, product, 0))
                 .isInstanceOfSatisfying(BusinessException.class,
@@ -35,7 +35,7 @@ class CartEntityTest {
     void increaseQuantityRejectsWhenResultQuantityIsZeroOrNegative() {
         Cart cart = Cart.create(
                 Member.create("test@example.com", "password", "테스터", "010-1234-5678"),
-                Product.create("상품", 1_000, 10, ProductStatus.ON_SALE),
+                Product.create("상품", 1_000, 10, ProductStatus.ON_SALE, "설명", null),
                 2);
 
         assertThatThrownBy(() -> cart.increaseQuantity(-2))

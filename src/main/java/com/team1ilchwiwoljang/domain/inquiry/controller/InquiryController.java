@@ -1,6 +1,8 @@
 package com.team1ilchwiwoljang.domain.inquiry.controller;
 
 import com.team1ilchwiwoljang.common.response.ApiResponse;
+import com.team1ilchwiwoljang.common.security.annotation.Auth;
+import com.team1ilchwiwoljang.common.security.auth.AuthMember;
 import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryAnswerRequest;
 import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryCreateRequest;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryAnswerResponse;
@@ -20,11 +22,11 @@ public class InquiryController {
 
     @PostMapping("/api/members/inquiry")
     public ResponseEntity<ApiResponse<InquiryCreateResponse>> createInquiry(
+            @Auth AuthMember authMember,
             @Valid @RequestBody InquiryCreateRequest request
     ) {
-        // TODO: 로그인 공통 모듈 완성 시 실제 세션/JWT 이메일 연동 예정
-        String tempEmail = "test@example.com";
-        InquiryCreateResponse response = inquiryService.createInquiry(tempEmail, request);
+
+        InquiryCreateResponse response = inquiryService.createInquiry(authMember.memberId(), request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response));
@@ -32,13 +34,11 @@ public class InquiryController {
 
     @PostMapping("/api/admins/inquiry/{inquiryId}/answer")
     public ResponseEntity<ApiResponse<InquiryAnswerResponse>> answerInquiry(
+            @Auth AuthMember authMember,
             @PathVariable Long inquiryId,
             @Valid @RequestBody InquiryAnswerRequest request
     ) {
-        // TODO: 로그인 공통 모듈 완성 시 실제 세션/JWT 관리자 ID 연동 예정
-        Long tempAdminId = 1L;
-
-        InquiryAnswerResponse response = inquiryService.answerInquiry(inquiryId, tempAdminId, request);
+        InquiryAnswerResponse response = inquiryService.answerInquiry(inquiryId, authMember.memberId(), request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

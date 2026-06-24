@@ -15,7 +15,15 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
 
-    public Optional<Member> findByEmail(String email) {
-        return memberRepository.findByEmail(email);
+    public Optional<Member> findByEmailAndDeletedAtIsNull(String email) {
+        return memberRepository.findByEmailAndDeletedAtIsNull(email);
+    }
+
+    public Optional<Member> findById(Long memberId) {
+        return memberRepository.findByIdAndDeletedAtIsNull(memberId);
+    }
+
+    public boolean existsActiveMember(Long memberId) {
+        return memberRepository.existsByIdAndDeletedAtIsNull(memberId);
     }
 }

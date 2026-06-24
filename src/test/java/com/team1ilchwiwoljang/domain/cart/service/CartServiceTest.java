@@ -30,7 +30,7 @@ class CartServiceTest {
     void getCartReturnsItemsAndTotalPrice() {
         Long memberId = 1L;
         Member member = createMember();
-        Product product = Product.create("상품", 1_000, 10, ProductStatus.ON_SALE);
+        Product product = Product.create("상품", 1_000, 10, ProductStatus.ON_SALE, "설명", null);
         Cart cart = Cart.create(member, product, 3);
         given(cartRepository.findAllByMemberIdWithProduct(memberId))
                 .willReturn(List.of(cart));
@@ -54,7 +54,7 @@ class CartServiceTest {
     void getCartReturnsNotOrderableWhenStockIsLessThanQuantity() {
         Long memberId = 1L;
         Member member = createMember();
-        Product product = Product.create("상품", 1_000, 2, ProductStatus.ON_SALE);
+        Product product = Product.create("상품", 1_000, 2, ProductStatus.ON_SALE, "설명", null);
         Cart cart = Cart.create(member, product, 3);
         given(cartRepository.findAllByMemberIdWithProduct(memberId))
                 .willReturn(List.of(cart));
@@ -68,8 +68,8 @@ class CartServiceTest {
     void getCartReturnsNotOrderableWhenProductIsNotOnSale() {
         Long memberId = 1L;
         Member member = createMember();
-        Product outOfStockProduct = Product.create("품절 상품", 1_000, 10, ProductStatus.OUT_OF_STOCK);
-        Product stoppedProduct = Product.create("판매중지 상품", 2_000, 10, ProductStatus.STOPPED);
+        Product outOfStockProduct = Product.create("품절 상품", 1_000, 10, ProductStatus.OUT_OF_STOCK, "설명", null);
+        Product stoppedProduct = Product.create("판매중지 상품", 2_000, 10, ProductStatus.STOPPED, "설명", null);
         given(cartRepository.findAllByMemberIdWithProduct(memberId))
                 .willReturn(List.of(
                         Cart.create(member, outOfStockProduct, 1),
