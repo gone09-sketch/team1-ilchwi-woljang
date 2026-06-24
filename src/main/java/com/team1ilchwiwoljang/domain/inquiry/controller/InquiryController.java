@@ -32,6 +32,7 @@ public class InquiryController {
                 .body(ApiResponse.success(response));
     }
 
+    // TODO: 관리자 권한 검증 정책 수립 후 @PreAuthorize("hasRole('ADMIN')") 추가 고려
     @PostMapping("/api/admins/inquiry")
     public ResponseEntity<ApiResponse<InquiryAnswerResponse>> answerInquiry(
             @Auth AuthMember authMember,
