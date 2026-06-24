@@ -2,7 +2,6 @@ package com.team1ilchwiwoljang.common.security;
 
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.common.security.auth.AuthMember;
-import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
@@ -17,8 +16,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -59,7 +56,7 @@ class JwtAuthenticationFilterTest {
         request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN);
 
         given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
-        given(memberService.findById(MEMBER_ID)).willReturn(Optional.of(mock(Member.class)));
+        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
 
         // when
         jwtAuthenticationFilter.doFilter(request, response, filterChain);
@@ -72,6 +69,7 @@ class JwtAuthenticationFilterTest {
 
         verify(filterChain).doFilter(request, response);
         verify(securityErrorResponseHandler, never()).writeErrorResponse(any(), any());
+        verify(memberService).existsActiveMember(MEMBER_ID);
     }
 
     @Test
@@ -83,7 +81,7 @@ class JwtAuthenticationFilterTest {
         request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN);
 
         given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
-        given(memberService.findById(MEMBER_ID)).willReturn(Optional.empty());
+        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(false);
 
         // when
         jwtAuthenticationFilter.doFilter(request, response, filterChain);
@@ -93,5 +91,6 @@ class JwtAuthenticationFilterTest {
 
         verify(securityErrorResponseHandler).writeErrorResponse(response, ErrorCode.UNAUTHORIZED);
         verify(filterChain, never()).doFilter(any(), any());
+        verify(memberService).existsActiveMember(MEMBER_ID);
     }
 }
