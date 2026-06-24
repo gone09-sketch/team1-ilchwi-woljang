@@ -2,17 +2,20 @@ package com.team1ilchwiwoljang.domain.cart.service;
 
 import com.team1ilchwiwoljang.domain.cart.dto.CartCreateRequest;
 import com.team1ilchwiwoljang.domain.cart.dto.response.CartAddResponse;
+import com.team1ilchwiwoljang.domain.cart.dto.response.CartItemResponse;
+import com.team1ilchwiwoljang.domain.cart.dto.response.CartResponse;
 import com.team1ilchwiwoljang.domain.cart.entity.Cart;
 import com.team1ilchwiwoljang.domain.cart.repository.CartRepository;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
-import com.team1ilchwiwoljang.domain.cart.dto.response.CartItemResponse;
-import com.team1ilchwiwoljang.domain.cart.dto.response.CartResponse;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +27,11 @@ public class CartService {
     private final MemberService memberService;
     private final ProductService productService;
 
+    @Retryable(
+            retryFor = DataIntegrityViolationException.class,
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 50)
+    )
     @Transactional
     public CartAddResponse addCartItem(
             Long memberId, CartCreateRequest request) {
@@ -42,7 +50,6 @@ public class CartService {
 
         return CartAddResponse.from(cart);
     }
-
 
     @Transactional(readOnly = true)
     public CartResponse getCart(Long memberId) {
