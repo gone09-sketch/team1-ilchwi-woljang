@@ -1,8 +1,6 @@
 package com.team1ilchwiwoljang.domain.member.entity;
 
 import com.team1ilchwiwoljang.common.entity.BaseEntity;
-import com.team1ilchwiwoljang.common.exception.BusinessException;
-import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -47,13 +45,5 @@ public class Member extends BaseEntity {
         member.phone = phone;
         member.role = MemberRole.MEMBER;
         return member;
-    }
-
-    public void changeRole(MemberRole role) {
-        if (role == null) {
-            throw new BusinessException(ErrorCode.INVALID_MEMBER_ROLE);
-        }
-
-        this.role = role;
     }
 }
