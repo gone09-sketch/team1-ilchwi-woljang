@@ -20,8 +20,13 @@ public enum ErrorCode {
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
 
+    // product
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
+
     // cart
     INVALID_QUANTITY(HttpStatus.BAD_REQUEST, "수량은 1개 이상이어야 합니다."),
+    CART_ITEM_QUANTITY_EXCEEDED(HttpStatus.BAD_REQUEST, "장바구니에 담을 수 있는 수량이 재고를 초과했습니다."),
+    DUPLICATE_CART_ITEM(HttpStatus.CONFLICT, "이미 장바구니에 담긴 상품입니다. 잠시 후 다시 시도해 주세요."),
 
     // category
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다."),
