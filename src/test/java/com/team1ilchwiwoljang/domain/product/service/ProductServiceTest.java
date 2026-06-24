@@ -1,5 +1,7 @@
 package com.team1ilchwiwoljang.domain.product.service;
 
+import com.team1ilchwiwoljang.common.exception.BusinessException;
+import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.domain.category.entity.Category;
 import com.team1ilchwiwoljang.domain.category.repository.CategoryRepository;
 import com.team1ilchwiwoljang.domain.product.dto.ProductResponse;
@@ -62,7 +64,8 @@ class ProductServiceTest {
 
         // when & then
         assertThatThrownBy(() -> productService.getProductsByCategory(invalidCategoryId))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("존재하지 않는 카테고리입니다.");
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CATEGORY_NOT_FOUND);
     }
 }
