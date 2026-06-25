@@ -2,6 +2,7 @@ package com.team1ilchwiwoljang.common.security;
 
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.common.security.auth.AuthMember;
+import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
@@ -55,7 +56,8 @@ class JwtAuthenticationFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN);
 
-        given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
+        given(jwtTokenProvider.parseAccessToken(ACCESS_TOKEN))
+                .willReturn(new JwtTokenPayload(MEMBER_ID, MemberRole.MEMBER));
         given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
 
         // when
@@ -65,10 +67,14 @@ class JwtAuthenticationFilterTest {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         assertThat(authentication).isNotNull();
         assertThat(authentication.getPrincipal())
-                .isEqualTo(new AuthMember(MEMBER_ID));
+                .isEqualTo(new AuthMember(MEMBER_ID, MemberRole.MEMBER));
+        assertThat(authentication.getAuthorities())
+                .extracting("authority")
+                .containsExactly("ROLE_MEMBER");
 
         verify(filterChain).doFilter(request, response);
         verify(securityErrorResponseHandler, never()).writeErrorResponse(any(), any());
+        verify(jwtTokenProvider).parseAccessToken(ACCESS_TOKEN);
         verify(memberService).existsActiveMember(MEMBER_ID);
     }
 
@@ -80,7 +86,8 @@ class JwtAuthenticationFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN);
 
-        given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
+        given(jwtTokenProvider.parseAccessToken(ACCESS_TOKEN))
+                .willReturn(new JwtTokenPayload(MEMBER_ID, MemberRole.MEMBER));
         given(memberService.existsActiveMember(MEMBER_ID)).willReturn(false);
 
         // when
@@ -91,6 +98,7 @@ class JwtAuthenticationFilterTest {
 
         verify(securityErrorResponseHandler).writeErrorResponse(response, ErrorCode.UNAUTHORIZED);
         verify(filterChain, never()).doFilter(any(), any());
+        verify(jwtTokenProvider).parseAccessToken(ACCESS_TOKEN);
         verify(memberService).existsActiveMember(MEMBER_ID);
     }
 }
