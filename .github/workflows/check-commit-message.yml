@@ -17,7 +17,7 @@ jobs:
               pull_number: context.payload.pull_request.number,
             });
 
-            const pattern = /^(feat|fix|refactor|docs|test|chore)(\([a-z0-9가-힣-]+\))?: .+/;
+            const pattern = /^(feat|fix|refactor|docs|test|chore|merge)(\([a-z0-9가-힣-]+\))?: .+/;
             const mergePattern = /^Merge /;
 
             const violations = [];
@@ -33,7 +33,7 @@ jobs:
                 `커밋 메시지 컨벤션을 따르지 않는 커밋이 있습니다:\n\n` +
                 violations.map(m => `- "${m}"`).join('\n') +
                 `\n\n형식: type: 내용  또는  type(scope): 내용\n` +
-                `허용 타입: feat, fix, refactor, docs, test, chore\n\n` +
-                `예시: feat: 로그인 API 구현 / fix(auth): 토큰 만료 처리 수정`
+                `허용 타입: feat, fix, refactor, docs, test, chore, merge\n\n` +
+                `예시: feat: 로그인 API 구현 / fix(auth): 토큰 만료 처리 수정 / merge: dev 브랜치 병합`
               );
             }
