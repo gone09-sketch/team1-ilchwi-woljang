@@ -4,7 +4,6 @@ import com.team1ilchwiwoljang.common.response.ApiResponse;
 import com.team1ilchwiwoljang.common.security.annotation.Auth;
 import com.team1ilchwiwoljang.common.security.auth.AuthMember;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
-import com.team1ilchwiwoljang.domain.order.dto.request.OrderStatusUpdateRequest;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
 import com.team1ilchwiwoljang.domain.order.service.OrderService;
 import jakarta.validation.Valid;
@@ -31,17 +30,14 @@ public class OrderController {
                 .body(ApiResponse.success(response));
     }
 
-    @PatchMapping("/{orderId}/status")
-    public ResponseEntity<ApiResponse<Void>> updateOrderStatus(
+    @PostMapping("/{orderId}/cancel")
+    public ResponseEntity<ApiResponse<Void>> cancelOrder(
             @Auth AuthMember authMember,
-            @PathVariable Long orderId,
-            @Valid @RequestBody OrderStatusUpdateRequest request
+            @PathVariable Long orderId
     ) {
-        orderService.updateOrderStatus(
+        orderService.cancelOrder(
                 authMember.memberId(),
-                orderId,
-                request.orderStatus()
-        );
+                orderId);
 
         return ResponseEntity.ok(ApiResponse.success(null));
     }

@@ -9,7 +9,6 @@ import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
 import com.team1ilchwiwoljang.domain.order.entity.Order;
 import com.team1ilchwiwoljang.domain.order.entity.OrderItem;
-import com.team1ilchwiwoljang.domain.order.entity.OrderStatus;
 import com.team1ilchwiwoljang.domain.order.repository.OrderItemRepository;
 import com.team1ilchwiwoljang.domain.order.repository.OrderRepository;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
@@ -17,6 +16,9 @@ import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,6 +30,7 @@ public class OrderService {
     private final OrderItemRepository orderItemRepository;
     private final ProductRepository productRepository;
     private final MemberRepository memberRepository;
+    private final Clock clock;
 
     @Transactional
     public OrderResponse createDirectOrder(Long memberId, DirectOrderRequest request) {
@@ -64,10 +67,12 @@ public class OrderService {
         return OrderResponse.from(order, orderItems);
     }
     @Transactional
-    public void updateOrderStatus(Long memberId, Long orderId, OrderStatus orderStatus) {
+    public void cancelOrder(Long memberId, Long orderId) {
         Order order = orderRepository.findByIdAndMemberId(orderId, memberId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
-        order.updateStatus(orderStatus);
+        order.cancel(LocalDateTime.now(clock));
     }
+
+
 }

@@ -51,19 +51,12 @@ public class Order extends BaseEntity {
         return order;
     }
 
-    public void updateStatus(OrderStatus orderStatus) {
-        if (!this.orderStatus.canChangeTo(orderStatus)) {
+    public void cancel(LocalDateTime canceledAt) {
+        if (!this.orderStatus.canChangeTo(OrderStatus.CANCELLED)) {
             throw new BusinessException(ErrorCode.INVALID_ORDER_STATUS);
         }
 
-        this.orderStatus = orderStatus;
-
-        if (orderStatus == OrderStatus.PAID && this.paidAt == null) {
-            this.paidAt = LocalDateTime.now();
-        }
-
-        if (orderStatus == OrderStatus.CANCELLED && this.canceledAt == null) {
-            this.canceledAt = LocalDateTime.now();
-        }
+        this.orderStatus = OrderStatus.CANCELLED;
+        this.canceledAt = canceledAt;
     }
 }
