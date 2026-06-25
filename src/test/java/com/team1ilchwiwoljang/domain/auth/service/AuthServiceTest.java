@@ -6,6 +6,7 @@ import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
 import com.team1ilchwiwoljang.domain.auth.dto.request.LoginRequest;
 import com.team1ilchwiwoljang.domain.auth.dto.response.LoginResult;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
+import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
 import com.team1ilchwiwoljang.domain.member.repository.MemberRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,7 @@ class AuthServiceTest {
     private static final String ACCESS_TOKEN = "access-token";
     private static final String REFRESH_TOKEN = "refresh-token";
     private static final String NEW_REFRESH_TOKEN = "new-refresh-token";
+    private static final MemberRole MEMBER_ROLE = MemberRole.MEMBER;
 
     @InjectMocks
     private AuthService authService;
@@ -59,7 +61,8 @@ class AuthServiceTest {
         given(member.getPassword()).willReturn(ENCODED_PASSWORD);
         given(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).willReturn(true);
         given(member.getId()).willReturn(MEMBER_ID);
-        given(jwtTokenProvider.createAccessToken(MEMBER_ID)).willReturn(ACCESS_TOKEN);
+        given(member.getRole()).willReturn(MEMBER_ROLE);
+        given(jwtTokenProvider.createAccessToken(MEMBER_ID, MEMBER_ROLE)).willReturn(ACCESS_TOKEN);
         given(refreshTokenService.createRefreshToken(member)).willReturn(REFRESH_TOKEN);
 
         // when
@@ -85,7 +88,7 @@ class AuthServiceTest {
 
         verify(passwordEncoder, never()).matches(anyString(), anyString());
         verify(refreshTokenService, never()).revokeAllByMember(any());
-        verify(jwtTokenProvider, never()).createAccessToken(anyLong());
+        verify(jwtTokenProvider, never()).createAccessToken(anyLong(), any(MemberRole.class));
         verify(refreshTokenService, never()).createRefreshToken(any());
     }
 
@@ -105,7 +108,7 @@ class AuthServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.UNAUTHORIZED);
 
-        verify(jwtTokenProvider, never()).createAccessToken(anyLong());
+        verify(jwtTokenProvider, never()).createAccessToken(anyLong(), any(MemberRole.class));
         verify(refreshTokenService, never()).revokeAllByMember(any());
         verify(refreshTokenService, never()).createRefreshToken(any());
     }
@@ -118,7 +121,8 @@ class AuthServiceTest {
 
         given(refreshTokenService.validateAndGetMember(REFRESH_TOKEN)).willReturn(member);
         given(member.getId()).willReturn(MEMBER_ID);
-        given(jwtTokenProvider.createAccessToken(MEMBER_ID)).willReturn(ACCESS_TOKEN);
+        given(member.getRole()).willReturn(MEMBER_ROLE);
+        given(jwtTokenProvider.createAccessToken(MEMBER_ID, MEMBER_ROLE)).willReturn(ACCESS_TOKEN);
         given(refreshTokenService.createRefreshToken(member)).willReturn(NEW_REFRESH_TOKEN);
 
         // when
@@ -142,7 +146,7 @@ class AuthServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.UNAUTHORIZED);
 
-        verify(jwtTokenProvider, never()).createAccessToken(anyLong());
+        verify(jwtTokenProvider, never()).createAccessToken(anyLong(), any(MemberRole.class));
         verify(refreshTokenService, never()).revokeAllByMember(any());
         verify(refreshTokenService, never()).createRefreshToken(any());
     }

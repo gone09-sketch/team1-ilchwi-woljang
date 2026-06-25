@@ -1,6 +1,8 @@
 package com.team1ilchwiwoljang.common.security;
 
+import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,7 +33,7 @@ public class JwtTokenProvider {
         this.clock = clock;
     }
 
-    public String createAccessToken(Long memberId) {
+    public String createAccessToken(Long memberId, MemberRole role) {
         // 토큰이 발급된 현재 시각
         Instant now = clock.instant();
 
@@ -40,19 +42,46 @@ public class JwtTokenProvider {
 
         return Jwts.builder()
                 .subject(String.valueOf(memberId))
+                .claim("role", role.name())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiration))
                 .signWith(secretKey)
                 .compact();
     }
 
-    public Long getMemberId(String token) {
-        Claims claims = Jwts.parser()
+    public JwtTokenPayload parseAccessToken(String token) {
+        // JWT 서명 검증과 디코딩은 비용이 있는 작업이므로 한 번만 수행합니다.
+        Claims claims = parseClaims(token);
+
+        return new JwtTokenPayload(
+                getMemberId(claims),
+                getRole(claims)
+        );
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
 
+    private Long getMemberId(Claims claims) {
         return Long.valueOf(claims.getSubject());
+    }
+
+    private MemberRole getRole(Claims claims) {
+        String roleClaim = claims.get("role", String.class);
+
+        if (roleClaim == null || roleClaim.isBlank()) {
+            throw new JwtException("Invalid JWT");
+        }
+
+        try {
+            return MemberRole.valueOf(roleClaim);
+        } catch (IllegalArgumentException e) {
+            throw new JwtException("Invalid JWT", e);
+        }
     }
 }
