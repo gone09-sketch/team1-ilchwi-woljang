@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderHistoryResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemHistoryResponse;
+import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -41,8 +42,8 @@ public class OrderService {
     private final Clock clock;
 
     @Transactional(readOnly = true)
-    public PageResponse<OrderHistoryResponse> getOrderHistory(Long memberId, Pageable pageable) {
-        Page<Order> orderPage = orderRepository.findOrderHistoryByMemberId(memberId, pageable);
+    public PageResponse<OrderHistoryResponse> getOrderHistory(Long memberId, OrderSearchCondition condition, Pageable pageable) {
+        Page<Order> orderPage = orderRepository.findOrderHistoryByMemberId(memberId, condition, pageable);
 
 
         List<Long> orderIds = orderPage.getContent().stream()

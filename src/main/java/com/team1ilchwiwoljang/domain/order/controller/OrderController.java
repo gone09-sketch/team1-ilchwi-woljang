@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
 import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderHistoryResponse;
 import org.springframework.data.domain.Pageable;
@@ -49,9 +50,10 @@ public class OrderController {
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<OrderHistoryResponse>>> getOrderHistory(
             @Auth AuthMember authMember,
+            OrderSearchCondition condition,
             Pageable pageable
     ) {
-        PageResponse<OrderHistoryResponse> response = orderService.getOrderHistory(authMember.memberId(), pageable);
+        PageResponse<OrderHistoryResponse> response = orderService.getOrderHistory(authMember.memberId(), condition, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

@@ -1,8 +1,11 @@
 package com.team1ilchwiwoljang.domain.order.repository;
 
 import com.querydsl.core.types.OrderSpecifier;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
 import com.team1ilchwiwoljang.domain.order.entity.Order;
+import com.team1ilchwiwoljang.domain.order.entity.OrderStatus;
 import com.team1ilchwiwoljang.domain.order.entity.QOrder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -10,6 +13,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,12 +24,17 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public Page<Order> findOrderHistoryByMemberId(Long memberId, Pageable pageable) {
+    public Page<Order> findOrderHistoryByMemberId(Long memberId, OrderSearchCondition condition, Pageable pageable) {
         QOrder order = QOrder.order;
 
         List<Order> content = queryFactory
                 .selectFrom(order)
-                .where(order.member.id.eq(memberId))
+                .where(
+                        order.member.id.eq(memberId),
+                        orderStatusEq(condition.orderStatus()),
+                        orderNumberLike(condition.orderNumber()),
+                        createdAtBetween(condition.startDate(), condition.endDate())
+                )
                 .orderBy(getOrderSpecifiers(pageable.getSort(), order))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
@@ -33,12 +43,43 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
         Long total = queryFactory
                 .select(order.count())
                 .from(order)
-                .where(order.member.id.eq(memberId))
+                .where(
+                        order.member.id.eq(memberId),
+                        orderStatusEq(condition.orderStatus()),
+                        orderNumberLike(condition.orderNumber()),
+                        createdAtBetween(condition.startDate(), condition.endDate())
+                )
                 .fetchOne();
 
         long totalCount = (total != null) ? total : 0L;
 
         return new PageImpl<>(content, pageable, totalCount);
+    }
+
+    private BooleanExpression orderStatusEq(OrderStatus orderStatus) {
+        return orderStatus != null ? QOrder.order.orderStatus.eq(orderStatus) : null;
+    }
+
+    private BooleanExpression orderNumberLike(String orderNumber) {
+        return orderNumber != null && !orderNumber.isBlank() 
+                ? QOrder.order.orderNumber.containsIgnoreCase(orderNumber) 
+                : null;
+    }
+
+    private BooleanExpression createdAtBetween(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null && endDate == null) {
+            return null;
+        }
+        if (startDate != null && endDate != null) {
+            return QOrder.order.createdAt.between(
+                    startDate.atStartOfDay(),
+                    endDate.atTime(LocalTime.MAX)
+            );
+        }
+        if (startDate != null) {
+            return QOrder.order.createdAt.goe(startDate.atStartOfDay());
+        }
+        return QOrder.order.createdAt.loe(endDate.atTime(LocalTime.MAX));
     }
 
     private OrderSpecifier<?>[] getOrderSpecifiers(Sort sort, QOrder order) {

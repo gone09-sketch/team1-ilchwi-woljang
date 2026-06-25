@@ -32,12 +32,14 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderHistoryResponse;
+import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -244,11 +246,11 @@ class OrderServiceTest {
 
         Page<Order> orderPage = new PageImpl<>(List.of(order), pageable, 1);
 
-        given(orderRepository.findOrderHistoryByMemberId(memberId, pageable)).willReturn(orderPage);
+        given(orderRepository.findOrderHistoryByMemberId(eq(memberId), any(OrderSearchCondition.class), eq(pageable))).willReturn(orderPage);
         given(orderItemRepository.findByOrderIdIn(List.of(100L))).willReturn(List.of(orderItem));
 
         // when
-        PageResponse<OrderHistoryResponse> result = orderService.getOrderHistory(memberId, pageable);
+        PageResponse<OrderHistoryResponse> result = orderService.getOrderHistory(memberId, new OrderSearchCondition(null, null, null, null), pageable);
 
         // then
         assertThat(result.content()).hasSize(1);
@@ -268,10 +270,10 @@ class OrderServiceTest {
         Pageable pageable = PageRequest.of(0, 10);
         Page<Order> emptyPage = new PageImpl<>(List.of(), pageable, 0);
 
-        given(orderRepository.findOrderHistoryByMemberId(memberId, pageable)).willReturn(emptyPage);
+        given(orderRepository.findOrderHistoryByMemberId(eq(memberId), any(OrderSearchCondition.class), eq(pageable))).willReturn(emptyPage);
 
         // when
-        PageResponse<OrderHistoryResponse> result = orderService.getOrderHistory(memberId, pageable);
+        PageResponse<OrderHistoryResponse> result = orderService.getOrderHistory(memberId, new OrderSearchCondition(null, null, null, null), pageable);
 
         // then
         assertThat(result.content()).isEmpty();

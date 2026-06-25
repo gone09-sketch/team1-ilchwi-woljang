@@ -23,6 +23,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
+import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
 import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderHistoryResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemHistoryResponse;
@@ -208,10 +209,14 @@ class OrderControllerTest {
         OrderHistoryResponse history = new OrderHistoryResponse(100L, "ORD-123", 20000L, "PENDING", null, List.of(item));
         PageResponse<OrderHistoryResponse> pageResponse = new PageResponse<>(List.of(history), 0, 10, 1L, 1, true);
 
-        given(orderService.getOrderHistory(eq(MEMBER_ID), any(Pageable.class))).willReturn(pageResponse);
+        given(orderService.getOrderHistory(eq(MEMBER_ID), any(OrderSearchCondition.class), any(Pageable.class))).willReturn(pageResponse);
 
         // when & then
         mockMvc.perform(get("/api/orders")
+                        .param("startDate", "2026-06-01")
+                        .param("endDate", "2026-06-25")
+                        .param("orderStatus", "PENDING")
+                        .param("orderNumber", "ORD-123")
                         .param("page", "0")
                         .param("size", "10"))
                 .andExpect(status().isOk())
