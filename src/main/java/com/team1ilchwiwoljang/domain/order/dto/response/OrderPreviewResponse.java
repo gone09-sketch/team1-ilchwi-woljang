@@ -2,18 +2,43 @@ package com.team1ilchwiwoljang.domain.order.dto.response;
 
 import java.util.List;
 
-/**
- * 주문 생성 전 확인 화면에 필요한 상품 목록과 총 주문 금액 응답입니다.
- */
 public record OrderPreviewResponse(
-        List<OrderItemResponse> orderItems,
-        long totalAmount
+        List<OrderPreviewItemResponse> orderItems,
+        long totalOrderAmount
 ) {
 
     public static OrderPreviewResponse of(
-            List<OrderItemResponse> orderItems,
-            long totalAmount
+            List<OrderPreviewItemResponse> orderItems,
+            long totalOrderAmount
     ) {
-        return new OrderPreviewResponse(orderItems, totalAmount);
+        return new OrderPreviewResponse(orderItems, totalOrderAmount);
+    }
+
+    public record OrderPreviewItemResponse(
+            Long cartId,
+            Long productId,
+            String productName,
+            long productPrice,
+            int quantity,
+            long productTotalAmount
+    ) {
+
+        public static OrderPreviewItemResponse of(
+                Long cartId,
+                Long productId,
+                String productName,
+                long productPrice,
+                int quantity,
+                long productTotalAmount
+        ) {
+            return new OrderPreviewItemResponse(
+                    cartId,
+                    productId,
+                    productName,
+                    productPrice,
+                    quantity,
+                    productTotalAmount
+            );
+        }
     }
 }
