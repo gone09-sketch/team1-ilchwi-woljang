@@ -50,6 +50,28 @@ git diff 전체 출력은 파일 목록과 통계를 본 뒤 필요한 파일 �
     - 변경된 코드와 직접 관련된 컨벤션만 읽는다.
     - 모든 컨벤션 문서를 한 번에 읽지 않는다.
 
+## 레이어별 컨벤션 매핑
+
+변경된 파일 경로를 확인한 뒤 아래 매핑에서 읽을 파일만 선택한다. 해당 없는 파일은 읽지 않는다.
+
+| 변경 경로 패턴 | 읽을 컨벤션 파일 |
+|---|---|
+| `controller/` | `controller.md`, `api-response.md`, `validation.md` |
+| `service/` | `service.md`, `transaction.md` |
+| `repository/` | `repository.md`, `indexing.md` |
+| `entity/` | `entity.md` |
+| `dto/` | `dto.md` |
+| `exception/` | `exception.md` |
+| `config/`, `security/`, `filter/` | `security.md` |
+| `test/` | `test-convention.md` |
+| 패키지·클래스명 변경 | `naming.md`, `package-structure.md` |
+| 비동기·동시성 코드 | `async-concurrency.md` |
+| 캐시 관련 코드 | `caching.md` |
+| 로깅 관련 코드 | `logging.md` |
+| 웹소켓 관련 코드 | `websocket.md` |
+
+여러 레이어가 동시에 변경된 경우 해당 행의 파일을 합산해서 읽는다.
+
 ## 리뷰 기준
 
 리뷰할 코드 범위에 맞게 아래 항목을 확인한다.

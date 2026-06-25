@@ -5,9 +5,12 @@ import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.domain.category.entity.Category;
 import com.team1ilchwiwoljang.domain.category.repository.CategoryRepository;
 import com.team1ilchwiwoljang.domain.product.dto.ProductResponse;
+import com.team1ilchwiwoljang.domain.product.dto.response.ProductDetailResponse;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,8 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-
-import java.util.List;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -92,5 +94,45 @@ class ProductServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.CATEGORY_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("상품 ID로 상품 상세 정보를 정상적으로 조회한다")
+    void given_existingProductId_whenGetProductDetail_thenReturnProductDetail() {
+        // given
+        Long productId = 1L;
+        Category category = Category.create("상의", null);
+        ReflectionTestUtils.setField(category, "id", 10L);
+        Product product = Product.create("티셔츠", 10000, 100, ProductStatus.ON_SALE, "편안한 티셔츠", category);
+        ReflectionTestUtils.setField(product, "id", productId);
+
+        given(productRepository.findById(productId)).willReturn(Optional.of(product));
+
+        // when
+        ProductDetailResponse result = productService.getProductDetail(productId);
+
+        // then
+        assertThat(result.productId()).isEqualTo(productId);
+        assertThat(result.name()).isEqualTo("티셔츠");
+        assertThat(result.description()).isEqualTo("편안한 티셔츠");
+        assertThat(result.price()).isEqualTo(10000);
+        assertThat(result.stock()).isEqualTo(100);
+        assertThat(result.status()).isEqualTo(ProductStatus.ON_SALE);
+        assertThat(result.categoryId()).isEqualTo(10L);
+        assertThat(result.categoryName()).isEqualTo("상의");
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 상품 ID로 조회 시 PRODUCT_NOT_FOUND 예외가 발생한다")
+    void given_nonExistentProductId_whenGetProductDetail_thenThrowProductNotFound() {
+        // given
+        Long productId = 999L;
+        given(productRepository.findById(productId)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> productService.getProductDetail(productId))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.PRODUCT_NOT_FOUND);
     }
 }
