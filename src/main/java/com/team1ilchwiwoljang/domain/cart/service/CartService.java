@@ -13,6 +13,7 @@ import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -77,6 +78,37 @@ public class CartService {
                 .sum();
 
         return new CartResponse(items, cartTotalPrice);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Cart> getOrderCartItems(Long memberId, List<Long> cartIds) {
+        if (cartIds == null || cartIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.EMPTY_CART_ORDER);
+        }
+
+        // 같은 장바구니 ID가 중복으로 들어오면 한 번만 주문 대상으로 처리합니다.
+        List<Long> selectedCartIds = cartIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        if (selectedCartIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND);
+        }
+
+        List<Cart> cartItems = cartRepository.findAllByMemberIdAndIdInWithProduct(memberId, selectedCartIds);
+
+        // 회원 ID와 함께 조회했기 때문에, 조회 개수가 다르면 존재하지 않거나 다른 회원의 장바구니 ID입니다.
+        if (cartItems.size() != selectedCartIds.size()) {
+            throw new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND);
+        }
+
+        return cartItems;
+    }
+
+    @Transactional
+    public void deleteOrderCartItems(List<Cart> cartItems) {
+        cartRepository.deleteAll(cartItems);
     }
 
     private CartItemResponse toItemResponse(Cart cart) {
