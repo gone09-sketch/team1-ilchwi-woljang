@@ -105,6 +105,42 @@ class OrderControllerTest {
 
     @Test
     @WithMockAuthMember(memberId = 1L)
+    @DisplayName("바로 구매 미리보기 요청 시 상품 ID가 누락되면 400 Bad Request를 반환한다")
+    void given_nullProductId_whenPreviewDirectOrder_thenStatus400() throws Exception {
+        // given
+        DirectOrderPreviewRequest request = new DirectOrderPreviewRequest(null, 2);
+
+        // when & then
+        mockMvc.perform(post("/api/orders/direct/preview")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("productId"));
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 1L)
+    @DisplayName("바로 구매 미리보기 요청 시 주문 수량이 누락되면 400 Bad Request를 반환한다")
+    void given_nullQuantity_whenPreviewDirectOrder_thenStatus400() throws Exception {
+        // given
+        DirectOrderPreviewRequest request = new DirectOrderPreviewRequest(1L, null);
+
+        // when & then
+        mockMvc.perform(post("/api/orders/direct/preview")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("quantity"));
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 1L)
     @DisplayName("바로 구매 미리보기 요청 시 주문 수량이 1 미만이면 400 Bad Request를 반환한다")
     void given_invalidQuantity_whenPreviewDirectOrder_thenStatus400() throws Exception {
         // given
