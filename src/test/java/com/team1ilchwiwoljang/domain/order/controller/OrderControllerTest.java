@@ -5,6 +5,7 @@ import com.team1ilchwiwoljang.common.config.SecurityConfig;
 import com.team1ilchwiwoljang.common.security.JwtAuthenticationFilter;
 import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
 import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
+import com.team1ilchwiwoljang.domain.order.dto.request.CartOrderRequest;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
@@ -128,5 +129,83 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.errors[0].field").value("quantity"));
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 1L)
+    @DisplayName("인증된 사용자가 올바른 장바구니 주문 요청을 보내면 201 Created를 반환한다")
+    void given_validRequest_whenCreateCartOrder_thenStatus201() throws Exception {
+        // given
+        CartOrderRequest request = new CartOrderRequest(List.of(10L, 20L));
+        OrderItemResponse itemResponse = new OrderItemResponse("keyboard", 10000L, 2L, 20000L);
+        OrderResponse response = new OrderResponse(1L, "order-123", "PENDING", 20000L, List.of(itemResponse));
+
+        given(orderService.createCartOrder(eq(MEMBER_ID), any(CartOrderRequest.class))).willReturn(response);
+
+        // when & then
+        mockMvc.perform(post("/api/orders/carts")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.orderId").value(1L))
+                .andExpect(jsonPath("$.data.orderNumber").value("order-123"))
+                .andExpect(jsonPath("$.data.orderStatus").value("PENDING"))
+                .andExpect(jsonPath("$.data.totalAmount").value(20000L))
+                .andExpect(jsonPath("$.data.orderItems[0].productName").value("keyboard"));
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 1L)
+    @DisplayName("장바구니 주문 요청의 cartIds가 비어 있으면 400 Bad Request를 반환한다")
+    void given_emptyCartIds_whenCreateCartOrder_thenStatus400() throws Exception {
+        // given
+        CartOrderRequest request = new CartOrderRequest(List.of());
+
+        // when & then
+        mockMvc.perform(post("/api/orders/carts")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("cartIds"));
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 1L)
+    @DisplayName("장바구니 주문 요청의 cartIds에 null이 포함되면 400 Bad Request를 반환한다")
+    void given_nullCartId_whenCreateCartOrder_thenStatus400() throws Exception {
+        // given
+        String requestBody = """
+                {
+                  "cartIds": [null]
+                }
+                """;
+
+        // when & then
+        mockMvc.perform(post("/api/orders/carts")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    @DisplayName("인증되지 않은 사용자가 장바구니 주문 생성을 요청하면 401 Unauthorized를 반환한다")
+    void given_noAuth_whenCreateCartOrder_thenStatus401() throws Exception {
+        // given
+        CartOrderRequest request = new CartOrderRequest(List.of(10L));
+
+        // when & then
+        mockMvc.perform(post("/api/orders/carts")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
     }
 }
