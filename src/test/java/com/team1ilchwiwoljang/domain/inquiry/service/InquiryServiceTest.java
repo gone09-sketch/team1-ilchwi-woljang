@@ -2,12 +2,15 @@ package com.team1ilchwiwoljang.domain.inquiry.service;
 
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
+import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryAnswerRequest;
 import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryCreateRequest;
+import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryAnswerResponse;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryCreateResponse;
 import com.team1ilchwiwoljang.domain.inquiry.entity.Inquiry;
 import com.team1ilchwiwoljang.domain.inquiry.entity.InquiryStatus;
 import com.team1ilchwiwoljang.domain.inquiry.repository.InquiryRepository;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
+import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,7 +18,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,6 +44,9 @@ class InquiryServiceTest {
 
     @Mock
     private MemberService memberService;
+
+    @Mock
+    private Clock clock;
 
     @Test
     @DisplayName("회원 ID와 올바른 요청이 주어지면 문의 생성에 성공한다")
@@ -84,5 +95,127 @@ class InquiryServiceTest {
         assertThatThrownBy(() -> inquiryService.createInquiry(memberId, request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.MEMBER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("올바른 답변 요청이 주어지면 문의 답변 등록에 성공한다")
+    void given_validAnswerRequest_whenAnswerInquiry_thenSuccess() {
+        // given
+        Long inquiryId = 1L;
+        Long adminId = 1L;
+        InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "답변 내용");
+
+        Member member = Member.create("test@example.com", "password", "홍길동", "010-1234-5678");
+        ReflectionTestUtils.setField(member, "id", 1L);
+
+        Inquiry inquiry = Inquiry.create(member, "문의 제목", "문의 내용");
+        ReflectionTestUtils.setField(inquiry, "id", inquiryId);
+
+        Member admin = Member.create("admin@example.com", "password", "관리자", "010-9999-9999");
+        ReflectionTestUtils.setField(admin, "id", adminId);
+        ReflectionTestUtils.setField(admin, "role", MemberRole.ADMIN);
+
+        given(memberService.findById(adminId)).willReturn(Optional.of(admin));
+        given(inquiryRepository.findById(inquiryId)).willReturn(Optional.of(inquiry));
+
+        Instant fixedInstant = Instant.parse("2026-06-24T08:00:00Z");
+        given(clock.instant()).willReturn(fixedInstant);
+        given(clock.getZone()).willReturn(ZoneId.of("UTC"));
+
+        // when
+        InquiryAnswerResponse response = inquiryService.answerInquiry(adminId, request);
+
+        // then
+        assertThat(response.id()).isEqualTo(inquiryId);
+        assertThat(response.memberId()).isEqualTo(1L);
+        assertThat(response.adminId()).isEqualTo(adminId);
+        assertThat(response.answer()).isEqualTo("답변 내용");
+        assertThat(response.status()).isEqualTo(InquiryStatus.ANSWERED);
+        assertThat(response.answeredAt()).isEqualTo(LocalDateTime.of(2026, 6, 24, 8, 0, 0));
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 문의에 답변을 등록하려 하면 INQUIRY_NOT_FOUND 예외를 던진다")
+    void given_nonExistentInquiry_whenAnswerInquiry_thenThrowInquiryNotFound() {
+        // given
+        Long inquiryId = 999L;
+        Long adminId = 1L;
+        InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "답변 내용");
+
+        Member admin = Member.create("admin@example.com", "password", "관리자", "010-9999-9999");
+        ReflectionTestUtils.setField(admin, "id", adminId);
+        ReflectionTestUtils.setField(admin, "role", MemberRole.ADMIN);
+
+        given(memberService.findById(adminId)).willReturn(Optional.of(admin));
+        given(inquiryRepository.findById(inquiryId)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> inquiryService.answerInquiry(adminId, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INQUIRY_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("이미 답변 완료된 문의에 답변을 등록하려 하면 ALREADY_ANSWERED_INQUIRY 예외를 던진다")
+    void given_alreadyAnsweredInquiry_whenAnswerInquiry_thenThrowAlreadyAnsweredInquiry() {
+        // given
+        Long inquiryId = 1L;
+        Long adminId = 1L;
+        InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "답변 내용");
+
+        Member member = Member.create("test@example.com", "password", "홍길동", "010-1234-5678");
+        ReflectionTestUtils.setField(member, "id", 1L);
+
+        Inquiry inquiry = Inquiry.create(member, "문의 제목", "문의 내용");
+        ReflectionTestUtils.setField(inquiry, "id", inquiryId);
+        inquiry.answer(adminId, "기존 답변 내용", LocalDateTime.now());
+
+        Member admin = Member.create("admin@example.com", "password", "관리자", "010-9999-9999");
+        ReflectionTestUtils.setField(admin, "id", adminId);
+        ReflectionTestUtils.setField(admin, "role", MemberRole.ADMIN);
+
+        given(memberService.findById(adminId)).willReturn(Optional.of(admin));
+        given(inquiryRepository.findById(inquiryId)).willReturn(Optional.of(inquiry));
+
+        // when & then
+        assertThatThrownBy(() -> inquiryService.answerInquiry(adminId, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ALREADY_ANSWERED_INQUIRY);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 회원 ID로 답변을 등록하려 하면 MEMBER_NOT_FOUND 예외를 던진다")
+    void given_nonExistentMemberId_whenAnswerInquiry_thenThrowMemberNotFound() {
+        // given
+        Long inquiryId = 1L;
+        Long adminId = 999L;
+        InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "답변 내용");
+
+        given(memberService.findById(adminId)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> inquiryService.answerInquiry(adminId, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.MEMBER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("관리자 권한이 없는 회원이 답변을 등록하려 하면 FORBIDDEN 예외를 던진다")
+    void given_nonAdminUser_whenAnswerInquiry_thenThrowForbidden() {
+        // given
+        Long inquiryId = 1L;
+        Long memberId = 1L;
+        InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "답변 내용");
+
+        Member member = Member.create("user@example.com", "password", "일반회원", "010-1234-5678");
+        ReflectionTestUtils.setField(member, "id", memberId);
+        ReflectionTestUtils.setField(member, "role", MemberRole.MEMBER);
+
+        given(memberService.findById(memberId)).willReturn(Optional.of(member));
+
+        // when & then
+        assertThatThrownBy(() -> inquiryService.answerInquiry(memberId, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN);
     }
 }
