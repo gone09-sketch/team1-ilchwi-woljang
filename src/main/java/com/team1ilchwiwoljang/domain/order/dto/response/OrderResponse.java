@@ -7,7 +7,7 @@ public record OrderResponse(
         Long orderId,
         String orderNumber,
         String orderStatus,
-        Long totalAmount,
+        long totalAmount,
         List<OrderItemResponse> orderItems
 ) {
 
