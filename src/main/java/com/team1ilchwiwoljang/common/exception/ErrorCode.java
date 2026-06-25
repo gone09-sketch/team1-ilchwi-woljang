@@ -26,6 +26,7 @@ public enum ErrorCode {
 
     // cart
     INVALID_QUANTITY(HttpStatus.BAD_REQUEST, "수량은 1개 이상이어야 합니다."),
+    INVALID_CART_ITEM_ID(HttpStatus.BAD_REQUEST, "장바구니 상품 ID가 올바르지 않습니다."),
     CART_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "장바구니 상품을 찾을 수 없습니다."),
     CART_ITEM_QUANTITY_EXCEEDED(HttpStatus.BAD_REQUEST, "장바구니에 담을 수 있는 수량이 재고를 초과했습니다."),
 

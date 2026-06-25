@@ -91,9 +91,13 @@ public class CartService {
             return cartRepository.findAllByMemberIdWithProduct(memberId);
         }
 
+        // null ID는 어떤 장바구니 상품을 뜻하는지 알 수 없으므로 잘못된 요청으로 봅니다.
+        if (cartIds.stream().anyMatch(Objects::isNull)) {
+            throw new BusinessException(ErrorCode.INVALID_CART_ITEM_ID);
+        }
+
         // 같은 cartId가 중복으로 들어와도 한 번만 조회되도록 정리합니다.
         List<Long> selectedCartIds = cartIds.stream()
-                .filter(Objects::nonNull)
                 .distinct()
                 .toList();
 

@@ -148,7 +148,18 @@ class CartServiceTest {
 
         assertThatThrownBy(() -> cartService.getOrderPreviewCartItems(memberId, cartIds))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CART_ITEM_NOT_FOUND);
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_CART_ITEM_ID);
+    }
+
+    @Test
+    @DisplayName("cartIds에 null이 하나라도 있으면 잘못된 요청으로 처리한다")
+    void getOrderPreviewCartItemsThrowsWhenCartIdsContainNull() {
+        Long memberId = 1L;
+        List<Long> cartIds = Arrays.asList(null, 10L);
+
+        assertThatThrownBy(() -> cartService.getOrderPreviewCartItems(memberId, cartIds))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_CART_ITEM_ID);
     }
 
     private Product createProduct(String name, int price, int stock, ProductStatus status) {
