@@ -48,6 +48,19 @@ class CartTest {
     }
 
     @Test
+    void memberRelationRequiresMember() throws NoSuchFieldException {
+        Field memberField = Cart.class.getDeclaredField("member");
+        ManyToOne manyToOne = memberField.getAnnotation(ManyToOne.class);
+        JoinColumn joinColumn = memberField.getAnnotation(JoinColumn.class);
+
+        assertThat(manyToOne).isNotNull();
+        assertThat(manyToOne.optional()).isFalse();
+        assertThat(joinColumn).isNotNull();
+        assertThat(joinColumn.name()).isEqualTo("member_id");
+        assertThat(joinColumn.nullable()).isFalse();
+    }
+
+    @Test
     void productRelationRequiresProduct() throws NoSuchFieldException {
         Field productField = Cart.class.getDeclaredField("product");
         ManyToOne manyToOne = productField.getAnnotation(ManyToOne.class);
