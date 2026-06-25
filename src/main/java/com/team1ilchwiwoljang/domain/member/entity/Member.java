@@ -30,6 +30,10 @@ public class Member extends BaseEntity {
     @Column(nullable = false, length = 20)
     private String phone;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private MemberRole role;
+
     @Column
     private LocalDateTime deletedAt;
 
@@ -39,6 +43,7 @@ public class Member extends BaseEntity {
         member.password = encodedPassword;
         member.name = name;
         member.phone = phone;
+        member.role = MemberRole.MEMBER;
         return member;
     }
 }

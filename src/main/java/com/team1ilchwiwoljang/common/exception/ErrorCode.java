@@ -20,6 +20,7 @@ public enum ErrorCode {
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
 
+
     // product
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
 
@@ -30,6 +31,10 @@ public enum ErrorCode {
 
     // category
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다."),
+
+    // inquiry
+    INQUIRY_NOT_FOUND(HttpStatus.NOT_FOUND, "문의를 찾을 수 없습니다."),
+    ALREADY_ANSWERED_INQUIRY(HttpStatus.BAD_REQUEST, "이미 답변 완료된 문의입니다."),
 
     // order
     NOT_ORDERABLE_PRODUCT(HttpStatus.BAD_REQUEST, "주문할 수 없는 상품이 포함되어 있습니다."),

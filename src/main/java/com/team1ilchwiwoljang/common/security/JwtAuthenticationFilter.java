@@ -2,6 +2,7 @@ package com.team1ilchwiwoljang.common.security;
 
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.common.security.auth.AuthMember;
+import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -16,12 +17,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -74,8 +76,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
-            // JWT를 검증하고, subject에 들어 있는 memberId를 꺼냅니다.
-            Long memberId = jwtTokenProvider.getMemberId(accessToken);
+            // Access Token을 한 번만 검증/파싱해서 인증에 필요한 값을 꺼냅니다.
+            JwtTokenPayload tokenPayload = jwtTokenProvider.parseAccessToken(accessToken);
+
+            Long memberId = tokenPayload.memberId();
+            MemberRole role = tokenPayload.role();
 
             if (!memberService.existsActiveMember(memberId)) {
                 log.warn("Authenticated member does not exist or is deleted");
@@ -85,19 +90,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             // Controller에서 @Auth AuthMember로 받을 인증 사용자 객체를 만듭니다.
-            AuthMember authMember = new AuthMember(memberId);
+            AuthMember authMember = new AuthMember(memberId, role);
+
+            // hasRole("ADMIN")은 내부적으로 ROLE_ADMIN 권한을 찾습니다.
+            SimpleGrantedAuthority authority =
+                    new SimpleGrantedAuthority("ROLE_" + role.name());
 
             /*
              * Spring Security가 관리하는 인증 객체를 생성합니다.
              * 첫 번째 값 principal: 인증된 사용자 정보
              * 두 번째 값 credentials: 비밀번호 같은 인증 수단, JWT 방식에서는 null
-             * 세 번째 값 authorities: 권한 목록, 현재는 권한 구분이 없으므로 빈 리스트
+             * 세 번째 값 authorities: 권한 목록
              */
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
                             authMember,
                             null,
-                            Collections.emptyList()
+                            List.of(authority)
                     );
 
             // SecurityContext에 인증 정보를 저장합니다.
