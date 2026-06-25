@@ -76,7 +76,7 @@ class OrderControllerTest {
         given(orderService.previewOrder(eq(MEMBER_ID), eq(cartIds))).willReturn(response);
 
         // when & then
-        mockMvc.perform(get("/api/orders/carts/preview")
+        mockMvc.perform(get("/api/orders/preview")
                         .param("cartIds", "10", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))

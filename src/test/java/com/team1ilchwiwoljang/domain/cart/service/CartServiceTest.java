@@ -142,6 +142,7 @@ class CartServiceTest {
     }
 
     @Test
+    @DisplayName("cartIds가 전부 null이면 잘못된 요청으로 처리한다")
     void getOrderPreviewCartItemsThrowsWhenOnlyNullCartIdsAreProvided() {
         Long memberId = 1L;
         List<Long> cartIds = Arrays.asList(null, null);

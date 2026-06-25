@@ -75,6 +75,7 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("정상적인 바로 주문 요청이면 주문을 생성하고 상품 재고를 차감한다")
     void given_validRequest_whenCreateDirectOrder_thenSuccess() {
         Long memberId = 1L;
         DirectOrderRequest request = new DirectOrderRequest(1L, 2);
@@ -105,6 +106,7 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("존재하지 않는 회원이 바로 주문을 요청하면 MEMBER_NOT_FOUND 예외를 던진다")
     void given_nonExistentMember_whenCreateDirectOrder_thenThrowMemberNotFound() {
         Long memberId = 999L;
         DirectOrderRequest request = new DirectOrderRequest(1L, 2);
@@ -118,6 +120,7 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("존재하지 않는 상품으로 바로 주문을 요청하면 PRODUCT_NOT_FOUND 예외를 던진다")
     void given_nonExistentProduct_whenCreateDirectOrder_thenThrowProductNotFound() {
         Long memberId = 1L;
         DirectOrderRequest request = new DirectOrderRequest(999L, 2);
@@ -132,6 +135,7 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("상품 재고가 부족하면 OUT_OF_STOCK 예외를 던진다")
     void given_insufficientStock_whenCreateDirectOrder_thenThrowOutOfStock() {
         Long memberId = 1L;
         DirectOrderRequest request = new DirectOrderRequest(1L, 5);
@@ -146,6 +150,7 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("판매 중이 아닌 상품을 바로 주문하면 NOT_ORDERABLE_PRODUCT 예외를 던진다")
     void given_notOnSaleProduct_whenCreateDirectOrder_thenThrowNotOrderableProduct() {
         Long memberId = 1L;
         DirectOrderRequest request = new DirectOrderRequest(1L, 2);
@@ -160,6 +165,7 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("cartIds가 없으면 회원의 전체 장바구니 상품으로 주문 미리보기를 반환한다")
     void given_noCartIds_whenPreviewOrder_thenReturnAllCartItems() {
         Long memberId = 1L;
         Cart firstCart = createCart(10L, createProduct(100L, "keyboard", 10_000, 10, ProductStatus.ON_SALE), 2);
@@ -181,6 +187,7 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("cartIds가 있으면 선택된 장바구니 상품으로 주문 미리보기를 반환한다")
     void given_cartIds_whenPreviewOrder_thenReturnSelectedCartItems() {
         Long memberId = 1L;
         List<Long> cartIds = List.of(10L, 10L, 20L);
@@ -199,6 +206,7 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("유효하지 않은 장바구니 ID가 있으면 CART_ITEM_NOT_FOUND 예외를 던진다")
     void given_invalidCartId_whenPreviewOrder_thenThrowCartItemNotFound() {
         Long memberId = 1L;
         List<Long> cartIds = List.of(10L, 20L);
@@ -212,6 +220,7 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("주문 미리보기 대상 장바구니가 비어 있으면 EMPTY_ORDER_PREVIEW 예외를 던진다")
     void given_emptyCart_whenPreviewOrder_thenThrowEmptyOrderPreview() {
         Long memberId = 1L;
 
@@ -224,6 +233,7 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("판매 중이 아닌 상품이 장바구니에 있으면 NOT_ORDERABLE_PRODUCT 예외를 던진다")
     void given_notOnSaleProduct_whenPreviewOrder_thenThrowNotOrderableProduct() {
         Long memberId = 1L;
         Cart cart = createCart(createProduct("keyboard", 10_000, 10, ProductStatus.STOPPED), 1);
@@ -237,6 +247,7 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("장바구니 상품 재고가 부족하면 OUT_OF_STOCK 예외를 던진다")
     void given_insufficientStock_whenPreviewOrder_thenThrowOutOfStock() {
         Long memberId = 1L;
         Cart cart = createCart(createProduct("keyboard", 10_000, 1, ProductStatus.ON_SALE), 2);
