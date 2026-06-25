@@ -6,12 +6,15 @@ import com.team1ilchwiwoljang.domain.category.dto.response.CategoryResponse;
 import com.team1ilchwiwoljang.domain.category.service.CategoryService;
 import com.team1ilchwiwoljang.domain.product.dto.ProductResponse;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Validated
 @RestController
 @RequestMapping("/api/categories")
 @RequiredArgsConstructor
@@ -36,8 +39,8 @@ public class CategoryController {
     public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> getProductsByCategory(
             @PathVariable Long categoryId,
             @RequestParam(defaultValue = "newest") String sort,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @Min(0) @RequestParam(defaultValue = "0") int page,
+            @Min(1) @RequestParam(defaultValue = "20") int size
     ) {
         PageResponse<ProductResponse> responses = PageResponse.from(productService.getProductsByCategory(categoryId, sort, page, size));
         return ResponseEntity.ok(ApiResponse.success(responses));
