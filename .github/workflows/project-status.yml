@@ -51,7 +51,7 @@ jobs:
               if (reviewState === 'changes_requested') {
                 targetStatus = 'In Progress';
               } else if (reviewState === 'approved') {
-                targetStatus = 'Review Requested';
+                targetStatus = 'In Review';
               }
             } else if (context.eventName === 'pull_request') {
               const action = context.payload.action;
@@ -60,7 +60,7 @@ jobs:
               } else if (action === 'converted_to_draft' || pr.draft) {
                 targetStatus = 'In Progress';
               } else if (action === 'opened' || action === 'reopened' || action === 'ready_for_review' || action === 'edited') {
-                targetStatus = 'Review Requested';
+                targetStatus = 'In Review';
               }
             }
 
