@@ -125,7 +125,7 @@ Authorization: Bearer {accessToken}
   "size": 20,
   "totalElements": 120,
   "totalPages": 6,
-  "hasNext": false
+  "last": true
 }
 ```
 
@@ -901,11 +901,11 @@ null
 {
   "products": [
     {
-      "productId": 10,
-      "productName": "노트북 파우치",
-      "productPrice": 25000,
+      "id": 10,
+      "name": "노트북 파우치",
+      "price": 25000,
       "stock": 10,
-      "productStatus": "ON_SALE",
+      "status": "ON_SALE",
       "orderable": true
     }
   ],
@@ -913,11 +913,9 @@ null
   "size": 20,
   "totalElements": 1,
   "totalPages": 1,
-  "hasNext": false
+  "last": true
 }
 ```
-
-> ⚠️ 응답 필드명이 목록 API와 다르다 (`productId` / `productName` / `productPrice` / `productStatus`). 페이지 배열 키도 `products`이고 마지막 페이지 여부 키가 `hasNext`이다. [명세 충돌 정리](#명세-충돌-정리) 참고.
 
 #### Errors
 
@@ -929,32 +927,28 @@ null
 
 ## 명세 충돌 정리
 
-### 1. 상품 응답 필드명 불일치
-
-같은 상품 데이터를 표현하는 필드명이 엔드포인트마다 다르다.
+### 1. 상품 응답 필드명 — ✅ PR#59에서 해결됨
 
 | 개념 | 목록 `GET /api/products` | 카테고리별 | 상세 `GET /api/products/{id}` | 검색 `GET /api/products/search` |
 |---|---|---|---|---|
-| 상품 ID 키 | `id` | `id` | `productId` | `productId` |
-| 상품명 키 | `name` | `name` | `name` | `productName` |
-| 가격 키 | `price` | `price` | `price` | `productPrice` |
-| 상태 키 | `status` | `status` | `status` | `productStatus` |
+| 상품 ID 키 | `id` | `id` | `productId` | `id` ✅ |
+| 상품명 키 | `name` | `name` | `name` | `name` ✅ |
+| 가격 키 | `price` | `price` | `price` | `price` ✅ |
+| 상태 키 | `status` | `status` | `status` | `status` ✅ |
 | 주문 가능 여부 | 없음 | 없음 | 없음 | `orderable` |
 
-**영향:** 프런트에서 엔드포인트마다 다른 키를 매핑해야 한다.
-**관련 이슈:** #71
+> 상세 API(`productId`)는 PR#65에서 미해결. **관련 이슈:** #71
 
 ---
 
-### 2. 페이지네이션 래퍼 불일치
+### 2. 페이지네이션 래퍼 불일치 — 부분 해결
 
 | 항목 | 목록 `PageResponse` | 검색 `ProductSearchResponse` |
 |---|---|---|
-| 데이터 배열 키 | `content` | `products` |
-| 마지막 페이지 키 | `last` (마지막이면 `true`) | `hasNext` (다음이 있으면 `true`) |
+| 데이터 배열 키 | `content` | `products` (도메인 의미 유지) |
+| 마지막 페이지 키 | `last` | `last` ✅ |
 
-**영향:** 두 엔드포인트가 공통 페이지네이션 컴포넌트를 공유할 수 없다.
-**관련 이슈:** #71
+> 배열 키는 의도적으로 다르게 유지. `last` 키는 PR#59에서 통일됨. **관련 이슈:** #71
 
 ---
 
