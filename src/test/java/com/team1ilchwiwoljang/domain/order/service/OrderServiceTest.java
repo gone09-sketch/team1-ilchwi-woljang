@@ -14,6 +14,7 @@ import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderPreviewRequest;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
+import com.team1ilchwiwoljang.domain.order.dto.response.DirectOrderPreviewResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderPreviewResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
 import com.team1ilchwiwoljang.domain.order.entity.Order;
@@ -37,12 +38,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -80,31 +75,27 @@ class OrderServiceTest {
                 cartService
         );
     }
-    private MemberService memberService;
-
     @Test
     @DisplayName("판매 중인 상품과 충분한 재고가 있으면 바로 구매 미리보기에 성공한다")
     void given_validRequest_whenPreviewDirectOrder_thenSuccess() {
-        // given
         DirectOrderPreviewRequest request = new DirectOrderPreviewRequest(1L, 2);
 
-        Product product = Product.create("상품명", 10000, 10, ProductStatus.ON_SALE, "상품 설명", null);
+        Product product = createProduct("product", 10_000, 10, ProductStatus.ON_SALE);
         ReflectionTestUtils.setField(product, "id", 1L);
 
         given(productService.getProduct(request.productId())).willReturn(product);
 
-        // when
-        OrderPreviewResponse response = orderService.previewDirectOrder(request);
+        DirectOrderPreviewResponse response = orderService.previewDirectOrder(request);
 
-        // then
-        assertThat(response.totalAmount()).isEqualTo(20000L);
+        assertThat(response.totalOrderAmount()).isEqualTo(20_000L);
         assertThat(response.orderItems()).hasSize(1);
-        assertThat(response.orderItems().get(0).productName()).isEqualTo("상품명");
-        assertThat(response.orderItems().get(0).productPrice()).isEqualTo(10000L);
-        assertThat(response.orderItems().get(0).quantity()).isEqualTo(2L);
-        assertThat(response.orderItems().get(0).productTotalAmount()).isEqualTo(20000L);
+        assertThat(response.orderItems().get(0).productId()).isEqualTo(1L);
+        assertThat(response.orderItems().get(0).productName()).isEqualTo("product");
+        assertThat(response.orderItems().get(0).productPrice()).isEqualTo(10_000L);
+        assertThat(response.orderItems().get(0).quantity()).isEqualTo(2);
+        assertThat(response.orderItems().get(0).productTotalAmount()).isEqualTo(20_000L);
 
-        assertThat(product.getStock()).isEqualTo(10); // 미리보기에서는 실제 재고를 차감하지 않는다.
+        assertThat(product.getStock()).isEqualTo(10);
     }
 
     @Test
@@ -125,15 +116,13 @@ class OrderServiceTest {
     @Test
     @DisplayName("판매 중이 아닌 상품으로 바로 구매 미리보기를 요청하면 NOT_ORDERABLE_PRODUCT 예외를 던진다")
     void given_notOrderableProduct_whenPreviewDirectOrder_thenThrowNotOrderableProduct() {
-        // given
         DirectOrderPreviewRequest request = new DirectOrderPreviewRequest(1L, 2);
 
-        Product product = Product.create("상품명", 10000, 10, ProductStatus.STOPPED, "상품 설명", null);
+        Product product = createProduct("product", 10_000, 10, ProductStatus.STOPPED);
         ReflectionTestUtils.setField(product, "id", 1L);
 
         given(productService.getProduct(request.productId())).willReturn(product);
 
-        // when & then
         assertThatThrownBy(() -> orderService.previewDirectOrder(request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.NOT_ORDERABLE_PRODUCT);
@@ -142,15 +131,13 @@ class OrderServiceTest {
     @Test
     @DisplayName("상품 재고가 미리보기 수량보다 부족하면 OUT_OF_STOCK 예외를 던진다")
     void given_insufficientStock_whenPreviewDirectOrder_thenThrowOutOfStock() {
-        // given
         DirectOrderPreviewRequest request = new DirectOrderPreviewRequest(1L, 5);
 
-        Product product = Product.create("상품명", 10000, 3, ProductStatus.ON_SALE, "상품 설명", null);
+        Product product = createProduct("product", 10_000, 3, ProductStatus.ON_SALE);
         ReflectionTestUtils.setField(product, "id", 1L);
 
         given(productService.getProduct(request.productId())).willReturn(product);
 
-        // when & then
         assertThatThrownBy(() -> orderService.previewDirectOrder(request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.OUT_OF_STOCK);
@@ -363,9 +350,6 @@ class OrderServiceTest {
         assertThat(order.getCanceledAt()).isEqualTo(LocalDateTime.now(fixedClock));
     }
 
-        given(memberService.getMember(memberId)).willReturn(member);
-        given(productService.getProduct(request.productId()))
-                .willThrow(new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
     @Test
     @DisplayName("존재하지 않거나 소유자가 다른 주문을 취소하려고 하면 ORDER_NOT_FOUND 예외를 던진다")
     void given_notOwnedOrder_whenCancelOrder_thenThrowOrderNotFound() {
@@ -394,11 +378,6 @@ class OrderServiceTest {
         order.cancel(LocalDateTime.now(fixedClock));
 
         given(orderRepository.findByIdAndMemberId(orderId, memberId)).willReturn(Optional.of(order));
-        Product product = Product.create("상품명", 10000, 3, ProductStatus.ON_SALE, "상품 설명", null);
-        ReflectionTestUtils.setField(product, "id", 1L);
-
-        given(memberService.getMember(memberId)).willReturn(member);
-        given(productService.getProduct(request.productId())).willReturn(product);
 
         // when & then
         assertThatThrownBy(() -> orderService.cancelOrder(memberId, orderId))

@@ -8,9 +8,9 @@ import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
 import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
 import com.team1ilchwiwoljang.common.security.WithMockAuthMember;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
-import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderPreviewRequest;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
+import com.team1ilchwiwoljang.domain.order.dto.response.DirectOrderPreviewResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderPreviewResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
@@ -68,8 +68,9 @@ class OrderControllerTest {
     void given_validRequest_whenPreviewDirectOrder_thenStatus200() throws Exception {
         // given
         DirectOrderPreviewRequest request = new DirectOrderPreviewRequest(1L, 2);
-        OrderItemResponse itemResponse = new OrderItemResponse("상품명", 10000L, 2L, 20000L);
-        OrderPreviewResponse response = new OrderPreviewResponse(List.of(itemResponse), 20000L);
+        DirectOrderPreviewResponse.DirectOrderPreviewItemResponse itemResponse =
+                DirectOrderPreviewResponse.DirectOrderPreviewItemResponse.of(1L, "상품명", 10000L, 2, 20000L);
+        DirectOrderPreviewResponse response = DirectOrderPreviewResponse.of(List.of(itemResponse), 20000L);
 
         given(orderService.previewDirectOrder(any(DirectOrderPreviewRequest.class))).willReturn(response);
 
@@ -80,11 +81,26 @@ class OrderControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.totalAmount").value(20000L))
+                .andExpect(jsonPath("$.data.totalOrderAmount").value(20000L))
+                .andExpect(jsonPath("$.data.orderItems[0].productId").value(1L))
                 .andExpect(jsonPath("$.data.orderItems[0].productName").value("상품명"))
                 .andExpect(jsonPath("$.data.orderItems[0].productPrice").value(10000L))
-                .andExpect(jsonPath("$.data.orderItems[0].quantity").value(2L))
+                .andExpect(jsonPath("$.data.orderItems[0].quantity").value(2))
                 .andExpect(jsonPath("$.data.orderItems[0].productTotalAmount").value(20000L));
+    }
+
+    @Test
+    @DisplayName("인증되지 않은 사용자가 바로 구매 미리보기를 요청하면 401 Unauthorized를 반환한다")
+    void given_noAuth_whenPreviewDirectOrder_thenStatus401() throws Exception {
+        // given
+        DirectOrderPreviewRequest request = new DirectOrderPreviewRequest(1L, 2);
+
+        // when & then
+        mockMvc.perform(post("/api/orders/direct/preview")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -167,7 +183,7 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.data.orderItems[0].productName").value("상품명"))
                 .andExpect(jsonPath("$.data.orderItems[0].productPrice").value(10000L))
                 .andExpect(jsonPath("$.data.orderItems[0].quantity").value(2L))
-                .andExpect(jsonPath("$.data.orderItems[0].productTotalAmount").value(20000L));
+                .andExpect(jsonPath("$.data.orderItems[0].totalPrice").value(20000L));
     }
 
     @Test
@@ -200,6 +216,24 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.errors[0].field").value("productId"));
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 1L)
+    @DisplayName("주문 요청 시 주문 수량이 누락되면 400 Bad Request를 반환한다")
+    void given_nullQuantity_whenCreateDirectOrder_thenStatus400() throws Exception {
+        // given
+        DirectOrderRequest request = new DirectOrderRequest(1L, null);
+
+        // when & then
+        mockMvc.perform(post("/api/orders/direct")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("quantity"));
     }
 
     @Test
