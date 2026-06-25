@@ -55,4 +55,17 @@ public class OrderController {
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response));
     }
+
+    @PostMapping("/{orderId}/cancel")
+    public ResponseEntity<ApiResponse<Void>> cancelOrder(
+            @Auth AuthMember authMember,
+            @PathVariable Long orderId
+    ) {
+        orderService.cancelOrder(
+                authMember.memberId(),
+                orderId);
+
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
 }

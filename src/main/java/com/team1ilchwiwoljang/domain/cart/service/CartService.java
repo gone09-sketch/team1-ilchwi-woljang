@@ -65,7 +65,7 @@ public class CartService {
     @Recover
     public CartAddResponse recoverAddCartItem(
             DataIntegrityViolationException e, Long memberId, CartCreateRequest request) {
-        throw new BusinessException(ErrorCode.DUPLICATE_CART_ITEM);
+        throw new BusinessException(ErrorCode.CART_ITEM_QUANTITY_EXCEEDED);
     }
 
     @Transactional(readOnly = true)

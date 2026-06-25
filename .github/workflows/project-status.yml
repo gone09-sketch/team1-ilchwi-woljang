@@ -1,0 +1,171 @@
+name: Project status automation
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, ready_for_review, converted_to_draft, closed]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+  repository-projects: write
+
+jobs:
+  update-project-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update linked issue project status
+        uses: actions/github-script@v7
+        env:
+          PROJECT_OWNER: gone09-sketch
+          PROJECT_NUMBER: "4"
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) {
+              core.info('No pull_request payload found; skipping.');
+              return;
+            }
+
+            const body = pr.body || '';
+            const issueNumbers = new Set();
+            const closingKeywordPattern = /\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s*:?\s+#\s*(\d+)\b/gi;
+
+            let match;
+            while ((match = closingKeywordPattern.exec(body)) !== null) {
+              issueNumbers.add(Number(match[1]));
+            }
+
+            if (issueNumbers.size === 0) {
+              core.info('No closing issue references found in PR body; skipping.');
+              return;
+            }
+
+            let targetStatus = null;
+
+            if (context.eventName === 'pull_request_review') {
+              const reviewState = context.payload.review?.state;
+              if (reviewState === 'changes_requested') {
+                targetStatus = 'In Progress';
+              } else if (reviewState === 'approved') {
+                targetStatus = 'In Review';
+              }
+            } else if (context.eventName === 'pull_request') {
+              const action = context.payload.action;
+              if (action === 'closed') {
+                targetStatus = pr.merged ? 'Done' : null;
+              } else if (action === 'converted_to_draft' || pr.draft) {
+                targetStatus = 'In Progress';
+              } else if (action === 'opened' || action === 'reopened' || action === 'ready_for_review' || action === 'edited') {
+                targetStatus = 'In Review';
+              }
+            }
+
+            if (!targetStatus) {
+              core.info(`No status transition for ${context.eventName}:${context.payload.action}; skipping.`);
+              return;
+            }
+
+            const projectData = await github.graphql(`
+              query($login: String!, $number: Int!) {
+                user(login: $login) {
+                  projectV2(number: $number) {
+                    id
+                    fields(first: 50) {
+                      nodes {
+                        ... on ProjectV2SingleSelectField {
+                          id
+                          name
+                          options {
+                            id
+                            name
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `, {
+              login: process.env.PROJECT_OWNER,
+              number: Number(process.env.PROJECT_NUMBER),
+            });
+
+            const project = projectData.user?.projectV2;
+            if (!project) {
+              throw new Error(`Project ${process.env.PROJECT_OWNER}/${process.env.PROJECT_NUMBER} not found.`);
+            }
+
+            const statusField = project.fields.nodes.find((field) => field?.name === 'Status');
+            if (!statusField) {
+              throw new Error('Project field "Status" was not found.');
+            }
+
+            const statusOption = statusField.options.find((option) => option.name === targetStatus);
+            if (!statusOption) {
+              throw new Error(`Project status option "${targetStatus}" was not found.`);
+            }
+
+            for (const issueNumber of issueNumbers) {
+              const issueData = await github.graphql(`
+                query($owner: String!, $repo: String!, $number: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    issue(number: $number) {
+                      id
+                      number
+                      title
+                    }
+                  }
+                }
+              `, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                number: issueNumber,
+              });
+
+              const issue = issueData.repository?.issue;
+              if (!issue) {
+                core.warning(`Issue #${issueNumber} was not found; skipping.`);
+                continue;
+              }
+
+              const itemData = await github.graphql(`
+                mutation($projectId: ID!, $contentId: ID!) {
+                  addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+                    item {
+                      id
+                    }
+                  }
+                }
+              `, {
+                projectId: project.id,
+                contentId: issue.id,
+              });
+
+              const itemId = itemData.addProjectV2ItemById.item.id;
+
+              await github.graphql(`
+                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                  updateProjectV2ItemFieldValue(input: {
+                    projectId: $projectId
+                    itemId: $itemId
+                    fieldId: $fieldId
+                    value: { singleSelectOptionId: $optionId }
+                  }) {
+                    projectV2Item {
+                      id
+                    }
+                  }
+                }
+              `, {
+                projectId: project.id,
+                itemId,
+                fieldId: statusField.id,
+                optionId: statusOption.id,
+              });
+
+              core.info(`Set issue #${issue.number} "${issue.title}" to "${targetStatus}".`);
+            }

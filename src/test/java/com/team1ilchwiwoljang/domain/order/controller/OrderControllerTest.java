@@ -1,5 +1,11 @@
 package com.team1ilchwiwoljang.domain.order.controller;
 
+import com.team1ilchwiwoljang.common.security.WithMockAuthMember;
+import com.team1ilchwiwoljang.common.exception.BusinessException;
+import com.team1ilchwiwoljang.common.exception.ErrorCode;
+import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
+import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
+import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.common.config.SecurityConfig;
 import com.team1ilchwiwoljang.common.security.JwtAuthenticationFilter;
 import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
@@ -26,6 +32,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -53,6 +60,9 @@ class OrderControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private SecurityErrorResponseHandler securityErrorResponseHandler;
 
     @MockitoBean
     private MemberService memberService;
@@ -163,5 +173,66 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.errors[0].field").value("quantity"));
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 1L)
+    @DisplayName("인증된 주문 소유자가 취소 요청을 보내면 200 OK를 반환한다")
+    void given_authenticatedOwner_whenCancelOrder_thenStatus200() throws Exception {
+        // given
+        Long orderId = 1L;
+
+        // when & then
+        mockMvc.perform(post("/api/orders/{orderId}/cancel", orderId)
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 1L)
+    @DisplayName("존재하지 않거나 소유자가 다른 주문 취소 요청은 404 Not Found를 반환한다")
+    void given_notOwnedOrder_whenCancelOrder_thenStatus404() throws Exception {
+        // given
+        Long orderId = 999L;
+
+        doThrow(new BusinessException(ErrorCode.ORDER_NOT_FOUND))
+                .when(orderService)
+                .cancelOrder(eq(MEMBER_ID), eq(orderId));
+
+        // when & then
+        mockMvc.perform(post("/api/orders/{orderId}/cancel", orderId)
+                        .with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("ORDER_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("인증되지 않은 사용자가 주문 취소 요청을 보내면 401 Unauthorized를 반환한다")
+    void given_noAuth_whenCancelOrder_thenStatus401() throws Exception {
+        // when & then
+        mockMvc.perform(post("/api/orders/{orderId}/cancel", 1L)
+                        .with(csrf()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 1L)
+    @DisplayName("이미 취소된 주문을 다시 취소하면 400 Bad Request를 반환한다")
+    void given_cancelledOrder_whenCancelAgain_thenStatus400() throws Exception {
+        // given
+        Long orderId = 1L;
+
+        doThrow(new BusinessException(ErrorCode.INVALID_ORDER_STATUS))
+                .when(orderService)
+                .cancelOrder(eq(MEMBER_ID), eq(orderId));
+
+        // when & then
+        mockMvc.perform(post("/api/orders/{orderId}/cancel", orderId)
+                        .with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("INVALID_ORDER_STATUS"));
     }
 }
