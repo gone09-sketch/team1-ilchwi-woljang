@@ -128,7 +128,7 @@ public class OrderService {
 
     /**
      * 상품과 수량을 기준으로 주문서 미리보기 응답 항목을 생성합니다.
-     * 나중에 바로 구매 미리보기가 추가되어도 이 메서드를 재사용할 수 있습니다.
+     * 장바구니 기반 미리보기는 cartId가 필요하므로 바로 주문 미리보기 응답과 분리합니다.
      */
     private OrderPreviewItemResponse createOrderPreviewItemResponse(Long cartId, Product product, int quantity) {
         long productPrice = product.getPrice();
