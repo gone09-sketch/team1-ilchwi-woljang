@@ -689,6 +689,7 @@ Set-Cookie: refreshToken={newToken}; HttpOnly; Path=/api/auth; SameSite=Strict
 | `CART_ITEM_NOT_FOUND` | 404 | 요청한 cartIds 중 존재하지 않는 항목 |
 | `EMPTY_ORDER_PREVIEW` | 400 | 미리볼 상품이 없음 |
 | `NOT_ORDERABLE_PRODUCT` | 400 | 주문할 수 없는 상품 포함 |
+| `OUT_OF_STOCK` | 400 | 재고 부족 |
 
 ---
 
