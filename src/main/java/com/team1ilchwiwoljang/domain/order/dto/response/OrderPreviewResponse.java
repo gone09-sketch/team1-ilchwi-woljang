@@ -15,6 +15,8 @@ public record OrderPreviewResponse(
     }
 
     public record OrderPreviewItemResponse(
+            Long cartId,
+            Long productId,
             String productName,
             long productPrice,
             int quantity,
@@ -22,12 +24,16 @@ public record OrderPreviewResponse(
     ) {
 
         public static OrderPreviewItemResponse of(
+                Long cartId,
+                Long productId,
                 String productName,
                 long productPrice,
                 int quantity,
                 long productTotalAmount
         ) {
             return new OrderPreviewItemResponse(
+                    cartId,
+                    productId,
                     productName,
                     productPrice,
                     quantity,

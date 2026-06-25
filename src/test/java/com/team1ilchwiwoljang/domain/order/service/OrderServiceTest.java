@@ -162,8 +162,8 @@ class OrderServiceTest {
     @Test
     void given_noCartIds_whenPreviewOrder_thenReturnAllCartItems() {
         Long memberId = 1L;
-        Cart firstCart = createCart(createProduct("keyboard", 10_000, 10, ProductStatus.ON_SALE), 2);
-        Cart secondCart = createCart(createProduct("mouse", 5_000, 10, ProductStatus.ON_SALE), 1);
+        Cart firstCart = createCart(10L, createProduct(100L, "keyboard", 10_000, 10, ProductStatus.ON_SALE), 2);
+        Cart secondCart = createCart(20L, createProduct(200L, "mouse", 5_000, 10, ProductStatus.ON_SALE), 1);
 
         given(cartService.getOrderPreviewCartItems(memberId, null))
                 .willReturn(List.of(firstCart, secondCart));
@@ -171,6 +171,8 @@ class OrderServiceTest {
         OrderPreviewResponse response = orderService.previewOrder(memberId, null);
 
         assertThat(response.orderItems()).hasSize(2);
+        assertThat(response.orderItems().get(0).cartId()).isEqualTo(10L);
+        assertThat(response.orderItems().get(0).productId()).isEqualTo(100L);
         assertThat(response.orderItems().get(0).productName()).isEqualTo("keyboard");
         assertThat(response.orderItems().get(0).productPrice()).isEqualTo(10_000L);
         assertThat(response.orderItems().get(0).quantity()).isEqualTo(2);
@@ -182,8 +184,8 @@ class OrderServiceTest {
     void given_cartIds_whenPreviewOrder_thenReturnSelectedCartItems() {
         Long memberId = 1L;
         List<Long> cartIds = List.of(10L, 10L, 20L);
-        Cart firstCart = createCart(createProduct("keyboard", 10_000, 10, ProductStatus.ON_SALE), 1);
-        Cart secondCart = createCart(createProduct("mouse", 5_000, 10, ProductStatus.ON_SALE), 1);
+        Cart firstCart = createCart(10L, createProduct(100L, "keyboard", 10_000, 10, ProductStatus.ON_SALE), 1);
+        Cart secondCart = createCart(20L, createProduct(200L, "mouse", 5_000, 10, ProductStatus.ON_SALE), 1);
 
         given(cartService.getOrderPreviewCartItems(memberId, cartIds))
                 .willReturn(List.of(firstCart, secondCart));
@@ -191,6 +193,8 @@ class OrderServiceTest {
         OrderPreviewResponse response = orderService.previewOrder(memberId, cartIds);
 
         assertThat(response.orderItems()).hasSize(2);
+        assertThat(response.orderItems().get(0).cartId()).isEqualTo(10L);
+        assertThat(response.orderItems().get(0).productId()).isEqualTo(100L);
         assertThat(response.totalOrderAmount()).isEqualTo(15_000L);
     }
 
@@ -308,8 +312,22 @@ class OrderServiceTest {
         return Cart.create(createMember(), product, quantity);
     }
 
+    private Cart createCart(Long cartId, Product product, int quantity) {
+        Cart cart = Cart.create(createMember(), product, quantity);
+        ReflectionTestUtils.setField(cart, "id", cartId);
+
+        return cart;
+    }
+
     private Product createProduct(String name, int price, int stock, ProductStatus status) {
         return Product.create(name, price, stock, status, "description", null);
+    }
+
+    private Product createProduct(Long productId, String name, int price, int stock, ProductStatus status) {
+        Product product = createProduct(name, price, stock, status);
+        ReflectionTestUtils.setField(product, "id", productId);
+
+        return product;
     }
 
     private Member createMember() {

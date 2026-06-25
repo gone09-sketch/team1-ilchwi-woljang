@@ -67,8 +67,8 @@ class OrderControllerTest {
         // given
         List<Long> cartIds = List.of(10L, 20L);
         List<OrderPreviewResponse.OrderPreviewItemResponse> orderItems = List.of(
-                OrderPreviewResponse.OrderPreviewItemResponse.of("상품A", 10000L, 2, 20000L),
-                OrderPreviewResponse.OrderPreviewItemResponse.of("상품B", 5000L, 1, 5000L)
+                OrderPreviewResponse.OrderPreviewItemResponse.of(10L, 100L, "상품A", 10000L, 2, 20000L),
+                OrderPreviewResponse.OrderPreviewItemResponse.of(20L, 200L, "상품B", 5000L, 1, 5000L)
         );
         OrderPreviewResponse response = OrderPreviewResponse.of(orderItems, 25000L);
 
@@ -83,10 +83,14 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.message").exists())
                 .andExpect(jsonPath("$.data.totalOrderAmount").value(25000L))
                 .andExpect(jsonPath("$.data.orderItems").isArray())
+                .andExpect(jsonPath("$.data.orderItems[0].cartId").value(10L))
+                .andExpect(jsonPath("$.data.orderItems[0].productId").value(100L))
                 .andExpect(jsonPath("$.data.orderItems[0].productName").value("상품A"))
                 .andExpect(jsonPath("$.data.orderItems[0].productPrice").value(10000L))
                 .andExpect(jsonPath("$.data.orderItems[0].quantity").value(2))
                 .andExpect(jsonPath("$.data.orderItems[0].productTotalAmount").value(20000L))
+                .andExpect(jsonPath("$.data.orderItems[1].cartId").value(20L))
+                .andExpect(jsonPath("$.data.orderItems[1].productId").value(200L))
                 .andExpect(jsonPath("$.data.orderItems[1].productName").value("상품B"))
                 .andExpect(jsonPath("$.data.orderItems[1].productPrice").value(5000L))
                 .andExpect(jsonPath("$.data.orderItems[1].quantity").value(1))

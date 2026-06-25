@@ -103,18 +103,20 @@ public class OrderService {
     private OrderPreviewItemResponse toOrderPreviewItemResponse(Cart cart) {
         Product product = cart.getProduct();
 
-        return createOrderPreviewItemResponse(product, cart.getQuantity());
+        return createOrderPreviewItemResponse(cart.getId(), product, cart.getQuantity());
     }
 
     /**
      * 상품과 수량을 기준으로 주문서 미리보기 응답 항목을 생성합니다.
      * 나중에 바로 구매 미리보기가 추가되어도 이 메서드를 재사용할 수 있습니다.
      */
-    private OrderPreviewItemResponse createOrderPreviewItemResponse(Product product, int quantity) {
+    private OrderPreviewItemResponse createOrderPreviewItemResponse(Long cartId, Product product, int quantity) {
         long productPrice = product.getPrice();
         long productTotalAmount = productPrice * quantity;
 
         return OrderPreviewItemResponse.of(
+                cartId,
+                product.getId(),
                 product.getName(),
                 productPrice,
                 quantity,
