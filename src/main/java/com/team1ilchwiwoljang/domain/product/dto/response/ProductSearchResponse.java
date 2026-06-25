@@ -6,26 +6,26 @@ import org.springframework.data.domain.Page;
 import java.util.List;
 
 public record ProductSearchResponse(
-        List<ProductSearchItemResponse> products,
+        List<ProductSearchItemResponse> content,
         int page,
         int size,
         long totalElements,
         int totalPages,
-        boolean hasNext
+        boolean last
 ) {
 
     public static ProductSearchResponse from(Page<Product> page) {
-        List<ProductSearchItemResponse> products = page.getContent().stream()
+        List<ProductSearchItemResponse> content = page.getContent().stream()
                 .map(ProductSearchItemResponse::from)
                 .toList();
 
         return new ProductSearchResponse(
-                products,
+                content,
                 page.getNumber(),
                 page.getSize(),
                 page.getTotalElements(),
                 page.getTotalPages(),
-                page.hasNext()
+                page.isLast()
         );
     }
 }

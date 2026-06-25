@@ -58,7 +58,7 @@ class ProductControllerTest {
                 20,
                 1,
                 1,
-                false
+                true
         );
 
         given(productService.searchProducts(eq("셔츠"), any(Pageable.class))).willReturn(response);
@@ -67,12 +67,12 @@ class ProductControllerTest {
                         .param("keyword", "셔츠"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.products[0].productName").value("베이직 셔츠"))
+                .andExpect(jsonPath("$.data.content[0].name").value("베이직 셔츠"))
                 .andExpect(jsonPath("$.data.page").value(0))
                 .andExpect(jsonPath("$.data.size").value(20))
                 .andExpect(jsonPath("$.data.totalElements").value(1))
                 .andExpect(jsonPath("$.data.totalPages").value(1))
-                .andExpect(jsonPath("$.data.hasNext").value(false));
+                .andExpect(jsonPath("$.data.last").value(true));
     }
 
     @Test

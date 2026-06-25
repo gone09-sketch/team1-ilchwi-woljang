@@ -4,11 +4,11 @@ import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 
 public record ProductSearchItemResponse(
-        Long productId,
-        String productName,
-        int productPrice,
+        Long id,
+        String name,
+        int price,
         int stock,
-        ProductStatus productStatus,
+        ProductStatus status,
         boolean orderable
 ) {
 
