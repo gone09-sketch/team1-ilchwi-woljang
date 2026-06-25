@@ -144,7 +144,7 @@ Authorization: Bearer {accessToken}
 | ✅ | 카테고리 | 카테고리별 상품 목록 조회 | `GET` | `/api/categories/{categoryId}/products` |
 | ✅ | 문의 | 문의 등록 | `POST` | `/api/members/inquiry` |
 | ✅ | 주문 | 직접 주문 (바로 구매) | `POST` | `/api/orders/direct` |
-| 🔄 PR#69 | 주문 | 바로 구매 주문서 미리보기 | `POST` | `/api/orders/direct/preview` |
+| 🔄 PR#78 | 주문 | 바로 구매 주문서 미리보기 | `POST` | `/api/orders/direct/preview` |
 | 🔄 PR#54 | 문의 | 관리자 문의 답변 | `POST` | `/api/admins/inquiry` |
 | 🔄 PR#59 | 상품 | 상품 검색 | `GET` | `/api/products/search` |
 | 🔄 PR#61 | 주문 | 주문 상태 변경 | `PATCH` | `/api/orders/{orderId}/status` |
@@ -693,7 +693,7 @@ Set-Cookie: refreshToken={newToken}; HttpOnly; Path=/api/auth; SameSite=Strict
 
 ---
 
-### 바로 구매 주문서 미리보기 🔄 PR#69
+### 바로 구매 주문서 미리보기 🔄 PR#78
 
 상품 상세 페이지에서 바로 주문하기 전 주문 금액과 상품 정보를 미리 확인한다.
 실제 주문을 저장하거나 상품 재고를 차감하지 않는다.
