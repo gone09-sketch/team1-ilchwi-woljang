@@ -51,15 +51,18 @@ public class Order extends BaseEntity {
         return order;
     }
 
-    // 상태 변경 메서드 추가
-    public void updateStatus(OrderStatus orderStatus){
+    public void updateStatus(OrderStatus orderStatus) {
+        if (!this.orderStatus.canChangeTo(orderStatus)) {
+            throw new BusinessException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+
         this.orderStatus = orderStatus;
 
-        if(orderStatus == OrderStatus.PAID){
+        if (orderStatus == OrderStatus.PAID && this.paidAt == null) {
             this.paidAt = LocalDateTime.now();
         }
 
-        if (orderStatus == OrderStatus.CANCELLED){
+        if (orderStatus == OrderStatus.CANCELLED && this.canceledAt == null) {
             this.canceledAt = LocalDateTime.now();
         }
     }

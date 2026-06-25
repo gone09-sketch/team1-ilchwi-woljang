@@ -1,9 +1,16 @@
 package com.team1ilchwiwoljang.domain.order.controller;
 
 import com.team1ilchwiwoljang.common.config.SecurityConfig;
+import com.team1ilchwiwoljang.common.exception.BusinessException;
+import com.team1ilchwiwoljang.common.exception.ErrorCode;
+import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
+import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
+import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
+import com.team1ilchwiwoljang.domain.order.dto.request.OrderStatusUpdateRequest;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
+import com.team1ilchwiwoljang.domain.order.entity.OrderStatus;
 import com.team1ilchwiwoljang.domain.order.service.OrderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,7 +27,9 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -38,6 +47,15 @@ class OrderControllerTest {
 
     @MockitoBean
     private OrderService orderService;
+
+    @MockitoBean
+    private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private SecurityErrorResponseHandler securityErrorResponseHandler;
+
+    @MockitoBean
+    private MemberService memberService;
 
     @Test
     @WithMockAuthMember(memberId = 1L)
@@ -112,5 +130,80 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.errors[0].field").value("quantity"));
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 1L)
+    @DisplayName("인증된 주문 소유자가 상태 변경 요청을 보내면 200 OK를 반환한다")
+    void given_authenticatedOwner_whenUpdateOrderStatus_thenStatus200() throws Exception {
+        // given
+        Long orderId = 1L;
+        OrderStatusUpdateRequest request = new OrderStatusUpdateRequest(OrderStatus.PAID);
+
+        // when & then
+        mockMvc.perform(patch("/api/orders/{orderId}/status", orderId)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 1L)
+    @DisplayName("존재하지 않거나 소유자가 다른 주문 상태 변경 요청은 404 Not Found를 반환한다")
+    void given_notOwnedOrder_whenUpdateOrderStatus_thenStatus404() throws Exception {
+        // given
+        Long orderId = 999L;
+        OrderStatusUpdateRequest request = new OrderStatusUpdateRequest(OrderStatus.PAID);
+
+        doThrow(new BusinessException(ErrorCode.ORDER_NOT_FOUND))
+                .when(orderService)
+                .updateOrderStatus(eq(MEMBER_ID), eq(orderId), eq(OrderStatus.PAID));
+
+        // when & then
+        mockMvc.perform(patch("/api/orders/{orderId}/status", orderId)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("ORDER_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("인증되지 않은 사용자가 상태 변경 요청을 보내면 401 Unauthorized를 반환한다")
+    void given_noAuth_whenUpdateOrderStatus_thenStatus401() throws Exception {
+        // given
+        OrderStatusUpdateRequest request = new OrderStatusUpdateRequest(OrderStatus.PAID);
+
+        // when & then
+        mockMvc.perform(patch("/api/orders/{orderId}/status", 1L)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 1L)
+    @DisplayName("취소된 주문을 결제 완료 상태로 변경하려고 하면 400 Bad Request를 반환한다")
+    void given_cancelledOrder_whenUpdateOrderStatusToPaid_thenStatus400() throws Exception {
+        // given
+        Long orderId = 1L;
+        OrderStatusUpdateRequest request = new OrderStatusUpdateRequest(OrderStatus.PAID);
+
+        doThrow(new BusinessException(ErrorCode.INVALID_ORDER_STATUS))
+                .when(orderService)
+                .updateOrderStatus(eq(MEMBER_ID), eq(orderId), eq(OrderStatus.PAID));
+
+        // when & then
+        mockMvc.perform(patch("/api/orders/{orderId}/status", orderId)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("INVALID_ORDER_STATUS"));
     }
 }

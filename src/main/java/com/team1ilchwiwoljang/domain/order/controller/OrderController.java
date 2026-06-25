@@ -13,8 +13,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import static com.team1ilchwiwoljang.common.response.ApiResponse.success;
-
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
@@ -30,7 +28,7 @@ public class OrderController {
         OrderResponse response = orderService.createDirectOrder(authMember.memberId(), request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(success(response));
+                .body(ApiResponse.success(response));
     }
 
     @PatchMapping("/{orderId}/status")
