@@ -1,6 +1,10 @@
 package com.team1ilchwiwoljang.domain.order.controller;
 
 import com.team1ilchwiwoljang.common.config.SecurityConfig;
+import com.team1ilchwiwoljang.common.security.JwtAuthenticationFilter;
+import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
+import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
+import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
@@ -26,6 +30,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(OrderController.class)
+@Import({
+        SecurityConfig.class,
+        JwtAuthenticationFilter.class,
+        SecurityErrorResponseHandler.class
+})
 class OrderControllerTest {
 
     private static final Long MEMBER_ID = 1L;
@@ -38,6 +47,12 @@ class OrderControllerTest {
 
     @MockitoBean
     private OrderService orderService;
+
+    @MockitoBean
+    private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private MemberService memberService;
 
     @Test
     @WithMockAuthMember(memberId = 1L)
@@ -61,7 +76,10 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.data.orderNumber").value("order-123"))
                 .andExpect(jsonPath("$.data.orderStatus").value("PENDING"))
                 .andExpect(jsonPath("$.data.totalAmount").value(20000L))
-                .andExpect(jsonPath("$.data.orderItems[0].productName").value("상품명"));
+                .andExpect(jsonPath("$.data.orderItems[0].productName").value("상품명"))
+                .andExpect(jsonPath("$.data.orderItems[0].productPrice").value(10000L))
+                .andExpect(jsonPath("$.data.orderItems[0].quantity").value(2L))
+                .andExpect(jsonPath("$.data.orderItems[0].productTotalAmount").value(20000L));
     }
 
     @Test
