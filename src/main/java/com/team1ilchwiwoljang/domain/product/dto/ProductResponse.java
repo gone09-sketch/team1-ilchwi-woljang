@@ -4,7 +4,7 @@ import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 
 public record ProductResponse(
-        Long id,
+        Long productId,
         String name,
         int price,
         int stock,
