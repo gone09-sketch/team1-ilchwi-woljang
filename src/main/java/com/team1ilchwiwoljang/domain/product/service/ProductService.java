@@ -5,13 +5,22 @@ import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.domain.category.repository.CategoryRepository;
 import com.team1ilchwiwoljang.domain.product.dto.ProductResponse;
 import com.team1ilchwiwoljang.domain.product.dto.response.ProductDetailResponse;
+import com.team1ilchwiwoljang.domain.category.repository.CategoryRepository;
+import com.team1ilchwiwoljang.domain.product.dto.ProductResponse;
+import com.team1ilchwiwoljang.domain.product.dto.response.ProductSearchResponse;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
+import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import com.team1ilchwiwoljang.common.exception.BusinessException;
+import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -41,5 +50,20 @@ public class ProductService {
         return productRepository.findByCategoryId(categoryId).stream()
                 .map(ProductResponse::from)
                 .collect(Collectors.toList());
+    }
+
+    public ProductSearchResponse searchProducts(String keyword, Pageable pageable) {
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        if (normalizedKeyword.isBlank()) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+
+        return ProductSearchResponse.from(
+                productRepository.findByNameContainingIgnoreCaseAndStatusNot(
+                        normalizedKeyword,
+                        ProductStatus.STOPPED,
+                        pageable
+                )
+        );
     }
 }
