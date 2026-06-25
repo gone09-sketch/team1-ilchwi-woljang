@@ -46,6 +46,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(errorCode.getStatus()).body(response);
     }
 
+    @ExceptionHandler(org.springframework.web.bind.MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingServletRequestParameterException(
+            org.springframework.web.bind.MissingServletRequestParameterException e) {
+        ErrorCode errorCode = ErrorCode.VALIDATION_FAILED;
+        ErrorResponse response = ErrorResponse.of(
+                errorCode.name(),
+                "필수 쿼리 파라미터 '" + e.getParameterName() + "'가 누락되었습니다."
+        );
+        return ResponseEntity.status(errorCode.getStatus()).body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception e) {
         ErrorResponse response = ErrorResponse.of("INTERNAL_SERVER_ERROR", "서버 오류가 발생했습니다.");

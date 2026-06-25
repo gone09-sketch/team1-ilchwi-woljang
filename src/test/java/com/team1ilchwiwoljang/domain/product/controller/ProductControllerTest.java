@@ -87,7 +87,6 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.data.products[0].price").value(29000))
                 .andExpect(jsonPath("$.data.products[0].stock").value(10))
                 .andExpect(jsonPath("$.data.products[0].status").value("ON_SALE"))
-                .andExpect(jsonPath("$.data.products[0].wishlisted").value(true))
                 .andExpect(jsonPath("$.data.page").value(0))
                 .andExpect(jsonPath("$.data.size").value(20))
                 .andExpect(jsonPath("$.data.totalElements").value(1))

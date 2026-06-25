@@ -56,9 +56,6 @@ class OrderControllerTest {
     private JwtTokenProvider jwtTokenProvider;
 
     @MockitoBean
-    private SecurityErrorResponseHandler securityErrorResponseHandler;
-
-    @MockitoBean
     private MemberService memberService;
 
     @Test
