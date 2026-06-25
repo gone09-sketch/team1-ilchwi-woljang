@@ -50,4 +50,15 @@ public class Inquiry extends BaseEntity {
         inquiry.status = InquiryStatus.WAITING;
         return inquiry;
     }
+
+    public boolean isAnswered() {
+        return this.status == InquiryStatus.ANSWERED;
+    }
+
+    public void answer(Long adminId, String answerContent, LocalDateTime answeredAt) {
+        this.adminId = adminId;
+        this.answer = answerContent;
+        this.status = InquiryStatus.ANSWERED;
+        this.answeredAt = answeredAt;
+    }
 }
