@@ -6,7 +6,7 @@ import org.springframework.data.domain.Page;
 import java.util.List;
 
 public record ProductSearchResponse(
-        List<ProductSearchItemResponse> content,
+        List<ProductSearchItemResponse> products,
         int page,
         int size,
         long totalElements,
@@ -15,12 +15,12 @@ public record ProductSearchResponse(
 ) {
 
     public static ProductSearchResponse from(Page<Product> page) {
-        List<ProductSearchItemResponse> content = page.getContent().stream()
+        List<ProductSearchItemResponse> products = page.getContent().stream()
                 .map(ProductSearchItemResponse::from)
                 .toList();
 
         return new ProductSearchResponse(
-                content,
+                products,
                 page.getNumber(),
                 page.getSize(),
                 page.getTotalElements(),

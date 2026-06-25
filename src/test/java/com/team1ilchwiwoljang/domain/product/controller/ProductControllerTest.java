@@ -67,7 +67,7 @@ class ProductControllerTest {
                         .param("keyword", "셔츠"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.content[0].name").value("베이직 셔츠"))
+                .andExpect(jsonPath("$.data.products[0].name").value("베이직 셔츠"))
                 .andExpect(jsonPath("$.data.page").value(0))
                 .andExpect(jsonPath("$.data.size").value(20))
                 .andExpect(jsonPath("$.data.totalElements").value(1))
