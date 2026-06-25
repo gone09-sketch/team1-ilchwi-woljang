@@ -17,10 +17,18 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.team1ilchwiwoljang.common.response.PageResponse;
+import com.team1ilchwiwoljang.domain.order.dto.response.OrderHistoryResponse;
+import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemHistoryResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +39,44 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final MemberRepository memberRepository;
     private final Clock clock;
+
+    @Transactional(readOnly = true)
+    public PageResponse<OrderHistoryResponse> getOrderHistory(Long memberId, Pageable pageable) {
+        Page<Order> orderPage = orderRepository.findOrderHistoryByMemberId(memberId, pageable);
+
+
+        List<Long> orderIds = orderPage.getContent().stream()
+                .map(Order::getId)
+                .toList();
+
+        List<OrderItem> orderItems = orderItemRepository.findByOrderIdIn(orderIds);
+
+        Map<Long, List<OrderItemHistoryResponse>> itemsByOrderId = orderItems.stream()
+                .collect(Collectors.groupingBy(
+                        item -> item.getOrder().getId(),
+                        Collectors.mapping(
+                                item -> OrderItemHistoryResponse.of(
+                                        item.getProduct().getId(),
+                                        item.getProductNameSnapshot(),
+                                        item.getProductPriceSnapshot(),
+                                        item.getQuantity(),
+                                        item.getTotalPrice()
+                                ),
+                                Collectors.toList()
+                        )
+                ));
+
+        Page<OrderHistoryResponse> dtoPage = orderPage.map(order -> OrderHistoryResponse.of(
+                order.getId(),
+                order.getOrderNumber(),
+                order.getTotalAmount(),
+                order.getOrderStatus().name(),
+                order.getCreatedAt(),
+                itemsByOrderId.getOrDefault(order.getId(), List.of())
+        ));
+
+        return PageResponse.from(dtoPage);
+    }
 
     @Transactional
     public OrderResponse createDirectOrder(Long memberId, DirectOrderRequest request) {
