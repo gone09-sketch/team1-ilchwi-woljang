@@ -8,8 +8,11 @@ import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderPreviewRequest;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
+import com.team1ilchwiwoljang.domain.order.dto.response.DirectOrderPreviewResponse;
+import com.team1ilchwiwoljang.domain.order.dto.response.DirectOrderPreviewResponse.DirectOrderPreviewItemResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderPreviewResponse;
+import com.team1ilchwiwoljang.domain.order.dto.response.OrderPreviewResponse.OrderPreviewItemResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
 import com.team1ilchwiwoljang.domain.order.entity.Order;
 import com.team1ilchwiwoljang.domain.order.entity.OrderItem;
@@ -41,16 +44,16 @@ public class OrderService {
      * 실제 주문 저장, 주문상품 저장, 재고 차감은 하지 않습니다.
      */
     @Transactional(readOnly = true)
-    public OrderPreviewResponse previewDirectOrder(DirectOrderPreviewRequest request) {
+    public DirectOrderPreviewResponse previewDirectOrder(DirectOrderPreviewRequest request) {
         Product product = productService.getProduct(request.productId());
 
         validateOrderableProduct(product, request.quantity());
 
-        OrderItemResponse orderItem = createOrderPreviewItemResponse(product, request.quantity());
-        List<OrderItemResponse> orderItems = List.of(orderItem);
-        long totalAmount = calculateTotalOrderAmount(orderItems);
+        DirectOrderPreviewItemResponse orderItem = createDirectOrderPreviewItemResponse(product, request.quantity());
+        List<DirectOrderPreviewItemResponse> orderItems = List.of(orderItem);
+        long totalOrderAmount = calculateDirectTotalOrderAmount(orderItems);
 
-        return OrderPreviewResponse.of(orderItems, totalAmount);
+        return DirectOrderPreviewResponse.of(orderItems, totalOrderAmount);
     }
 
     /**
@@ -151,6 +154,32 @@ public class OrderService {
     }
 
     /**
+     * 바로 주문 미리보기 응답 항목을 생성합니다.
+     * 바로 주문은 아직 장바구니에 담긴 상품이 아니므로 cartId를 응답하지 않습니다.
+     */
+    private DirectOrderPreviewItemResponse createDirectOrderPreviewItemResponse(Product product, int quantity) {
+        long productPrice = product.getPrice();
+        long productTotalAmount = productPrice * quantity;
+
+        return DirectOrderPreviewItemResponse.of(
+                product.getId(),
+                product.getName(),
+                productPrice,
+                quantity,
+                productTotalAmount
+        );
+    }
+
+    /**
+     * 바로 주문 미리보기의 총 상품 금액을 계산합니다.
+     */
+    private long calculateDirectTotalOrderAmount(List<DirectOrderPreviewItemResponse> orderItems) {
+        return orderItems.stream()
+                .mapToLong(DirectOrderPreviewItemResponse::productTotalAmount)
+                .sum();
+    }
+
+    /**
      * 주문서 미리보기 대상 장바구니 상품들이 실제 주문 가능한지 검증하는 메서드입니다.
      * 장바구니가 비어 있으면 주문서가 될 수 없고, 각 상품은 ON_SALE 상태이며 재고가 충분해야 합니다.
      */
@@ -167,45 +196,6 @@ public class OrderService {
     /**
      * 상품 하나가 주문 가능한 상태인지 검증하는 공통 메서드입니다.
      * 주문 생성과 주문서 미리보기 모두 같은 기준으로 검증하기 위해 분리했습니다.
-     */
-    private void validateOrderableProduct(Product product, int quantity) {
-        if (!product.isOnSale()) {
-            throw new BusinessException(ErrorCode.NOT_ORDERABLE_PRODUCT);
-        }
-
-        if (product.getStock() < quantity) {
-            throw new BusinessException(ErrorCode.OUT_OF_STOCK);
-        }
-    }
-}
-
-
-    /**
-     * 상품과 수량을 기준으로 주문서 미리보기 응답 항목을 생성합니다.
-     */
-    private OrderItemResponse createOrderPreviewItemResponse(Product product, int quantity) {
-        long productPrice = product.getPrice();
-        long productTotalAmount = productPrice * quantity;
-
-        return OrderItemResponse.of(
-                product.getName(),
-                productPrice,
-                quantity,
-                productTotalAmount
-        );
-    }
-
-    /**
-     * 주문서 미리보기의 총 상품 금액을 계산합니다.
-     */
-    private long calculateTotalOrderAmount(List<OrderItemResponse> orderItems) {
-        return orderItems.stream()
-                .mapToLong(OrderItemResponse::productTotalAmount)
-                .sum();
-    }
-
-    /**
-     * 상품이 주문 가능한 상태인지 검증합니다.
      */
     private void validateOrderableProduct(Product product, int quantity) {
         if (!product.isOnSale()) {

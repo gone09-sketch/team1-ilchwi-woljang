@@ -5,6 +5,7 @@ import com.team1ilchwiwoljang.common.security.annotation.Auth;
 import com.team1ilchwiwoljang.common.security.auth.AuthMember;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderPreviewRequest;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
+import com.team1ilchwiwoljang.domain.order.dto.response.DirectOrderPreviewResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderPreviewResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
 import com.team1ilchwiwoljang.domain.order.service.OrderService;
@@ -43,24 +44,23 @@ public class OrderController {
     }
 
     /**
-     * 상품 상세페이지 -> 바로 구매
-     * 단 건 주문만 가능
-     */
-    /**
      * 상품 상세 페이지에서 바로 주문하기 전 주문서 미리보기를 조회합니다.
      */
     @PostMapping("/direct/preview")
-    public ResponseEntity<ApiResponse<OrderPreviewResponse>> previewDirectOrder(
-            // 바로 주문 미리보기는 회원별 데이터를 조회하지 않지만,
-            // 인증이 필요한 API임을 명시하기 위해 AuthMember를 받습니다.
+    public ResponseEntity<ApiResponse<DirectOrderPreviewResponse>> previewDirectOrder(
+            // 현재 프로젝트 정책상 상품 목록/카테고리 조회 외 API는 인증이 필요합니다.
+            // 다만 바로 주문 미리보기 계산에는 회원 정보가 필요 없으므로 서비스에는 memberId를 전달하지 않습니다.
             @Auth AuthMember authMember,
             @Valid @RequestBody DirectOrderPreviewRequest request
     ) {
-        OrderPreviewResponse response = orderService.previewDirectOrder(request);
+        DirectOrderPreviewResponse response = orderService.previewDirectOrder(request);
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    /**
+     * 상품 상세 페이지에서 단건 바로 주문을 생성합니다.
+     */
     @PostMapping("/direct")
     public ResponseEntity<ApiResponse<OrderResponse>> createDirectOrder(
             @Auth AuthMember authMember,
