@@ -9,7 +9,7 @@ import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryCreateResponse;
 import com.team1ilchwiwoljang.domain.inquiry.entity.Inquiry;
 import com.team1ilchwiwoljang.domain.inquiry.repository.InquiryRepository;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
-import com.team1ilchwiwoljang.domain.admin.service.AdminService;
+import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
 
@@ -24,7 +24,6 @@ public class InquiryService {
 
     private final InquiryRepository inquiryRepository;
     private final MemberService memberService;
-    private final AdminService adminService;
     private final Clock clock;
 
     @Transactional
@@ -39,9 +38,13 @@ public class InquiryService {
     }
 
     @Transactional
-    public InquiryAnswerResponse answerInquiry(Long adminId, InquiryAnswerRequest request) {
-        adminService.findById(adminId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ADMIN_NOT_FOUND));
+    public InquiryAnswerResponse answerInquiry(Long memberId, InquiryAnswerRequest request) {
+        Member member = memberService.findById(memberId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+
+        if (member.getRole() != MemberRole.ADMIN) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
 
         Inquiry inquiry = inquiryRepository.findById(request.inquiryId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INQUIRY_NOT_FOUND));
@@ -50,7 +53,7 @@ public class InquiryService {
             throw new BusinessException(ErrorCode.ALREADY_ANSWERED_INQUIRY);
         }
 
-        inquiry.answer(adminId, request.answer(), LocalDateTime.now(clock));
+        inquiry.answer(member.getId(), request.answer(), LocalDateTime.now(clock));
 
         return InquiryAnswerResponse.from(inquiry);
     }
