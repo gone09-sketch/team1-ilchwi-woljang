@@ -56,9 +56,9 @@ jobs:
               const action = context.payload.action;
               if (action === 'closed') {
                 targetStatus = pr.merged ? 'Done' : null;
-              } else if (action === 'converted_to_draft') {
+              } else if (action === 'converted_to_draft' || pr.draft) {
                 targetStatus = 'In Progress';
-              } else {
+              } else if (action === 'opened' || action === 'reopened' || action === 'ready_for_review' || action === 'edited') {
                 targetStatus = 'Review Requested';
               }
             }
