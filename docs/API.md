@@ -144,6 +144,7 @@ Authorization: Bearer {accessToken}
 | ✅ | 카테고리 | 카테고리별 상품 목록 조회 | `GET` | `/api/categories/{categoryId}/products` |
 | ✅ | 문의 | 문의 등록 | `POST` | `/api/members/inquiry` |
 | ✅ | 주문 | 직접 주문 (바로 구매) | `POST` | `/api/orders/direct` |
+| 🔄 PR#69 | 주문 | 바로 구매 주문서 미리보기 | `POST` | `/api/orders/direct/preview` |
 | 🔄 PR#54 | 문의 | 관리자 문의 답변 | `POST` | `/api/admins/inquiry` |
 | 🔄 PR#59 | 상품 | 상품 검색 | `GET` | `/api/products/search` |
 | 🔄 PR#61 | 주문 | 주문 상태 변경 | `PATCH` | `/api/orders/{orderId}/status` |
@@ -668,6 +669,8 @@ Set-Cookie: refreshToken={newToken}; HttpOnly; Path=/api/auth; SameSite=Strict
 {
   "orderItems": [
     {
+      "cartId": 1,
+      "productId": 10,
       "productName": "노트북 파우치",
       "productPrice": 25000,
       "quantity": 2,
@@ -686,6 +689,59 @@ Set-Cookie: refreshToken={newToken}; HttpOnly; Path=/api/auth; SameSite=Strict
 | `CART_ITEM_NOT_FOUND` | 404 | 요청한 cartIds 중 존재하지 않는 항목 |
 | `EMPTY_ORDER_PREVIEW` | 400 | 미리볼 상품이 없음 |
 | `NOT_ORDERABLE_PRODUCT` | 400 | 주문할 수 없는 상품 포함 |
+
+---
+
+### 바로 구매 주문서 미리보기 🔄 PR#69
+
+상품 상세 페이지에서 바로 주문하기 전 주문 금액과 상품 정보를 미리 확인한다.
+실제 주문을 저장하거나 상품 재고를 차감하지 않는다.
+
+- Method: `POST`
+- Path: `/api/orders/direct/preview`
+- 인증: 필요
+- HTTP Status: `200 OK`
+
+#### Request Body
+
+| 필드 | 타입 | 필수 | 설명 |
+| --- | --- | --- | --- |
+| `productId` | Long | Y | 상품 ID |
+| `quantity` | Integer | Y | 수량 (1 이상) |
+
+```json
+{
+  "productId": 10,
+  "quantity": 2
+}
+```
+
+#### Response Data
+
+```json
+{
+  "orderItems": [
+    {
+      "productId": 10,
+      "productName": "노트북 파우치",
+      "productPrice": 25000,
+      "quantity": 2,
+      "productTotalAmount": 50000
+    }
+  ],
+  "totalOrderAmount": 50000
+}
+```
+
+#### Errors
+
+| 코드 | HTTP | 발생 조건 |
+| --- | --- | --- |
+| `VALIDATION_FAILED` | 400 | 필수 값 누락 또는 수량이 1 미만 |
+| `NOT_ORDERABLE_PRODUCT` | 400 | 판매 중이 아닌 상품 |
+| `OUT_OF_STOCK` | 400 | 재고 부족 |
+| `UNAUTHORIZED` | 401 | 토큰 누락 |
+| `PRODUCT_NOT_FOUND` | 404 | 상품 없음 |
 
 ---
 
