@@ -23,15 +23,23 @@ public enum ErrorCode {
     // admin
     ADMIN_NOT_FOUND(HttpStatus.NOT_FOUND, "관리자를 찾을 수 없습니다."),
 
+    // product
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
+
     // cart
     INVALID_QUANTITY(HttpStatus.BAD_REQUEST, "수량은 1개 이상이어야 합니다."),
+    CART_ITEM_QUANTITY_EXCEEDED(HttpStatus.BAD_REQUEST, "장바구니에 담을 수 있는 수량이 재고를 초과했습니다."),
+    DUPLICATE_CART_ITEM(HttpStatus.CONFLICT, "이미 장바구니에 담긴 상품입니다. 잠시 후 다시 시도해 주세요."),
 
     // category
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다."),
 
     // inquiry
     INQUIRY_NOT_FOUND(HttpStatus.NOT_FOUND, "문의를 찾을 수 없습니다."),
-    ALREADY_ANSWERED_INQUIRY(HttpStatus.BAD_REQUEST, "이미 답변 완료된 문의입니다.");
+    ALREADY_ANSWERED_INQUIRY(HttpStatus.BAD_REQUEST, "이미 답변 완료된 문의입니다."),
+
+    // order
+    OUT_OF_STOCK(HttpStatus.BAD_REQUEST, "재고가 부족합니다.");
 
     private final HttpStatus status;
     private final String message;
