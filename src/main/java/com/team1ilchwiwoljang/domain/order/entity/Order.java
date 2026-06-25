@@ -1,6 +1,8 @@
 package com.team1ilchwiwoljang.domain.order.entity;
 
 import com.team1ilchwiwoljang.common.entity.BaseEntity;
+import com.team1ilchwiwoljang.common.exception.BusinessException;
+import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -47,5 +49,14 @@ public class Order extends BaseEntity {
         order.pgAmount = pgAmount;
         order.orderStatus = OrderStatus.PENDING;
         return order;
+    }
+
+    public void cancel(LocalDateTime canceledAt) {
+        if (!this.orderStatus.canChangeTo(OrderStatus.CANCELLED)) {
+            throw new BusinessException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+
+        this.orderStatus = OrderStatus.CANCELLED;
+        this.canceledAt = canceledAt;
     }
 }

@@ -16,6 +16,9 @@ import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,6 +30,7 @@ public class OrderService {
     private final OrderItemRepository orderItemRepository;
     private final ProductRepository productRepository;
     private final MemberRepository memberRepository;
+    private final Clock clock;
 
     @Transactional
     public OrderResponse createDirectOrder(Long memberId, DirectOrderRequest request) {
@@ -62,4 +66,13 @@ public class OrderService {
         List<OrderItemResponse> orderItems = List.of(OrderItemResponse.from(orderItem));
         return OrderResponse.from(order, orderItems);
     }
+    @Transactional
+    public void cancelOrder(Long memberId, Long orderId) {
+        Order order = orderRepository.findByIdAndMemberId(orderId, memberId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+        order.cancel(LocalDateTime.now(clock));
+    }
+
+
 }

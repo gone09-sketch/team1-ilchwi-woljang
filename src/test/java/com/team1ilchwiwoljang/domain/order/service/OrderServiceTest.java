@@ -14,14 +14,18 @@ import com.team1ilchwiwoljang.domain.order.repository.OrderRepository;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,8 +37,12 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
 
-    @InjectMocks
     private OrderService orderService;
+
+    private final Clock fixedClock = Clock.fixed(
+            Instant.parse("2026-06-25T10:00:00Z"),
+            ZoneOffset.UTC
+    );
 
     @Mock
     private OrderRepository orderRepository;
@@ -47,6 +55,17 @@ class OrderServiceTest {
 
     @Mock
     private MemberRepository memberRepository;
+
+    @BeforeEach
+    void setUp() {
+        orderService = new OrderService(
+                orderRepository,
+                orderItemRepository,
+                productRepository,
+                memberRepository,
+                fixedClock
+        );
+    }
 
     @Test
     @DisplayName("회원과 상품이 정상 존재하고 재고가 충분하면 바로 주문하기에 성공한다")
@@ -137,5 +156,64 @@ class OrderServiceTest {
         assertThatThrownBy(() -> orderService.createDirectOrder(memberId, request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.OUT_OF_STOCK);
+    }
+
+    @Test
+    @DisplayName("주문 소유자가 취소를 요청하면 주문 상태와 취소 시각을 변경한다")
+    void given_orderOwner_whenCancelOrder_thenSuccess() {
+        // given
+        Long memberId = 1L;
+        Long orderId = 1L;
+        Member member = Member.create("test@example.com", "password", "홍길동", "010-1234-5678");
+        ReflectionTestUtils.setField(member, "id", memberId);
+        Order order = Order.create(member, "order-123", 20000L, 20000L);
+        ReflectionTestUtils.setField(order, "id", orderId);
+
+        given(orderRepository.findByIdAndMemberId(orderId, memberId)).willReturn(Optional.of(order));
+
+        // when
+        orderService.cancelOrder(memberId, orderId);
+
+        // then
+        assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(order.getCanceledAt()).isEqualTo(LocalDateTime.now(fixedClock));
+    }
+
+    @Test
+    @DisplayName("존재하지 않거나 소유자가 다른 주문을 취소하려고 하면 ORDER_NOT_FOUND 예외를 던진다")
+    void given_notOwnedOrder_whenCancelOrder_thenThrowOrderNotFound() {
+        // given
+        Long memberId = 1L;
+        Long orderId = 999L;
+
+        given(orderRepository.findByIdAndMemberId(orderId, memberId)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> orderService.cancelOrder(memberId, orderId))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ORDER_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("이미 취소된 주문을 다시 취소하려고 하면 INVALID_ORDER_STATUS 예외를 던진다")
+    void given_cancelledOrder_whenCancelAgain_thenThrowInvalidOrderStatus() {
+        // given
+        Long memberId = 1L;
+        Long orderId = 1L;
+        Member member = Member.create("test@example.com", "password", "홍길동", "010-1234-5678");
+        ReflectionTestUtils.setField(member, "id", memberId);
+        Order order = Order.create(member, "order-123", 20000L, 20000L);
+        ReflectionTestUtils.setField(order, "id", orderId);
+        order.cancel(LocalDateTime.now(fixedClock));
+
+        given(orderRepository.findByIdAndMemberId(orderId, memberId)).willReturn(Optional.of(order));
+
+        // when & then
+        assertThatThrownBy(() -> orderService.cancelOrder(memberId, orderId))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_ORDER_STATUS);
+        assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(order.getCanceledAt()).isNotNull();
+        assertThat(order.getPaidAt()).isNull();
     }
 }
