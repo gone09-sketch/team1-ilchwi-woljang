@@ -31,6 +31,10 @@ public enum ErrorCode {
     // category
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다."),
 
+    // inquiry
+    INQUIRY_NOT_FOUND(HttpStatus.NOT_FOUND, "문의를 찾을 수 없습니다."),
+    ALREADY_ANSWERED_INQUIRY(HttpStatus.BAD_REQUEST, "이미 답변 완료된 문의입니다."),
+
     // order
     OUT_OF_STOCK(HttpStatus.BAD_REQUEST, "재고가 부족합니다.");
 

@@ -1,15 +1,16 @@
 package com.team1ilchwiwoljang.domain.order.controller;
 
+import com.team1ilchwiwoljang.common.security.WithMockAuthMember;
 import com.team1ilchwiwoljang.common.config.SecurityConfig;
+import com.team1ilchwiwoljang.common.exception.handler.GlobalExceptionHandler;
 import com.team1ilchwiwoljang.common.security.JwtAuthenticationFilter;
 import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
 import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
-import com.team1ilchwiwoljang.common.exception.handler.GlobalExceptionHandler;
-import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
 import com.team1ilchwiwoljang.domain.order.service.OrderService;
+import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,8 +31,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@Import({SecurityConfig.class, JwtAuthenticationFilter.class, SecurityErrorResponseHandler.class, GlobalExceptionHandler.class})
 @WebMvcTest(OrderController.class)
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class, SecurityErrorResponseHandler.class, GlobalExceptionHandler.class})
 class OrderControllerTest {
 
     private static final Long MEMBER_ID = 1L;
