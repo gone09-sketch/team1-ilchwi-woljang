@@ -25,7 +25,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
             DataIntegrityViolationException e) {
-        ErrorCode errorCode = ErrorCode.DUPLICATE_CART_ITEM;
+        ErrorCode errorCode = ErrorCode.CART_ITEM_QUANTITY_EXCEEDED;
         ErrorResponse response = ErrorResponse.of(errorCode.name(), errorCode.getMessage());
         return ResponseEntity.status(errorCode.getStatus()).body(response);
     }
