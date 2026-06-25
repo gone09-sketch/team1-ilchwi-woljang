@@ -18,7 +18,7 @@ jobs:
             });
 
             const pattern = /^(feat|fix|refactor|docs|test|chore|merge)(\([a-z0-9가-힣-]+\))?: .+/;
-            const mergePattern = /^Merge /;
+            const mergePattern = /^merge/i;
 
             const violations = [];
             for (const { commit } of commits.data) {
