@@ -1,0 +1,32 @@
+package com.team1ilchwiwoljang.domain.order.controller;
+
+import com.team1ilchwiwoljang.common.response.ApiResponse;
+import com.team1ilchwiwoljang.common.security.annotation.Auth;
+import com.team1ilchwiwoljang.common.security.auth.AuthMember;
+import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
+import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
+import com.team1ilchwiwoljang.domain.order.service.OrderService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/orders")
+@RequiredArgsConstructor
+public class OrderController {
+
+    private final OrderService orderService;
+
+    @PostMapping("/direct")
+    public ResponseEntity<ApiResponse<OrderResponse>> createDirectOrder(
+            @Auth AuthMember authMember,
+            @Valid @RequestBody DirectOrderRequest request
+    ) {
+        OrderResponse response = orderService.createDirectOrder(authMember.memberId(), request);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response));
+    }
+}
