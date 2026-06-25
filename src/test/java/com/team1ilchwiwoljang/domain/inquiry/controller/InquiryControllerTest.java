@@ -2,6 +2,7 @@ package com.team1ilchwiwoljang.domain.inquiry.controller;
 
 import com.team1ilchwiwoljang.common.config.SecurityConfig;
 import com.team1ilchwiwoljang.common.security.JwtAuthenticationFilter;
+import com.team1ilchwiwoljang.common.security.JwtTokenPayload;
 import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
 import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
 import org.springframework.http.HttpHeaders;
@@ -12,6 +13,7 @@ import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryAnswerResponse;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryCreateResponse;
 import com.team1ilchwiwoljang.domain.inquiry.entity.InquiryStatus;
 import com.team1ilchwiwoljang.domain.inquiry.service.InquiryService;
+import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -73,8 +75,7 @@ class InquiryControllerTest {
                 LocalDateTime.now()
         );
 
-        given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
-        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
+        givenValidAccessToken();
 
         given(inquiryService.createInquiry(eq(MEMBER_ID), any(InquiryCreateRequest.class)))
                 .willReturn(response);
@@ -100,8 +101,7 @@ class InquiryControllerTest {
         // given
         InquiryCreateRequest request = new InquiryCreateRequest("", "문의 내용");
 
-        given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
-        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
+        givenValidAccessToken();
 
         // when & then
         mockMvc.perform(post("/api/members/inquiry")
@@ -121,8 +121,7 @@ class InquiryControllerTest {
         // given
         InquiryCreateRequest request = new InquiryCreateRequest("문의 제목", " ");
 
-        given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
-        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
+        givenValidAccessToken();
 
         // when & then
         mockMvc.perform(post("/api/members/inquiry")
@@ -169,8 +168,7 @@ class InquiryControllerTest {
                 LocalDateTime.now()
         );
 
-        given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
-        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
+        givenValidAdminAccessToken();
         given(inquiryService.answerInquiry(eq(MEMBER_ID), any(InquiryAnswerRequest.class)))
                 .willReturn(response);
 
@@ -196,8 +194,7 @@ class InquiryControllerTest {
         Long inquiryId = 1L;
         InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "");
 
-        given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
-        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
+        givenValidAdminAccessToken();
 
         // when & then
         mockMvc.perform(post("/api/admins/inquiry")
@@ -217,8 +214,7 @@ class InquiryControllerTest {
         // given
         InquiryAnswerRequest request = new InquiryAnswerRequest(null, "답변 내용");
 
-        given(jwtTokenProvider.getMemberId(ACCESS_TOKEN)).willReturn(MEMBER_ID);
-        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
+        givenValidAdminAccessToken();
 
         // when & then
         mockMvc.perform(post("/api/admins/inquiry")
@@ -245,5 +241,17 @@ class InquiryControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    private void givenValidAccessToken() {
+        given(jwtTokenProvider.parseAccessToken(ACCESS_TOKEN))
+                .willReturn(new JwtTokenPayload(MEMBER_ID, MemberRole.MEMBER));
+        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
+    }
+
+    private void givenValidAdminAccessToken() {
+        given(jwtTokenProvider.parseAccessToken(ACCESS_TOKEN))
+                .willReturn(new JwtTokenPayload(MEMBER_ID, MemberRole.ADMIN));
+        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
     }
 }
