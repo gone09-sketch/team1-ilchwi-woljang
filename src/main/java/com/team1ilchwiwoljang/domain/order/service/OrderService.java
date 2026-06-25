@@ -17,16 +17,13 @@ import com.team1ilchwiwoljang.domain.order.repository.OrderItemRepository;
 import com.team1ilchwiwoljang.domain.order.repository.OrderRepository;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.Clock;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -34,8 +31,6 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
-    private final ProductRepository productRepository;
-    private final MemberRepository memberRepository;
     private final Clock clock;
     private final MemberService memberService;
     private final ProductService productService;
@@ -74,6 +69,7 @@ public class OrderService {
         List<OrderItemResponse> orderItems = List.of(OrderItemResponse.from(orderItem));
         return OrderResponse.from(order, orderItems);
     }
+
     @Transactional
     public void cancelOrder(Long memberId, Long orderId) {
         Order order = orderRepository.findByIdAndMemberId(orderId, memberId)
@@ -81,10 +77,6 @@ public class OrderService {
 
         order.cancel(LocalDateTime.now(clock));
     }
-
-
-}
-
 
     /**
      * 장바구니 상품을 주문서 형태로 미리 확인하는 메서드입니다.

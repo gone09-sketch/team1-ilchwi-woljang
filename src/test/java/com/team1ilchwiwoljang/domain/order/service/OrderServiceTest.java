@@ -22,28 +22,20 @@ import com.team1ilchwiwoljang.domain.order.repository.OrderItemRepository;
 import com.team1ilchwiwoljang.domain.order.repository.OrderRepository;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
-import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
+import com.team1ilchwiwoljang.domain.product.service.ProductService;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import com.team1ilchwiwoljang.domain.product.service.ProductService;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.time.Clock;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -70,17 +62,15 @@ class OrderServiceTest {
     @Mock
     private CartService cartService;
 
-    @InjectMocks
-    private OrderService orderService;
-
     @BeforeEach
     void setUp() {
         orderService = new OrderService(
                 orderRepository,
                 orderItemRepository,
-                productRepository,
-                memberRepository,
-                fixedClock
+                fixedClock,
+                memberService,
+                productService,
+                cartService
         );
     }
 

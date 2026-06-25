@@ -1,11 +1,7 @@
 package com.team1ilchwiwoljang.domain.order.controller;
 
-import com.team1ilchwiwoljang.common.security.WithMockAuthMember;
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
-import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
-import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
-import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.common.config.SecurityConfig;
 import com.team1ilchwiwoljang.common.security.JwtAuthenticationFilter;
 import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
@@ -60,9 +56,6 @@ class OrderControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
-
-    @MockitoBean
-    private SecurityErrorResponseHandler securityErrorResponseHandler;
 
     @MockitoBean
     private MemberService memberService;
