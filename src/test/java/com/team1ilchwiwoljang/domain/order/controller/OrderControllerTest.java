@@ -1,19 +1,17 @@
 package com.team1ilchwiwoljang.domain.order.controller;
 
-import com.team1ilchwiwoljang.common.security.WithMockAuthMember;
+import com.team1ilchwiwoljang.common.config.SecurityConfig;
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
-import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
-import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
-import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.common.security.JwtAuthenticationFilter;
 import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
 import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
+import com.team1ilchwiwoljang.common.security.WithMockAuthMember;
+import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
 import com.team1ilchwiwoljang.domain.order.service.OrderService;
-import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
