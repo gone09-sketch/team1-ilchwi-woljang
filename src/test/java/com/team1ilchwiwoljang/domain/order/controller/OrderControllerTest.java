@@ -1,5 +1,6 @@
 package com.team1ilchwiwoljang.domain.order.controller;
 
+import com.team1ilchwiwoljang.common.config.SecurityConfig;
 import com.team1ilchwiwoljang.common.security.WithMockAuthMember;
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
@@ -7,15 +8,13 @@ import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
 import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.common.security.JwtAuthenticationFilter;
-import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
-import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
 import com.team1ilchwiwoljang.domain.order.service.OrderService;
-import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -24,6 +23,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
+import com.team1ilchwiwoljang.common.response.PageResponse;
+import com.team1ilchwiwoljang.domain.order.dto.response.OrderHistoryResponse;
+import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemHistoryResponse;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -32,6 +34,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -56,9 +59,6 @@ class OrderControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
-
-    @MockitoBean
-    private SecurityErrorResponseHandler securityErrorResponseHandler;
 
     @MockitoBean
     private MemberService memberService;
@@ -197,5 +197,35 @@ class OrderControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("INVALID_ORDER_STATUS"));
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 1L)
+    @DisplayName("인증된 사용자가 주문 내역 조회를 요청하면 200 OK와 함께 페이징된 주문 내역을 반환한다")
+    void given_authenticatedUser_whenGetOrderHistory_thenStatus200() throws Exception {
+        // given
+        OrderItemHistoryResponse item = new OrderItemHistoryResponse(10L, "노트북 파우치", 20000L, 1L, 20000L);
+        OrderHistoryResponse history = new OrderHistoryResponse(100L, "ORD-123", 20000L, "PENDING", null, List.of(item));
+        PageResponse<OrderHistoryResponse> pageResponse = new PageResponse<>(List.of(history), 0, 10, 1L, 1, true);
+
+        given(orderService.getOrderHistory(eq(MEMBER_ID), any(Pageable.class))).willReturn(pageResponse);
+
+        // when & then
+        mockMvc.perform(get("/api/orders")
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].orderId").value(100L))
+                .andExpect(jsonPath("$.data.content[0].orderNumber").value("ORD-123"))
+                .andExpect(jsonPath("$.data.content[0].orderItems[0].productName").value("노트북 파우치"));
+    }
+
+    @Test
+    @DisplayName("인증되지 않은 사용자가 주문 내역 조회를 요청하면 401 Unauthorized를 반환한다")
+    void given_unauthenticatedUser_whenGetOrderHistory_thenStatus401() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/orders"))
+                .andExpect(status().isUnauthorized());
     }
 }

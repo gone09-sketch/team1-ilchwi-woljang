@@ -26,6 +26,13 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import com.team1ilchwiwoljang.common.response.PageResponse;
+import com.team1ilchwiwoljang.domain.order.dto.response.OrderHistoryResponse;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -215,5 +222,59 @@ class OrderServiceTest {
         assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.CANCELLED);
         assertThat(order.getCanceledAt()).isNotNull();
         assertThat(order.getPaidAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("회원의 주문 내역이 존재하면 페이징된 주문 내역 DTO 목록을 반환한다")
+    void given_validMemberAndOrders_whenGetOrderHistory_thenReturnPagedOrderHistoryResponse() {
+        // given
+        Long memberId = 1L;
+        Pageable pageable = PageRequest.of(0, 10);
+        
+        Member member = Member.create("test@example.com", "password", "홍길동", "010-1234-5678");
+        ReflectionTestUtils.setField(member, "id", memberId);
+
+        Order order = Order.create(member, "ORD-123", 20000L, 20000L);
+        ReflectionTestUtils.setField(order, "id", 100L);
+
+        Product product = Product.create("노트북 파우치", 20000, 10, ProductStatus.ON_SALE, "설명", null);
+        ReflectionTestUtils.setField(product, "id", 10L);
+
+        OrderItem orderItem = OrderItem.create(order, product, "노트북 파우치", 20000L, 1L, 20000L);
+
+        Page<Order> orderPage = new PageImpl<>(List.of(order), pageable, 1);
+
+        given(orderRepository.findOrderHistoryByMemberId(memberId, pageable)).willReturn(orderPage);
+        given(orderItemRepository.findByOrderIdIn(List.of(100L))).willReturn(List.of(orderItem));
+
+        // when
+        PageResponse<OrderHistoryResponse> result = orderService.getOrderHistory(memberId, pageable);
+
+        // then
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.totalElements()).isEqualTo(1);
+        assertThat(result.content().get(0).orderId()).isEqualTo(100L);
+        assertThat(result.content().get(0).orderNumber()).isEqualTo("ORD-123");
+        assertThat(result.content().get(0).orderItems()).hasSize(1);
+        assertThat(result.content().get(0).orderItems().get(0).productName()).isEqualTo("노트북 파우치");
+        assertThat(result.content().get(0).orderItems().get(0).quantity()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("주문 내역이 없는 회원이면 빈 페이지 응답을 반환하고 추가 쿼리를 수행하지 않는다")
+    void given_noOrders_whenGetOrderHistory_thenReturnEmptyPageResponse() {
+        // given
+        Long memberId = 1L;
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Order> emptyPage = new PageImpl<>(List.of(), pageable, 0);
+
+        given(orderRepository.findOrderHistoryByMemberId(memberId, pageable)).willReturn(emptyPage);
+
+        // when
+        PageResponse<OrderHistoryResponse> result = orderService.getOrderHistory(memberId, pageable);
+
+        // then
+        assertThat(result.content()).isEmpty();
+        assertThat(result.totalElements()).isEqualTo(0);
     }
 }
