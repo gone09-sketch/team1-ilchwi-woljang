@@ -4,6 +4,7 @@ import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.domain.cart.entity.Cart;
 import com.team1ilchwiwoljang.domain.cart.service.CartService;
+import com.team1ilchwiwoljang.domain.category.entity.Category;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderPreviewRequest;
@@ -66,7 +67,9 @@ public class OrderService {
                                         item.getProductNameSnapshot(),
                                         item.getProductPriceSnapshot(),
                                         item.getQuantity(),
-                                        item.getTotalPrice()
+                                        item.getTotalPrice(),
+                                        getCategoryId(item),
+                                        getCategoryName(item)
                                 ),
                                 Collectors.toList()
                         )
@@ -82,6 +85,16 @@ public class OrderService {
         ));
 
         return PageResponse.from(dtoPage);
+    }
+
+    private Long getCategoryId(OrderItem item) {
+        Category category = item.getProduct().getCategory();
+        return category != null ? category.getId() : null;
+    }
+
+    private String getCategoryName(OrderItem item) {
+        Category category = item.getProduct().getCategory();
+        return category != null ? category.getName() : null;
     }
 
     @Transactional(readOnly = true)

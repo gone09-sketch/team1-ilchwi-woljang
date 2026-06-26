@@ -10,6 +10,7 @@ import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.domain.cart.entity.Cart;
 import com.team1ilchwiwoljang.domain.cart.service.CartService;
+import com.team1ilchwiwoljang.domain.category.entity.Category;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderPreviewRequest;
@@ -410,7 +411,10 @@ class OrderServiceTest {
         Order order = Order.create(member, "ORD-123", 20000L, 20000L);
         ReflectionTestUtils.setField(order, "id", 100L);
 
-        Product product = Product.create("노트북 파우치", 20000, 10, ProductStatus.ON_SALE, "설명", null);
+        Category category = Category.createRoot("전자기기");
+        ReflectionTestUtils.setField(category, "id", 20L);
+
+        Product product = Product.create("노트북 파우치", 20000, 10, ProductStatus.ON_SALE, "설명", category);
         ReflectionTestUtils.setField(product, "id", 10L);
 
         OrderItem orderItem = OrderItem.create(order, product, "노트북 파우치", 20000L, 1L, 20000L);
@@ -430,6 +434,8 @@ class OrderServiceTest {
         assertThat(result.content().get(0).orderNumber()).isEqualTo("ORD-123");
         assertThat(result.content().get(0).orderItems()).hasSize(1);
         assertThat(result.content().get(0).orderItems().get(0).productName()).isEqualTo("노트북 파우치");
+        assertThat(result.content().get(0).orderItems().get(0).categoryId()).isEqualTo(20L);
+        assertThat(result.content().get(0).orderItems().get(0).categoryName()).isEqualTo("전자기기");
         assertThat(result.content().get(0).orderItems().get(0).quantity()).isEqualTo(1L);
     }
 

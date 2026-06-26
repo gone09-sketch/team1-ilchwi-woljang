@@ -5,21 +5,27 @@ public record OrderItemHistoryResponse(
         String productName,
         Long productPrice,
         Long quantity,
-        Long totalPrice
+        Long totalPrice,
+        Long categoryId,
+        String categoryName
 ) {
     public static OrderItemHistoryResponse of(
             Long productId,
             String productName,
             Long productPrice,
             Long quantity,
-            Long totalPrice
+            Long totalPrice,
+            Long categoryId,
+            String categoryName
     ) {
         return new OrderItemHistoryResponse(
                 productId,
                 productName,
                 productPrice,
                 quantity,
-                totalPrice
+                totalPrice,
+                categoryId,
+                categoryName
         );
     }
 }
