@@ -145,10 +145,6 @@ public class OrderService {
     }
 
     private void validateCartOrderItems(List<Cart> cartItems) {
-        if (cartItems.isEmpty()) {
-            throw new BusinessException(ErrorCode.EMPTY_CART_ORDER);
-        }
-
         for (Cart cart : cartItems) {
             validateOrderableProduct(cart.getProduct(), cart.getQuantity());
         }
