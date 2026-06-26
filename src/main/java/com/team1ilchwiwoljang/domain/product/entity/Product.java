@@ -1,6 +1,8 @@
 package com.team1ilchwiwoljang.domain.product.entity;
 
 import com.team1ilchwiwoljang.common.entity.BaseEntity;
+import com.team1ilchwiwoljang.common.exception.BusinessException;
+import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.domain.category.entity.Category;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -62,7 +64,7 @@ public class Product extends BaseEntity {
 
     public void decreaseStock(int quantity) {
         if (this.stock < quantity) {
-            throw new IllegalArgumentException("재고가 부족합니다.");
+            throw new BusinessException(ErrorCode.OUT_OF_STOCK);
         }
         this.stock -= quantity;
     }

@@ -13,6 +13,7 @@ import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -77,6 +78,67 @@ public class CartService {
                 .sum();
 
         return new CartResponse(items, cartTotalPrice);
+    }
+
+    /**
+     * 장바구니 주문 생성에 사용할 장바구니 상품 목록을 조회합니다.
+     * 주문 생성은 명시적으로 선택된 장바구니 상품만 대상으로 하므로 cartIds가 비어 있으면 실패합니다.
+     */
+    @Transactional(readOnly = true)
+    public List<Cart> getOrderCartItems(Long memberId, List<Long> cartIds) {
+        if (cartIds == null || cartIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.EMPTY_CART_ORDER);
+        }
+
+        if (cartIds.stream().anyMatch(Objects::isNull)) {
+            throw new BusinessException(ErrorCode.INVALID_CART_ITEM_ID);
+        }
+
+        List<Long> selectedCartIds = cartIds.stream()
+                .distinct()
+                .toList();
+
+        return getSelectedCartItems(memberId, selectedCartIds);
+    }
+
+    /**
+     * 주문서 미리보기에 사용할 장바구니 상품 목록을 조회합니다.
+     * cartIds가 null이거나 비어 있으면 회원의 전체 장바구니를 조회합니다.
+     */
+    @Transactional(readOnly = true)
+    public List<Cart> getOrderPreviewCartItems(Long memberId, List<Long> cartIds) {
+        if (cartIds == null || cartIds.isEmpty()) {
+            return cartRepository.findAllByMemberIdWithProduct(memberId);
+        }
+
+        if (cartIds.stream().anyMatch(Objects::isNull)) {
+            throw new BusinessException(ErrorCode.INVALID_CART_ITEM_ID);
+        }
+
+        List<Long> selectedCartIds = cartIds.stream()
+                .distinct()
+                .toList();
+
+        return getSelectedCartItems(memberId, selectedCartIds);
+    }
+
+    @Transactional
+    public void deleteOrderCartItems(List<Cart> cartItems) {
+        cartRepository.deleteAll(cartItems);
+    }
+
+    private List<Cart> getSelectedCartItems(Long memberId, List<Long> selectedCartIds) {
+        if (selectedCartIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND);
+        }
+
+        List<Cart> cartItems = cartRepository.findAllByMemberIdAndIdInWithProduct(memberId, selectedCartIds);
+
+        if (cartItems.size() != selectedCartIds.size()) {
+            throw new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND);
+        }
+
+        return cartItems;
     }
 
     private CartItemResponse toItemResponse(Cart cart) {
