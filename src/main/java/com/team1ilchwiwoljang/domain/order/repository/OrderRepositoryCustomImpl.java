@@ -29,32 +29,42 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
         QOrder order = QOrder.order;
         QOrderItem orderItem = QOrderItem.orderItem;
 
+        BooleanExpression baseWhere = order.member.id.eq(memberId)
+                .and(orderStatusEq(condition.orderStatus()))
+                .and(createdAtBetween(condition.startDate(), condition.endDate()));
+
+        BooleanExpression whereClause;
+        if (condition.keyword() != null && !condition.keyword().isBlank()) {
+            // keyword가 있을 때: orderItem에서 매칭 order_id 선조회 후 IN 쿼리로 분리
+            // → 1:N join + distinct 없이 페이징 정합성과 인덱스 스캔 모두 확보
+            List<Long> matchedOrderIds = queryFactory
+                    .select(orderItem.order.id)
+                    .from(orderItem)
+                    .where(orderItem.productNameSnapshot.containsIgnoreCase(condition.keyword()))
+                    .fetch();
+
+            whereClause = baseWhere.and(
+                    order.orderNumber.containsIgnoreCase(condition.keyword())
+                            .or(order.id.in(matchedOrderIds))
+            );
+        } else {
+            // keyword 없을 때: join 없이 Order만 조회 → 복합 인덱스 스캔 활용
+            whereClause = baseWhere;
+        }
+
         List<Order> content = queryFactory
                 .select(order)
-                .distinct()
                 .from(order)
-                .leftJoin(orderItem).on(orderItem.order.eq(order))
-                .where(
-                        order.member.id.eq(memberId),
-                        orderStatusEq(condition.orderStatus()),
-                        keywordLike(condition.keyword(), order, orderItem),
-                        createdAtBetween(condition.startDate(), condition.endDate())
-                )
+                .where(whereClause)
                 .orderBy(getOrderSpecifiers(pageable.getSort(), order))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
 
         Long total = queryFactory
-                .select(order.id.countDistinct())
+                .select(order.count())
                 .from(order)
-                .leftJoin(orderItem).on(orderItem.order.eq(order))
-                .where(
-                        order.member.id.eq(memberId),
-                        orderStatusEq(condition.orderStatus()),
-                        keywordLike(condition.keyword(), order, orderItem),
-                        createdAtBetween(condition.startDate(), condition.endDate())
-                )
+                .where(whereClause)
                 .fetchOne();
 
         long totalCount = (total != null) ? total : 0L;
@@ -64,13 +74,6 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
 
     private BooleanExpression orderStatusEq(OrderStatus orderStatus) {
         return orderStatus != null ? QOrder.order.orderStatus.eq(orderStatus) : null;
-    }
-
-    private BooleanExpression keywordLike(String keyword, QOrder order, QOrderItem orderItem) {
-        return keyword != null && !keyword.isBlank()
-                ? order.orderNumber.containsIgnoreCase(keyword)
-                        .or(orderItem.productNameSnapshot.containsIgnoreCase(keyword))
-                : null;
     }
 
     private BooleanExpression createdAtBetween(LocalDate startDate, LocalDate endDate) {
