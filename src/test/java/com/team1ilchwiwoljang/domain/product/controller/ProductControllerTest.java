@@ -11,7 +11,7 @@ import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.product.dto.ProductResponse;
 import com.team1ilchwiwoljang.domain.product.dto.response.ProductDetailResponse;
 import com.team1ilchwiwoljang.domain.product.dto.response.ProductSearchItemResponse;
-import com.team1ilchwiwoljang.domain.product.dto.response.ProductSearchResponse;
+import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
 import org.junit.jupiter.api.DisplayName;
@@ -59,7 +59,7 @@ class ProductControllerTest {
     @Test
     @DisplayName("상품 검색 요청 시 200 OK와 검색 결과를 반환한다.")
     void searchProductsReturnsSuccessResponse() throws Exception {
-        ProductSearchResponse response = new ProductSearchResponse(
+        PageResponse<ProductSearchItemResponse> response = new PageResponse<>(
                 List.of(new ProductSearchItemResponse(
                         1L,
                         "베이직 셔츠",
@@ -82,11 +82,11 @@ class ProductControllerTest {
                         .param("keyword", "셔츠"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.products[0].productId").value(1))
-                .andExpect(jsonPath("$.data.products[0].name").value("베이직 셔츠"))
-                .andExpect(jsonPath("$.data.products[0].price").value(29000))
-                .andExpect(jsonPath("$.data.products[0].stock").value(10))
-                .andExpect(jsonPath("$.data.products[0].status").value("ON_SALE"))
+                .andExpect(jsonPath("$.data.content[0].productId").value(1))
+                .andExpect(jsonPath("$.data.content[0].name").value("베이직 셔츠"))
+                .andExpect(jsonPath("$.data.content[0].price").value(29000))
+                .andExpect(jsonPath("$.data.content[0].stock").value(10))
+                .andExpect(jsonPath("$.data.content[0].status").value("ON_SALE"))
                 .andExpect(jsonPath("$.data.page").value(0))
                 .andExpect(jsonPath("$.data.size").value(20))
                 .andExpect(jsonPath("$.data.totalElements").value(1))

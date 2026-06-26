@@ -3,7 +3,8 @@ package com.team1ilchwiwoljang.domain.product.service;
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.domain.category.repository.CategoryRepository;
-import com.team1ilchwiwoljang.domain.product.dto.response.ProductSearchResponse;
+import com.team1ilchwiwoljang.common.response.PageResponse;
+import com.team1ilchwiwoljang.domain.product.dto.response.ProductSearchItemResponse;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
@@ -46,14 +47,14 @@ class ProductSearchServiceTest {
                 pageable
         )).willReturn(new PageImpl<>(List.of(product), pageable, 1));
 
-        ProductSearchResponse response = productService.searchProducts(" 셔츠 ", pageable);
+        PageResponse<ProductSearchItemResponse> response = productService.searchProducts(" 셔츠 ", pageable);
 
-        assertThat(response.products()).hasSize(1);
-        assertThat(response.products().get(0).name()).isEqualTo("베이직 셔츠");
-        assertThat(response.products().get(0).price()).isEqualTo(29_000);
-        assertThat(response.products().get(0).stock()).isEqualTo(10);
-        assertThat(response.products().get(0).status()).isEqualTo(ProductStatus.ON_SALE);
-        assertThat(response.products().get(0).orderable()).isTrue();
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content().get(0).name()).isEqualTo("베이직 셔츠");
+        assertThat(response.content().get(0).price()).isEqualTo(29_000);
+        assertThat(response.content().get(0).stock()).isEqualTo(10);
+        assertThat(response.content().get(0).status()).isEqualTo(ProductStatus.ON_SALE);
+        assertThat(response.content().get(0).orderable()).isTrue();
         assertThat(response.page()).isZero();
         assertThat(response.size()).isEqualTo(20);
         assertThat(response.totalElements()).isEqualTo(1);
@@ -77,11 +78,11 @@ class ProductSearchServiceTest {
                 pageable
         )).willReturn(new PageImpl<>(List.of(product), pageable, 1));
 
-        ProductSearchResponse response = productService.searchProducts("셔츠", pageable);
+        PageResponse<ProductSearchItemResponse> response = productService.searchProducts("셔츠", pageable);
 
-        assertThat(response.products()).hasSize(1);
-        assertThat(response.products().get(0).status()).isEqualTo(ProductStatus.OUT_OF_STOCK);
-        assertThat(response.products().get(0).orderable()).isFalse();
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content().get(0).status()).isEqualTo(ProductStatus.OUT_OF_STOCK);
+        assertThat(response.content().get(0).orderable()).isFalse();
     }
 
     @Test

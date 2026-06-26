@@ -5,7 +5,8 @@ import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.domain.category.repository.CategoryRepository;
 import com.team1ilchwiwoljang.domain.product.dto.ProductResponse;
 import com.team1ilchwiwoljang.domain.product.dto.response.ProductDetailResponse;
-import com.team1ilchwiwoljang.domain.product.dto.response.ProductSearchResponse;
+import com.team1ilchwiwoljang.common.response.PageResponse;
+import com.team1ilchwiwoljang.domain.product.dto.response.ProductSearchItemResponse;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
@@ -81,7 +82,7 @@ public class ProductService {
      * 상품명 기반 검색
      * 판매 중지 상품은 검색 결과에서 제외합니다.
      */
-    public ProductSearchResponse searchProducts(String keyword, Pageable pageable) {
+    public PageResponse<ProductSearchItemResponse> searchProducts(String keyword, Pageable pageable) {
         String normalizedKeyword = keyword == null
                 ? ""
                 : keyword.trim();
@@ -90,12 +91,12 @@ public class ProductService {
             throw new BusinessException(ErrorCode.VALIDATION_FAILED);
         }
 
-        return ProductSearchResponse.from(
+        return PageResponse.from(
                 productRepository.findByNameContainingIgnoreCaseAndStatusNot(
                         normalizedKeyword,
                         ProductStatus.STOPPED,
                         pageable
-                )
+                ).map(ProductSearchItemResponse::from)
         );
     }
 

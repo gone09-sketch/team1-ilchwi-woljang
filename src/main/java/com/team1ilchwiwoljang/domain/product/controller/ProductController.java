@@ -4,7 +4,7 @@ import com.team1ilchwiwoljang.common.response.ApiResponse;
 import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.product.dto.ProductResponse;
 import com.team1ilchwiwoljang.domain.product.dto.response.ProductDetailResponse;
-import com.team1ilchwiwoljang.domain.product.dto.response.ProductSearchResponse;
+import com.team1ilchwiwoljang.domain.product.dto.response.ProductSearchItemResponse;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
@@ -47,11 +47,11 @@ public class ProductController {
 
 
     @GetMapping("/search")
-    public ResponseEntity<ApiResponse<ProductSearchResponse>> searchProducts(
+    public ResponseEntity<ApiResponse<PageResponse<ProductSearchItemResponse>>> searchProducts(
             @RequestParam String keyword,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        ProductSearchResponse response = productService.searchProducts(keyword, pageable);
+        PageResponse<ProductSearchItemResponse> response = productService.searchProducts(keyword, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
