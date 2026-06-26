@@ -65,7 +65,7 @@ public class CartService {
     @Recover
     public CartAddResponse recoverAddCartItem(
             DataIntegrityViolationException e, Long memberId, CartCreateRequest request) {
-        throw new BusinessException(ErrorCode.DUPLICATE_CART_ITEM);
+        throw new BusinessException(ErrorCode.CART_ITEM_QUANTITY_EXCEEDED);
     }
 
     @Transactional(readOnly = true)
@@ -80,35 +80,65 @@ public class CartService {
         return new CartResponse(items, cartTotalPrice);
     }
 
+    /**
+     * 장바구니 주문 생성에 사용할 장바구니 상품 목록을 조회합니다.
+     * 주문 생성은 명시적으로 선택된 장바구니 상품만 대상으로 하므로 cartIds가 비어 있으면 실패합니다.
+     */
     @Transactional(readOnly = true)
     public List<Cart> getOrderCartItems(Long memberId, List<Long> cartIds) {
         if (cartIds == null || cartIds.isEmpty()) {
             throw new BusinessException(ErrorCode.EMPTY_CART_ORDER);
         }
 
-        // 같은 장바구니 ID가 중복으로 들어오면 한 번만 주문 대상으로 처리합니다.
+        if (cartIds.stream().anyMatch(Objects::isNull)) {
+            throw new BusinessException(ErrorCode.INVALID_CART_ITEM_ID);
+        }
+
         List<Long> selectedCartIds = cartIds.stream()
-                .filter(Objects::nonNull)
                 .distinct()
                 .toList();
 
+        return getSelectedCartItems(memberId, selectedCartIds);
+    }
+
+    /**
+     * 주문서 미리보기에 사용할 장바구니 상품 목록을 조회합니다.
+     * cartIds가 null이거나 비어 있으면 회원의 전체 장바구니를 조회합니다.
+     */
+    @Transactional(readOnly = true)
+    public List<Cart> getOrderPreviewCartItems(Long memberId, List<Long> cartIds) {
+        if (cartIds == null || cartIds.isEmpty()) {
+            return cartRepository.findAllByMemberIdWithProduct(memberId);
+        }
+
+        if (cartIds.stream().anyMatch(Objects::isNull)) {
+            throw new BusinessException(ErrorCode.INVALID_CART_ITEM_ID);
+        }
+
+        List<Long> selectedCartIds = cartIds.stream()
+                .distinct()
+                .toList();
+
+        return getSelectedCartItems(memberId, selectedCartIds);
+    }
+
+    @Transactional
+    public void deleteOrderCartItems(List<Cart> cartItems) {
+        cartRepository.deleteAll(cartItems);
+    }
+
+    private List<Cart> getSelectedCartItems(Long memberId, List<Long> selectedCartIds) {
         if (selectedCartIds.isEmpty()) {
             throw new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND);
         }
 
         List<Cart> cartItems = cartRepository.findAllByMemberIdAndIdInWithProduct(memberId, selectedCartIds);
 
-        // 회원 ID와 함께 조회했기 때문에, 조회 개수가 다르면 존재하지 않거나 다른 회원의 장바구니 ID입니다.
         if (cartItems.size() != selectedCartIds.size()) {
             throw new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND);
         }
 
         return cartItems;
-    }
-
-    @Transactional
-    public void deleteOrderCartItems(List<Cart> cartItems) {
-        cartRepository.deleteAll(cartItems);
     }
 
     private CartItemResponse toItemResponse(Cart cart) {

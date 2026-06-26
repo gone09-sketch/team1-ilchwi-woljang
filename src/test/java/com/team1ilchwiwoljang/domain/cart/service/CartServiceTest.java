@@ -12,8 +12,10 @@ import com.team1ilchwiwoljang.domain.cart.dto.response.CartResponse;
 import com.team1ilchwiwoljang.domain.cart.entity.Cart;
 import com.team1ilchwiwoljang.domain.cart.repository.CartRepository;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
+import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
+import com.team1ilchwiwoljang.domain.product.service.ProductService;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +31,12 @@ class CartServiceTest {
     @Mock
     private CartRepository cartRepository;
 
+    @Mock
+    private MemberService memberService;
+
+    @Mock
+    private ProductService productService;
+
     @InjectMocks
     private CartService cartService;
 
@@ -36,9 +44,8 @@ class CartServiceTest {
     @DisplayName("장바구니 목록을 조회하면 상품 목록과 총 금액을 반환한다")
     void getCartReturnsItemsAndTotalPrice() {
         Long memberId = 1L;
-        Member member = createMember();
         Product product = createProduct("keyboard", 1_000, 10, ProductStatus.ON_SALE);
-        Cart cart = Cart.create(member, product, 3);
+        Cart cart = Cart.create(createMember(), product, 3);
         given(cartRepository.findAllByMemberIdWithProduct(memberId))
                 .willReturn(List.of(cart));
 
@@ -61,9 +68,8 @@ class CartServiceTest {
     @DisplayName("장바구니 상품 수량이 재고보다 많으면 주문 가능 여부가 false다")
     void getCartReturnsNotOrderableWhenStockIsLessThanQuantity() {
         Long memberId = 1L;
-        Member member = createMember();
         Product product = createProduct("keyboard", 1_000, 2, ProductStatus.ON_SALE);
-        Cart cart = Cart.create(member, product, 3);
+        Cart cart = Cart.create(createMember(), product, 3);
         given(cartRepository.findAllByMemberIdWithProduct(memberId))
                 .willReturn(List.of(cart));
 
@@ -109,7 +115,7 @@ class CartServiceTest {
     @DisplayName("주문 대상 장바구니 ID를 중복 제거한 뒤 선택된 장바구니 상품을 조회한다")
     void getOrderCartItemsReturnsSelectedCartItems() {
         Long memberId = 1L;
-        List<Long> cartIds = Arrays.asList(10L, 10L, null, 20L);
+        List<Long> cartIds = List.of(10L, 10L, 20L);
         List<Long> selectedCartIds = List.of(10L, 20L);
         Cart firstCart = Cart.create(createMember(), createProduct("keyboard", 10_000, 10, ProductStatus.ON_SALE), 1);
         Cart secondCart = Cart.create(createMember(), createProduct("mouse", 5_000, 10, ProductStatus.ON_SALE), 1);
@@ -129,19 +135,19 @@ class CartServiceTest {
         Long memberId = 1L;
 
         assertThatThrownBy(() -> cartService.getOrderCartItems(memberId, List.of()))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.EMPTY_CART_ORDER));
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.EMPTY_CART_ORDER);
     }
 
     @Test
-    @DisplayName("주문 대상 장바구니 ID가 모두 null이면 CART_ITEM_NOT_FOUND 예외가 발생한다")
-    void getOrderCartItemsThrowsWhenOnlyNullCartIdsAreProvided() {
+    @DisplayName("주문 대상 장바구니 ID에 null이 있으면 INVALID_CART_ITEM_ID 예외가 발생한다")
+    void getOrderCartItemsThrowsWhenCartIdsContainNull() {
         Long memberId = 1L;
-        List<Long> cartIds = Arrays.asList(null, null);
+        List<Long> cartIds = Arrays.asList(10L, null);
 
         assertThatThrownBy(() -> cartService.getOrderCartItems(memberId, cartIds))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_CART_ITEM_ID);
     }
 
     @Test
@@ -155,8 +161,8 @@ class CartServiceTest {
                 .willReturn(List.of(cart));
 
         assertThatThrownBy(() -> cartService.getOrderCartItems(memberId, cartIds))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.CART_ITEM_NOT_FOUND));
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CART_ITEM_NOT_FOUND);
     }
 
     @Test
@@ -169,6 +175,60 @@ class CartServiceTest {
         cartService.deleteOrderCartItems(cartItems);
 
         verify(cartRepository).deleteAll(cartItems);
+    }
+
+    @Test
+    @DisplayName("cartIds가 없으면 회원의 전체 장바구니 상품을 조회한다")
+    void getOrderPreviewCartItemsReturnsAllCartItemsWhenCartIdsAreNotProvided() {
+        Long memberId = 1L;
+        Cart cart = Cart.create(createMember(), createProduct("keyboard", 10_000, 10, ProductStatus.ON_SALE), 1);
+        given(cartRepository.findAllByMemberIdWithProduct(memberId))
+                .willReturn(List.of(cart));
+
+        List<Cart> cartItems = cartService.getOrderPreviewCartItems(memberId, null);
+
+        assertThat(cartItems).containsExactly(cart);
+    }
+
+    @Test
+    @DisplayName("cartIds가 있으면 중복을 제거한 뒤 선택된 장바구니 상품만 조회한다")
+    void getOrderPreviewCartItemsReturnsSelectedCartItemsWhenCartIdsAreProvided() {
+        Long memberId = 1L;
+        List<Long> cartIds = List.of(10L, 10L, 20L);
+        List<Long> selectedCartIds = List.of(10L, 20L);
+        Cart firstCart = Cart.create(createMember(), createProduct("keyboard", 10_000, 10, ProductStatus.ON_SALE), 1);
+        Cart secondCart = Cart.create(createMember(), createProduct("mouse", 5_000, 10, ProductStatus.ON_SALE), 1);
+        given(cartRepository.findAllByMemberIdAndIdInWithProduct(memberId, selectedCartIds))
+                .willReturn(List.of(firstCart, secondCart));
+
+        List<Cart> cartItems = cartService.getOrderPreviewCartItems(memberId, cartIds);
+
+        assertThat(cartItems).containsExactly(firstCart, secondCart);
+    }
+
+    @Test
+    @DisplayName("선택한 장바구니 상품 중 존재하지 않거나 다른 회원의 상품이 있으면 예외가 발생한다")
+    void getOrderPreviewCartItemsThrowsWhenSelectedCartItemDoesNotExistOrBelongsToAnotherMember() {
+        Long memberId = 1L;
+        List<Long> cartIds = List.of(10L, 20L);
+        Cart cart = Cart.create(createMember(), createProduct("keyboard", 10_000, 10, ProductStatus.ON_SALE), 1);
+        given(cartRepository.findAllByMemberIdAndIdInWithProduct(memberId, cartIds))
+                .willReturn(List.of(cart));
+
+        assertThatThrownBy(() -> cartService.getOrderPreviewCartItems(memberId, cartIds))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CART_ITEM_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("cartIds에 null이 하나라도 있으면 잘못된 요청으로 처리한다")
+    void getOrderPreviewCartItemsThrowsWhenCartIdsContainNull() {
+        Long memberId = 1L;
+        List<Long> cartIds = Arrays.asList(null, 10L);
+
+        assertThatThrownBy(() -> cartService.getOrderPreviewCartItems(memberId, cartIds))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_CART_ITEM_ID);
     }
 
     private Member createMember() {
