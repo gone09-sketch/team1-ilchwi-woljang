@@ -135,4 +135,33 @@ class ProductServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.PRODUCT_NOT_FOUND);
     }
+
+    @Test
+    @DisplayName("상품 ID로 상품 엔티티를 정상 조회한다")
+    void given_existingProductId_whenGetProduct_thenReturnProduct() {
+        // given
+        Long productId = 1L;
+        Product product = Product.create("keyboard", 10000, 10, ProductStatus.ON_SALE, "description", null);
+        given(productRepository.findById(productId)).willReturn(Optional.of(product));
+
+        // when
+        Product result = productService.getProduct(productId);
+
+        // then
+        assertThat(result).isEqualTo(product);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 상품 ID로 상품 엔티티를 조회하면 PRODUCT_NOT_FOUND 예외가 발생한다")
+    void given_nonExistentProductId_whenGetProduct_thenThrowProductNotFound() {
+        // given
+        Long productId = 999L;
+        given(productRepository.findById(productId)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> productService.getProduct(productId))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.PRODUCT_NOT_FOUND);
+    }
 }
