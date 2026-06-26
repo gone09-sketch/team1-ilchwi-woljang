@@ -145,7 +145,7 @@ Authorization: Bearer {accessToken}
 | ✅ | 문의 | 문의 등록 | `POST` | `/api/members/inquiry` |
 | ✅ | 주문 | 직접 주문 (바로 구매) | `POST` | `/api/orders/direct` |
 | 🔄 PR#78 | 주문 | 바로 구매 주문서 미리보기 | `POST` | `/api/orders/direct/preview` |
-| 🔄 PR#TBD | 주문 | 장바구니 주문 생성 | `POST` | `/api/orders/carts` |
+| 🔄 PR#84 | 주문 | 장바구니 주문 생성 | `POST` | `/api/orders/carts` |
 | 🔄 PR#54 | 문의 | 관리자 문의 답변 | `POST` | `/api/admins/inquiry` |
 | 🔄 PR#59 | 상품 | 상품 검색 | `GET` | `/api/products/search` |
 | 🔄 PR#61 | 주문 | 주문 상태 변경 | `PATCH` | `/api/orders/{orderId}/status` |
@@ -220,7 +220,7 @@ Authorization: Bearer {accessToken}
 | `CART_ITEM_NOT_FOUND` | 404 | 장바구니 상품 없음 | 🔄 PR#68 |
 | `EMPTY_ORDER_PREVIEW` | 400 | 주문할 상품 없음 | 🔄 PR#68 |
 | `NOT_ORDERABLE_PRODUCT` | 400 | 주문할 수 없는 상품 포함 | 🔄 PR#68 |
-| `EMPTY_CART_ORDER` | 400 | 주문할 장바구니 상품 없음 | 🔄 PR#TBD |
+| `EMPTY_CART_ORDER` | 400 | 주문할 장바구니 상품 없음 | 🔄 PR#84 |
 
 ---
 
@@ -695,7 +695,7 @@ Set-Cookie: refreshToken={newToken}; HttpOnly; Path=/api/auth; SameSite=Strict
 
 ---
 
-### 장바구니 주문 생성 🔄 PR#TBD
+### 장바구니 주문 생성 🔄 PR#84
 
 선택한 장바구니 상품을 기준으로 주문을 생성한다.
 주문 생성이 성공하면 주문과 주문상품을 저장하고, 상품 재고를 차감한 뒤 주문에 사용한 장바구니 항목을 삭제한다.
