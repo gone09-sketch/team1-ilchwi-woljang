@@ -6,7 +6,10 @@ import com.team1ilchwiwoljang.domain.cart.entity.Cart;
 import com.team1ilchwiwoljang.domain.cart.service.CartService;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
+import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderPreviewRequest;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
+import com.team1ilchwiwoljang.domain.order.dto.response.DirectOrderPreviewResponse;
+import com.team1ilchwiwoljang.domain.order.dto.response.DirectOrderPreviewResponse.DirectOrderPreviewItemResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderPreviewResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderPreviewResponse.OrderPreviewItemResponse;
@@ -35,6 +38,23 @@ public class OrderService {
     private final MemberService memberService;
     private final ProductService productService;
     private final CartService cartService;
+
+    /**
+     * 상품 상세 페이지에서 바로 주문하기 전 주문서 미리보기 정보를 생성합니다.
+     * 실제 주문 저장, 주문상품 저장, 재고 차감은 하지 않습니다.
+     */
+    @Transactional(readOnly = true)
+    public DirectOrderPreviewResponse previewDirectOrder(DirectOrderPreviewRequest request) {
+        Product product = productService.getProduct(request.productId());
+
+        validateOrderableProduct(product, request.quantity());
+
+        DirectOrderPreviewItemResponse orderItem = createDirectOrderPreviewItemResponse(product, request.quantity());
+        List<DirectOrderPreviewItemResponse> orderItems = List.of(orderItem);
+        long totalOrderAmount = calculateDirectTotalOrderAmount(orderItems);
+
+        return DirectOrderPreviewResponse.of(orderItems, totalOrderAmount);
+    }
 
     /**
      * 상품 상세 페이지에서 바로 주문을 생성하는 메서드입니다.
@@ -108,7 +128,7 @@ public class OrderService {
 
     /**
      * 상품과 수량을 기준으로 주문서 미리보기 응답 항목을 생성합니다.
-     * 나중에 바로 구매 미리보기가 추가되어도 이 메서드를 재사용할 수 있습니다.
+     * 장바구니 기반 미리보기는 cartId가 필요하므로 바로 주문 미리보기 응답과 분리합니다.
      */
     private OrderPreviewItemResponse createOrderPreviewItemResponse(Long cartId, Product product, int quantity) {
         long productPrice = product.getPrice();
@@ -130,6 +150,32 @@ public class OrderService {
     private long calculateTotalOrderAmount(List<OrderPreviewItemResponse> orderItems) {
         return orderItems.stream()
                 .mapToLong(OrderPreviewItemResponse::productTotalAmount)
+                .sum();
+    }
+
+    /**
+     * 바로 주문 미리보기 응답 항목을 생성합니다.
+     * 바로 주문은 아직 장바구니에 담긴 상품이 아니므로 cartId를 응답하지 않습니다.
+     */
+    private DirectOrderPreviewItemResponse createDirectOrderPreviewItemResponse(Product product, int quantity) {
+        long productPrice = product.getPrice();
+        long productTotalAmount = productPrice * quantity;
+
+        return DirectOrderPreviewItemResponse.of(
+                product.getId(),
+                product.getName(),
+                productPrice,
+                quantity,
+                productTotalAmount
+        );
+    }
+
+    /**
+     * 바로 주문 미리보기의 총 상품 금액을 계산합니다.
+     */
+    private long calculateDirectTotalOrderAmount(List<DirectOrderPreviewItemResponse> orderItems) {
+        return orderItems.stream()
+                .mapToLong(DirectOrderPreviewItemResponse::productTotalAmount)
                 .sum();
     }
 

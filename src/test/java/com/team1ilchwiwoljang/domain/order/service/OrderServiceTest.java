@@ -12,7 +12,9 @@ import com.team1ilchwiwoljang.domain.cart.entity.Cart;
 import com.team1ilchwiwoljang.domain.cart.service.CartService;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
+import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderPreviewRequest;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
+import com.team1ilchwiwoljang.domain.order.dto.response.DirectOrderPreviewResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderPreviewResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
 import com.team1ilchwiwoljang.domain.order.entity.Order;
@@ -72,6 +74,73 @@ class OrderServiceTest {
                 productService,
                 cartService
         );
+    }
+    @Test
+    @DisplayName("판매 중인 상품과 충분한 재고가 있으면 바로 구매 미리보기에 성공한다")
+    void given_validRequest_whenPreviewDirectOrder_thenSuccess() {
+        DirectOrderPreviewRequest request = new DirectOrderPreviewRequest(1L, 2);
+
+        Product product = createProduct("product", 10_000, 10, ProductStatus.ON_SALE);
+        ReflectionTestUtils.setField(product, "id", 1L);
+
+        given(productService.getProduct(request.productId())).willReturn(product);
+
+        DirectOrderPreviewResponse response = orderService.previewDirectOrder(request);
+
+        assertThat(response.totalOrderAmount()).isEqualTo(20_000L);
+        assertThat(response.orderItems()).hasSize(1);
+        assertThat(response.orderItems().get(0).productId()).isEqualTo(1L);
+        assertThat(response.orderItems().get(0).productName()).isEqualTo("product");
+        assertThat(response.orderItems().get(0).productPrice()).isEqualTo(10_000L);
+        assertThat(response.orderItems().get(0).quantity()).isEqualTo(2);
+        assertThat(response.orderItems().get(0).productTotalAmount()).isEqualTo(20_000L);
+
+        assertThat(product.getStock()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 상품 ID로 바로 구매 미리보기를 요청하면 PRODUCT_NOT_FOUND 예외를 던진다")
+    void given_nonExistentProduct_whenPreviewDirectOrder_thenThrowProductNotFound() {
+        // given
+        DirectOrderPreviewRequest request = new DirectOrderPreviewRequest(999L, 2);
+
+        given(productService.getProduct(request.productId()))
+                .willThrow(new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        // when & then
+        assertThatThrownBy(() -> orderService.previewDirectOrder(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.PRODUCT_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("판매 중이 아닌 상품으로 바로 구매 미리보기를 요청하면 NOT_ORDERABLE_PRODUCT 예외를 던진다")
+    void given_notOrderableProduct_whenPreviewDirectOrder_thenThrowNotOrderableProduct() {
+        DirectOrderPreviewRequest request = new DirectOrderPreviewRequest(1L, 2);
+
+        Product product = createProduct("product", 10_000, 10, ProductStatus.STOPPED);
+        ReflectionTestUtils.setField(product, "id", 1L);
+
+        given(productService.getProduct(request.productId())).willReturn(product);
+
+        assertThatThrownBy(() -> orderService.previewDirectOrder(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.NOT_ORDERABLE_PRODUCT);
+    }
+
+    @Test
+    @DisplayName("상품 재고가 미리보기 수량보다 부족하면 OUT_OF_STOCK 예외를 던진다")
+    void given_insufficientStock_whenPreviewDirectOrder_thenThrowOutOfStock() {
+        DirectOrderPreviewRequest request = new DirectOrderPreviewRequest(1L, 5);
+
+        Product product = createProduct("product", 10_000, 3, ProductStatus.ON_SALE);
+        ReflectionTestUtils.setField(product, "id", 1L);
+
+        given(productService.getProduct(request.productId())).willReturn(product);
+
+        assertThatThrownBy(() -> orderService.previewDirectOrder(request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.OUT_OF_STOCK);
     }
 
     @Test
