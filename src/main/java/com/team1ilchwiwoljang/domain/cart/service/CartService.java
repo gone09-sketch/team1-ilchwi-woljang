@@ -81,9 +81,29 @@ public class CartService {
     }
 
     /**
+     * 장바구니 주문 생성에 사용할 장바구니 상품 목록을 조회합니다.
+     * 주문 생성은 명시적으로 선택된 장바구니 상품만 대상으로 하므로 cartIds가 비어 있으면 실패합니다.
+     */
+    @Transactional(readOnly = true)
+    public List<Cart> getOrderCartItems(Long memberId, List<Long> cartIds) {
+        if (cartIds == null || cartIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.EMPTY_CART_ORDER);
+        }
+
+        if (cartIds.stream().anyMatch(Objects::isNull)) {
+            throw new BusinessException(ErrorCode.INVALID_CART_ITEM_ID);
+        }
+
+        List<Long> selectedCartIds = cartIds.stream()
+                .distinct()
+                .toList();
+
+        return getSelectedCartItems(memberId, selectedCartIds);
+    }
+
+    /**
      * 주문서 미리보기에 사용할 장바구니 상품 목록을 조회합니다.
      * cartIds가 null이거나 비어 있으면 회원의 전체 장바구니를 조회합니다.
-     * cartIds가 있으면 선택된 장바구니 상품만 조회합니다.
      */
     @Transactional(readOnly = true)
     public List<Cart> getOrderPreviewCartItems(Long memberId, List<Long> cartIds) {
@@ -91,23 +111,29 @@ public class CartService {
             return cartRepository.findAllByMemberIdWithProduct(memberId);
         }
 
-        // null ID는 어떤 장바구니 상품을 뜻하는지 알 수 없으므로 잘못된 요청으로 봅니다.
         if (cartIds.stream().anyMatch(Objects::isNull)) {
             throw new BusinessException(ErrorCode.INVALID_CART_ITEM_ID);
         }
 
-        // 같은 cartId가 중복으로 들어와도 한 번만 조회되도록 정리합니다.
         List<Long> selectedCartIds = cartIds.stream()
                 .distinct()
                 .toList();
 
+        return getSelectedCartItems(memberId, selectedCartIds);
+    }
+
+    @Transactional
+    public void deleteOrderCartItems(List<Cart> cartItems) {
+        cartRepository.deleteAll(cartItems);
+    }
+
+    private List<Cart> getSelectedCartItems(Long memberId, List<Long> selectedCartIds) {
         if (selectedCartIds.isEmpty()) {
             throw new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND);
         }
 
         List<Cart> cartItems = cartRepository.findAllByMemberIdAndIdInWithProduct(memberId, selectedCartIds);
 
-        // 다른 회원의 장바구니 ID나 존재하지 않는 ID가 섞이면 조회 개수가 줄어듭니다.
         if (cartItems.size() != selectedCartIds.size()) {
             throw new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND);
         }

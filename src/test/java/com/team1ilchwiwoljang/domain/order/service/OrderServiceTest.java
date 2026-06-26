@@ -12,6 +12,7 @@ import com.team1ilchwiwoljang.domain.cart.entity.Cart;
 import com.team1ilchwiwoljang.domain.cart.service.CartService;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
+import com.team1ilchwiwoljang.domain.order.dto.request.CartOrderRequest;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderPreviewRequest;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
 import com.team1ilchwiwoljang.domain.order.dto.response.DirectOrderPreviewResponse;
@@ -75,14 +76,12 @@ class OrderServiceTest {
                 cartService
         );
     }
+
     @Test
     @DisplayName("판매 중인 상품과 충분한 재고가 있으면 바로 구매 미리보기에 성공한다")
     void given_validRequest_whenPreviewDirectOrder_thenSuccess() {
         DirectOrderPreviewRequest request = new DirectOrderPreviewRequest(1L, 2);
-
-        Product product = createProduct("product", 10_000, 10, ProductStatus.ON_SALE);
-        ReflectionTestUtils.setField(product, "id", 1L);
-
+        Product product = createProduct(1L, "product", 10_000, 10, ProductStatus.ON_SALE);
         given(productService.getProduct(request.productId())).willReturn(product);
 
         DirectOrderPreviewResponse response = orderService.previewDirectOrder(request);
@@ -94,20 +93,16 @@ class OrderServiceTest {
         assertThat(response.orderItems().get(0).productPrice()).isEqualTo(10_000L);
         assertThat(response.orderItems().get(0).quantity()).isEqualTo(2);
         assertThat(response.orderItems().get(0).productTotalAmount()).isEqualTo(20_000L);
-
         assertThat(product.getStock()).isEqualTo(10);
     }
 
     @Test
     @DisplayName("존재하지 않는 상품 ID로 바로 구매 미리보기를 요청하면 PRODUCT_NOT_FOUND 예외를 던진다")
     void given_nonExistentProduct_whenPreviewDirectOrder_thenThrowProductNotFound() {
-        // given
         DirectOrderPreviewRequest request = new DirectOrderPreviewRequest(999L, 2);
-
         given(productService.getProduct(request.productId()))
                 .willThrow(new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
 
-        // when & then
         assertThatThrownBy(() -> orderService.previewDirectOrder(request))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.PRODUCT_NOT_FOUND);
@@ -117,10 +112,7 @@ class OrderServiceTest {
     @DisplayName("판매 중이 아닌 상품으로 바로 구매 미리보기를 요청하면 NOT_ORDERABLE_PRODUCT 예외를 던진다")
     void given_notOrderableProduct_whenPreviewDirectOrder_thenThrowNotOrderableProduct() {
         DirectOrderPreviewRequest request = new DirectOrderPreviewRequest(1L, 2);
-
-        Product product = createProduct("product", 10_000, 10, ProductStatus.STOPPED);
-        ReflectionTestUtils.setField(product, "id", 1L);
-
+        Product product = createProduct(1L, "product", 10_000, 10, ProductStatus.STOPPED);
         given(productService.getProduct(request.productId())).willReturn(product);
 
         assertThatThrownBy(() -> orderService.previewDirectOrder(request))
@@ -132,10 +124,7 @@ class OrderServiceTest {
     @DisplayName("상품 재고가 미리보기 수량보다 부족하면 OUT_OF_STOCK 예외를 던진다")
     void given_insufficientStock_whenPreviewDirectOrder_thenThrowOutOfStock() {
         DirectOrderPreviewRequest request = new DirectOrderPreviewRequest(1L, 5);
-
-        Product product = createProduct("product", 10_000, 3, ProductStatus.ON_SALE);
-        ReflectionTestUtils.setField(product, "id", 1L);
-
+        Product product = createProduct(1L, "product", 10_000, 3, ProductStatus.ON_SALE);
         given(productService.getProduct(request.productId())).willReturn(product);
 
         assertThatThrownBy(() -> orderService.previewDirectOrder(request))
@@ -148,13 +137,8 @@ class OrderServiceTest {
     void given_validRequest_whenCreateDirectOrder_thenSuccess() {
         Long memberId = 1L;
         DirectOrderRequest request = new DirectOrderRequest(1L, 2);
-
-        Member member = createMember();
-        ReflectionTestUtils.setField(member, "id", memberId);
-
-        Product product = createProduct("product", 10_000, 10, ProductStatus.ON_SALE);
-        ReflectionTestUtils.setField(product, "id", 1L);
-
+        Member member = createMember(memberId);
+        Product product = createProduct(1L, "product", 10_000, 10, ProductStatus.ON_SALE);
         given(memberService.getMember(memberId)).willReturn(member);
         given(productService.getProduct(request.productId())).willReturn(product);
 
@@ -169,7 +153,6 @@ class OrderServiceTest {
         assertThat(response.orderItems().get(0).quantity()).isEqualTo(2L);
         assertThat(response.orderItems().get(0).totalPrice()).isEqualTo(20_000L);
         assertThat(product.getStock()).isEqualTo(8);
-
         verify(orderRepository).save(any(Order.class));
         verify(orderItemRepository).save(any(OrderItem.class));
     }
@@ -179,7 +162,6 @@ class OrderServiceTest {
     void given_nonExistentMember_whenCreateDirectOrder_thenThrowMemberNotFound() {
         Long memberId = 999L;
         DirectOrderRequest request = new DirectOrderRequest(1L, 2);
-
         given(memberService.getMember(memberId))
                 .willThrow(new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
@@ -193,8 +175,7 @@ class OrderServiceTest {
     void given_nonExistentProduct_whenCreateDirectOrder_thenThrowProductNotFound() {
         Long memberId = 1L;
         DirectOrderRequest request = new DirectOrderRequest(999L, 2);
-
-        given(memberService.getMember(memberId)).willReturn(createMember());
+        given(memberService.getMember(memberId)).willReturn(createMember(memberId));
         given(productService.getProduct(request.productId()))
                 .willThrow(new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
 
@@ -208,9 +189,8 @@ class OrderServiceTest {
     void given_insufficientStock_whenCreateDirectOrder_thenThrowOutOfStock() {
         Long memberId = 1L;
         DirectOrderRequest request = new DirectOrderRequest(1L, 5);
-        Product product = createProduct("product", 10_000, 3, ProductStatus.ON_SALE);
-
-        given(memberService.getMember(memberId)).willReturn(createMember());
+        Product product = createProduct(1L, "product", 10_000, 3, ProductStatus.ON_SALE);
+        given(memberService.getMember(memberId)).willReturn(createMember(memberId));
         given(productService.getProduct(request.productId())).willReturn(product);
 
         assertThatThrownBy(() -> orderService.createDirectOrder(memberId, request))
@@ -223,9 +203,8 @@ class OrderServiceTest {
     void given_notOnSaleProduct_whenCreateDirectOrder_thenThrowNotOrderableProduct() {
         Long memberId = 1L;
         DirectOrderRequest request = new DirectOrderRequest(1L, 2);
-        Product product = createProduct("product", 10_000, 10, ProductStatus.STOPPED);
-
-        given(memberService.getMember(memberId)).willReturn(createMember());
+        Product product = createProduct(1L, "product", 10_000, 10, ProductStatus.STOPPED);
+        given(memberService.getMember(memberId)).willReturn(createMember(memberId));
         given(productService.getProduct(request.productId())).willReturn(product);
 
         assertThatThrownBy(() -> orderService.createDirectOrder(memberId, request))
@@ -234,12 +213,75 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("회원의 장바구니 상품들이 주문 가능하면 장바구니 주문 생성에 성공한다")
+    void given_validCartItems_whenCreateCartOrder_thenSuccess() {
+        Long memberId = 1L;
+        CartOrderRequest request = new CartOrderRequest(List.of(10L, 20L));
+        Member member = createMember(memberId);
+        Product firstProduct = createProduct(100L, "keyboard", 10_000, 10, ProductStatus.ON_SALE);
+        Product secondProduct = createProduct(200L, "mouse", 5_000, 10, ProductStatus.ON_SALE);
+        Cart firstCart = createCart(10L, member, firstProduct, 2);
+        Cart secondCart = createCart(20L, member, secondProduct, 1);
+
+        given(memberService.getMember(memberId)).willReturn(member);
+        given(cartService.getOrderCartItems(memberId, request.cartIds()))
+                .willReturn(List.of(firstCart, secondCart));
+
+        OrderResponse response = orderService.createCartOrder(memberId, request);
+
+        assertThat(response.orderNumber()).isNotNull();
+        assertThat(response.orderStatus()).isEqualTo(OrderStatus.PENDING.name());
+        assertThat(response.totalAmount()).isEqualTo(25_000L);
+        assertThat(response.orderItems()).hasSize(2);
+        assertThat(response.orderItems().get(0).productName()).isEqualTo("keyboard");
+        assertThat(response.orderItems().get(0).productPrice()).isEqualTo(10_000L);
+        assertThat(response.orderItems().get(0).quantity()).isEqualTo(2L);
+        assertThat(response.orderItems().get(0).totalPrice()).isEqualTo(20_000L);
+        assertThat(firstProduct.getStock()).isEqualTo(8);
+        assertThat(secondProduct.getStock()).isEqualTo(9);
+        verify(orderRepository).save(any(Order.class));
+        verify(orderItemRepository).saveAll(any());
+        verify(cartService).deleteOrderCartItems(List.of(firstCart, secondCart));
+    }
+
+    @Test
+    @DisplayName("장바구니 주문 대상 상품 재고가 부족하면 OUT_OF_STOCK 예외를 던진다")
+    void given_insufficientStockCartItem_whenCreateCartOrder_thenThrowOutOfStock() {
+        Long memberId = 1L;
+        CartOrderRequest request = new CartOrderRequest(List.of(10L));
+        Member member = createMember(memberId);
+        Product product = createProduct(100L, "keyboard", 10_000, 1, ProductStatus.ON_SALE);
+        Cart cart = createCart(10L, member, product, 2);
+        given(memberService.getMember(memberId)).willReturn(member);
+        given(cartService.getOrderCartItems(memberId, request.cartIds())).willReturn(List.of(cart));
+
+        assertThatThrownBy(() -> orderService.createCartOrder(memberId, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.OUT_OF_STOCK);
+    }
+
+    @Test
+    @DisplayName("장바구니 주문 대상 상품이 판매 중이 아니면 NOT_ORDERABLE_PRODUCT 예외를 던진다")
+    void given_notOnSaleCartItem_whenCreateCartOrder_thenThrowNotOrderableProduct() {
+        Long memberId = 1L;
+        CartOrderRequest request = new CartOrderRequest(List.of(10L));
+        Member member = createMember(memberId);
+        Product product = createProduct(100L, "keyboard", 10_000, 10, ProductStatus.STOPPED);
+        Cart cart = createCart(10L, member, product, 1);
+        given(memberService.getMember(memberId)).willReturn(member);
+        given(cartService.getOrderCartItems(memberId, request.cartIds())).willReturn(List.of(cart));
+
+        assertThatThrownBy(() -> orderService.createCartOrder(memberId, request))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.NOT_ORDERABLE_PRODUCT);
+    }
+
+    @Test
     @DisplayName("cartIds가 없으면 회원의 전체 장바구니 상품으로 주문 미리보기를 반환한다")
     void given_noCartIds_whenPreviewOrder_thenReturnAllCartItems() {
         Long memberId = 1L;
-        Cart firstCart = createCart(10L, createProduct(100L, "keyboard", 10_000, 10, ProductStatus.ON_SALE), 2);
-        Cart secondCart = createCart(20L, createProduct(200L, "mouse", 5_000, 10, ProductStatus.ON_SALE), 1);
-
+        Cart firstCart = createCart(10L, createMember(memberId), createProduct(100L, "keyboard", 10_000, 10, ProductStatus.ON_SALE), 2);
+        Cart secondCart = createCart(20L, createMember(memberId), createProduct(200L, "mouse", 5_000, 10, ProductStatus.ON_SALE), 1);
         given(cartService.getOrderPreviewCartItems(memberId, null))
                 .willReturn(List.of(firstCart, secondCart));
 
@@ -260,9 +302,8 @@ class OrderServiceTest {
     void given_cartIds_whenPreviewOrder_thenReturnSelectedCartItems() {
         Long memberId = 1L;
         List<Long> cartIds = List.of(10L, 10L, 20L);
-        Cart firstCart = createCart(10L, createProduct(100L, "keyboard", 10_000, 10, ProductStatus.ON_SALE), 1);
-        Cart secondCart = createCart(20L, createProduct(200L, "mouse", 5_000, 10, ProductStatus.ON_SALE), 1);
-
+        Cart firstCart = createCart(10L, createMember(memberId), createProduct(100L, "keyboard", 10_000, 10, ProductStatus.ON_SALE), 1);
+        Cart secondCart = createCart(20L, createMember(memberId), createProduct(200L, "mouse", 5_000, 10, ProductStatus.ON_SALE), 1);
         given(cartService.getOrderPreviewCartItems(memberId, cartIds))
                 .willReturn(List.of(firstCart, secondCart));
 
@@ -279,7 +320,6 @@ class OrderServiceTest {
     void given_invalidCartId_whenPreviewOrder_thenThrowCartItemNotFound() {
         Long memberId = 1L;
         List<Long> cartIds = List.of(10L, 20L);
-
         given(cartService.getOrderPreviewCartItems(memberId, cartIds))
                 .willThrow(new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND));
 
@@ -292,9 +332,7 @@ class OrderServiceTest {
     @DisplayName("주문 미리보기 대상 장바구니가 비어 있으면 EMPTY_ORDER_PREVIEW 예외를 던진다")
     void given_emptyCart_whenPreviewOrder_thenThrowEmptyOrderPreview() {
         Long memberId = 1L;
-
-        given(cartService.getOrderPreviewCartItems(memberId, null))
-                .willReturn(List.of());
+        given(cartService.getOrderPreviewCartItems(memberId, null)).willReturn(List.of());
 
         assertThatThrownBy(() -> orderService.previewOrder(memberId, null))
                 .isInstanceOf(BusinessException.class)
@@ -305,10 +343,8 @@ class OrderServiceTest {
     @DisplayName("판매 중이 아닌 상품이 장바구니에 있으면 NOT_ORDERABLE_PRODUCT 예외를 던진다")
     void given_notOnSaleProduct_whenPreviewOrder_thenThrowNotOrderableProduct() {
         Long memberId = 1L;
-        Cart cart = createCart(createProduct("keyboard", 10_000, 10, ProductStatus.STOPPED), 1);
-
-        given(cartService.getOrderPreviewCartItems(memberId, null))
-                .willReturn(List.of(cart));
+        Cart cart = createCart(10L, createMember(memberId), createProduct(100L, "keyboard", 10_000, 10, ProductStatus.STOPPED), 1);
+        given(cartService.getOrderPreviewCartItems(memberId, null)).willReturn(List.of(cart));
 
         assertThatThrownBy(() -> orderService.previewOrder(memberId, null))
                 .isInstanceOf(BusinessException.class)
@@ -319,10 +355,8 @@ class OrderServiceTest {
     @DisplayName("장바구니 상품 재고가 부족하면 OUT_OF_STOCK 예외를 던진다")
     void given_insufficientStock_whenPreviewOrder_thenThrowOutOfStock() {
         Long memberId = 1L;
-        Cart cart = createCart(createProduct("keyboard", 10_000, 1, ProductStatus.ON_SALE), 2);
-
-        given(cartService.getOrderPreviewCartItems(memberId, null))
-                .willReturn(List.of(cart));
+        Cart cart = createCart(10L, createMember(memberId), createProduct(100L, "keyboard", 10_000, 1, ProductStatus.ON_SALE), 2);
+        given(cartService.getOrderPreviewCartItems(memberId, null)).willReturn(List.of(cart));
 
         assertThatThrownBy(() -> orderService.previewOrder(memberId, null))
                 .isInstanceOf(BusinessException.class)
@@ -332,20 +366,15 @@ class OrderServiceTest {
     @Test
     @DisplayName("주문 소유자가 취소를 요청하면 주문 상태와 취소 시각을 변경한다")
     void given_orderOwner_whenCancelOrder_thenSuccess() {
-        // given
         Long memberId = 1L;
         Long orderId = 1L;
-        Member member = Member.create("test@example.com", "password", "홍길동", "010-1234-5678");
-        ReflectionTestUtils.setField(member, "id", memberId);
+        Member member = createMember(memberId);
         Order order = Order.create(member, "order-123", 20000L, 20000L);
         ReflectionTestUtils.setField(order, "id", orderId);
-
         given(orderRepository.findByIdAndMemberId(orderId, memberId)).willReturn(Optional.of(order));
 
-        // when
         orderService.cancelOrder(memberId, orderId);
 
-        // then
         assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.CANCELLED);
         assertThat(order.getCanceledAt()).isEqualTo(LocalDateTime.now(fixedClock));
     }
@@ -353,13 +382,10 @@ class OrderServiceTest {
     @Test
     @DisplayName("존재하지 않거나 소유자가 다른 주문을 취소하려고 하면 ORDER_NOT_FOUND 예외를 던진다")
     void given_notOwnedOrder_whenCancelOrder_thenThrowOrderNotFound() {
-        // given
         Long memberId = 1L;
         Long orderId = 999L;
-
         given(orderRepository.findByIdAndMemberId(orderId, memberId)).willReturn(Optional.empty());
 
-        // when & then
         assertThatThrownBy(() -> orderService.cancelOrder(memberId, orderId))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ORDER_NOT_FOUND);
@@ -368,18 +394,14 @@ class OrderServiceTest {
     @Test
     @DisplayName("이미 취소된 주문을 다시 취소하려고 하면 INVALID_ORDER_STATUS 예외를 던진다")
     void given_cancelledOrder_whenCancelAgain_thenThrowInvalidOrderStatus() {
-        // given
         Long memberId = 1L;
         Long orderId = 1L;
-        Member member = Member.create("test@example.com", "password", "홍길동", "010-1234-5678");
-        ReflectionTestUtils.setField(member, "id", memberId);
+        Member member = createMember(memberId);
         Order order = Order.create(member, "order-123", 20000L, 20000L);
         ReflectionTestUtils.setField(order, "id", orderId);
         order.cancel(LocalDateTime.now(fixedClock));
-
         given(orderRepository.findByIdAndMemberId(orderId, memberId)).willReturn(Optional.of(order));
 
-        // when & then
         assertThatThrownBy(() -> orderService.cancelOrder(memberId, orderId))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_ORDER_STATUS);
@@ -388,29 +410,24 @@ class OrderServiceTest {
         assertThat(order.getPaidAt()).isNull();
     }
 
-    private Cart createCart(Product product, int quantity) {
-        return Cart.create(createMember(), product, quantity);
-    }
-
-    private Cart createCart(Long cartId, Product product, int quantity) {
-        Cart cart = Cart.create(createMember(), product, quantity);
+    private Cart createCart(Long cartId, Member member, Product product, int quantity) {
+        Cart cart = Cart.create(member, product, quantity);
         ReflectionTestUtils.setField(cart, "id", cartId);
 
         return cart;
     }
 
-    private Product createProduct(String name, int price, int stock, ProductStatus status) {
-        return Product.create(name, price, stock, status, "description", null);
-    }
-
     private Product createProduct(Long productId, String name, int price, int stock, ProductStatus status) {
-        Product product = createProduct(name, price, stock, status);
+        Product product = Product.create(name, price, stock, status, "description", null);
         ReflectionTestUtils.setField(product, "id", productId);
 
         return product;
     }
 
-    private Member createMember() {
-        return Member.create("member@example.com", "password", "member", "010-1234-5678");
+    private Member createMember(Long memberId) {
+        Member member = Member.create("member@example.com", "password", "member", "010-1234-5678");
+        ReflectionTestUtils.setField(member, "id", memberId);
+
+        return member;
     }
 }

@@ -2,6 +2,7 @@ package com.team1ilchwiwoljang.domain.order.repository;
 
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.repository.MemberRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,13 +29,14 @@ public class OrderIndexPerformanceTest {
     private Long targetMemberId;
     private List<Long> otherMemberIds = new ArrayList<>();
 
+    @AfterEach
+    void tearDown() {
+        clearTestData();
+    }
+
     @BeforeEach
     void setUp() {
-        // 기존 데이터 정리
-        jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
-        jdbcTemplate.execute("TRUNCATE TABLE orders");
-        jdbcTemplate.execute("TRUNCATE TABLE members");
-        jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
+        clearTestData();
 
         // 테스트 멤버 생성
         Member target = Member.create("target@test.com", "pass", "Target", "010-1234-5678");
@@ -61,6 +63,13 @@ public class OrderIndexPerformanceTest {
         }
 
         System.out.println(">>> 데이터 삽입 완료!");
+    }
+
+    private void clearTestData() {
+        jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
+        jdbcTemplate.execute("TRUNCATE TABLE orders");
+        jdbcTemplate.execute("TRUNCATE TABLE members");
+        jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
     }
 
     private void insertOrdersBatch(Long memberId, int count) {
