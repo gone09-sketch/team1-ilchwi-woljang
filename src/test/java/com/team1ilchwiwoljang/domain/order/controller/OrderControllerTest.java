@@ -33,6 +33,7 @@ import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemHistoryResponse
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
@@ -366,14 +367,18 @@ class OrderControllerTest {
         OrderHistoryResponse history = new OrderHistoryResponse(100L, "ORD-123", 20000L, "PENDING", null, List.of(item));
         PageResponse<OrderHistoryResponse> pageResponse = new PageResponse<>(List.of(history), 0, 10, 1L, 1, true);
 
-        given(orderService.getOrderHistory(eq(MEMBER_ID), any(OrderSearchCondition.class), any(Pageable.class))).willReturn(pageResponse);
+        given(orderService.getOrderHistory(
+                eq(MEMBER_ID),
+                argThat(condition -> "ORD-123".equals(condition.keyword())),
+                any(Pageable.class)
+        )).willReturn(pageResponse);
 
         // when & then
         mockMvc.perform(get("/api/orders")
                         .param("startDate", "2026-06-01")
                         .param("endDate", "2026-06-25")
                         .param("orderStatus", "PENDING")
-                        .param("orderNumber", "ORD-123")
+                        .param("keyword", "ORD-123")
                         .param("page", "0")
                         .param("size", "10"))
                 .andExpect(status().isOk())

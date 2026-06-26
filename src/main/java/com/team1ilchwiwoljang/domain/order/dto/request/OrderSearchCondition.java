@@ -10,6 +10,6 @@ public record OrderSearchCondition(
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         LocalDate endDate,
         OrderStatus orderStatus,
-        String orderNumber
+        String keyword
 ) {
 }

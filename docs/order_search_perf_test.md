@@ -82,7 +82,7 @@ CALL insert_bulk_orders();
 | `startDate` | `2026-06-01` | 검색 시작 날짜 |
 | `endDate` | `2026-06-25` | 검색 종료 날짜 |
 | `orderStatus`| `CANCELLED` | 주문 상태 (`PENDING`, `CANCELLED` 등) |
-| `orderNumber`| `MATCH` | 주문 번호 검색어 (부분 일치) |
+| `keyword`| `MATCH` | 상품명 또는 주문 번호 검색어 (부분 일치) |
 | `page` | `0` | 페이지 번호 (0부터 시작) |
 | `size` | `10` | 페이지당 노출 개수 |
 
@@ -118,7 +118,7 @@ CALL insert_bulk_orders();
 | **1. 전체 조회** | `page=0&size=10` | | | |
 | **2. 기간 필터 검색** | `startDate=2026-06-01&endDate=2026-06-25` | | | |
 | **3. 상태 필터 검색** | `orderStatus=CANCELLED` | | | |
-| **4. 복합 필터 검색** | `orderStatus=CANCELLED&orderNumber=MATCH` | | | |
+| **4. 복합 필터 검색** | `orderStatus=CANCELLED&keyword=노트북` | | | |
 | **5. 깊은 페이징 조회**| `page=4000&size=10` (뒤쪽 데이터 조회) | | | |
 
 ---

@@ -7,6 +7,7 @@ import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
 import com.team1ilchwiwoljang.domain.order.entity.Order;
 import com.team1ilchwiwoljang.domain.order.entity.OrderStatus;
 import com.team1ilchwiwoljang.domain.order.entity.QOrder;
+import com.team1ilchwiwoljang.domain.order.entity.QOrderItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -26,13 +27,17 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
     @Override
     public Page<Order> findOrderHistoryByMemberId(Long memberId, OrderSearchCondition condition, Pageable pageable) {
         QOrder order = QOrder.order;
+        QOrderItem orderItem = QOrderItem.orderItem;
 
         List<Order> content = queryFactory
-                .selectFrom(order)
+                .select(order)
+                .distinct()
+                .from(order)
+                .leftJoin(orderItem).on(orderItem.order.eq(order))
                 .where(
                         order.member.id.eq(memberId),
                         orderStatusEq(condition.orderStatus()),
-                        orderNumberLike(condition.orderNumber()),
+                        keywordLike(condition.keyword(), order, orderItem),
                         createdAtBetween(condition.startDate(), condition.endDate())
                 )
                 .orderBy(getOrderSpecifiers(pageable.getSort(), order))
@@ -41,12 +46,13 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
                 .fetch();
 
         Long total = queryFactory
-                .select(order.count())
+                .select(order.id.countDistinct())
                 .from(order)
+                .leftJoin(orderItem).on(orderItem.order.eq(order))
                 .where(
                         order.member.id.eq(memberId),
                         orderStatusEq(condition.orderStatus()),
-                        orderNumberLike(condition.orderNumber()),
+                        keywordLike(condition.keyword(), order, orderItem),
                         createdAtBetween(condition.startDate(), condition.endDate())
                 )
                 .fetchOne();
@@ -60,9 +66,10 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
         return orderStatus != null ? QOrder.order.orderStatus.eq(orderStatus) : null;
     }
 
-    private BooleanExpression orderNumberLike(String orderNumber) {
-        return orderNumber != null && !orderNumber.isBlank() 
-                ? QOrder.order.orderNumber.containsIgnoreCase(orderNumber) 
+    private BooleanExpression keywordLike(String keyword, QOrder order, QOrderItem orderItem) {
+        return keyword != null && !keyword.isBlank()
+                ? order.orderNumber.containsIgnoreCase(keyword)
+                        .or(orderItem.productNameSnapshot.containsIgnoreCase(keyword))
                 : null;
     }
 
