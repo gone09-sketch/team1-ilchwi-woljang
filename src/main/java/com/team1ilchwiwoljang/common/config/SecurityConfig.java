@@ -74,7 +74,11 @@ public class SecurityConfig {
 
                                 // Spring 내부 에러 경로
                                 "/error",
-                                "/error/**"
+                                "/error/**",
+
+                                // ws
+                                "/ws",
+                                "/ws/**"
                         ).permitAll()
 
                         .requestMatchers(
