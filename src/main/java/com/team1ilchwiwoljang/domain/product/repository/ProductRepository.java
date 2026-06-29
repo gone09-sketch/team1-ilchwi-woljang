@@ -22,4 +22,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             ProductStatus excludedStatus,
             Pageable pageable
     );
+
+    List<Product> findByStatusOrderBySalesCountDesc(ProductStatus status, Pageable pageable);
 }

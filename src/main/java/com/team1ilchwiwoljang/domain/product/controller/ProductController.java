@@ -54,4 +54,12 @@ public class ProductController {
         PageResponse<ProductSearchItemResponse> response = productService.searchProducts(keyword, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    @GetMapping("/popular")
+    public ResponseEntity<ApiResponse<java.util.List<com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse>>> getPopularProducts(
+            @RequestParam(defaultValue = "10") @Min(1) int limit
+    ) {
+        java.util.List<com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse> response = productService.getPopularProducts(limit);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
 }

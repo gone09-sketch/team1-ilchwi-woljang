@@ -115,4 +115,16 @@ public class ProductService {
                     Sort.by("createdAt").descending();
         };
     }
+
+    /**
+     * 누적 판매량 기준 인기 상품 목록 조회 (캐싱 적용)
+     */
+    @org.springframework.cache.annotation.Cacheable(value = "popularProducts", key = "#limit")
+    public java.util.List<com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse> getPopularProducts(int limit) {
+        Pageable pageable = PageRequest.of(0, limit);
+        return productRepository.findByStatusOrderBySalesCountDesc(ProductStatus.ON_SALE, pageable)
+                .stream()
+                .map(com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse::from)
+                .toList();
+    }
 }
