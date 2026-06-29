@@ -115,4 +115,12 @@ public class ProductService {
                     Sort.by("createdAt").descending();
         };
     }
+    /**
+     * 주문 재고 차감
+     */
+    @Transactional(readOnly = true)
+    public Product getProductWithOptimisticLock(Long productId){
+        return productRepository.findByWithOptimisticLock(productId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
+    }
 }
