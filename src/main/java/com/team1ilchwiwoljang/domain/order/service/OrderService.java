@@ -4,6 +4,7 @@ import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.domain.cart.entity.Cart;
 import com.team1ilchwiwoljang.domain.cart.service.CartService;
+import com.team1ilchwiwoljang.domain.category.entity.Category;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.order.dto.request.CartOrderRequest;
@@ -20,12 +21,20 @@ import com.team1ilchwiwoljang.domain.order.entity.OrderItem;
 import com.team1ilchwiwoljang.domain.order.repository.OrderItemRepository;
 import com.team1ilchwiwoljang.domain.order.repository.OrderRepository;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
+import com.team1ilchwiwoljang.common.response.PageResponse;
+import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
+import com.team1ilchwiwoljang.domain.order.dto.response.OrderHistoryResponse;
+import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemHistoryResponse;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,10 +49,55 @@ public class OrderService {
     private final ProductService productService;
     private final CartService cartService;
 
-    /**
-     * 상품 상세 페이지에서 바로 주문하기 전 주문서 미리보기 정보를 생성합니다.
-     * 실제 주문 저장, 주문상품 저장, 재고 차감은 하지 않습니다.
-     */
+    @Transactional(readOnly = true)
+    public PageResponse<OrderHistoryResponse> getOrderHistory(Long memberId, OrderSearchCondition condition, Pageable pageable) {
+        Page<Order> orderPage = orderRepository.findOrderHistoryByMemberId(memberId, condition, pageable);
+
+        List<Long> orderIds = orderPage.getContent().stream()
+                .map(Order::getId)
+                .toList();
+
+        List<OrderItem> orderItems = orderItemRepository.findByOrderIdIn(orderIds);
+
+        Map<Long, List<OrderItemHistoryResponse>> itemsByOrderId = orderItems.stream()
+                .collect(Collectors.groupingBy(
+                        item -> item.getOrder().getId(),
+                        Collectors.mapping(
+                                item -> OrderItemHistoryResponse.of(
+                                        item.getProduct().getId(),
+                                        item.getProductNameSnapshot(),
+                                        item.getProductPriceSnapshot(),
+                                        item.getQuantity(),
+                                        item.getTotalPrice(),
+                                        getCategoryId(item),
+                                        getCategoryName(item)
+                                ),
+                                Collectors.toList()
+                        )
+                ));
+
+        Page<OrderHistoryResponse> dtoPage = orderPage.map(order -> OrderHistoryResponse.of(
+                order.getId(),
+                order.getOrderNumber(),
+                order.getTotalAmount(),
+                order.getOrderStatus().name(),
+                order.getCreatedAt(),
+                itemsByOrderId.getOrDefault(order.getId(), List.of())
+        ));
+
+        return PageResponse.from(dtoPage);
+    }
+
+    private Long getCategoryId(OrderItem item) {
+        Category category = item.getProduct().getCategory();
+        return category != null ? category.getId() : null;
+    }
+
+    private String getCategoryName(OrderItem item) {
+        Category category = item.getProduct().getCategory();
+        return category != null ? category.getName() : null;
+    }
+
     @Transactional(readOnly = true)
     public DirectOrderPreviewResponse previewDirectOrder(DirectOrderPreviewRequest request) {
         Product product = productService.getProduct(request.productId());
@@ -57,10 +111,7 @@ public class OrderService {
         return DirectOrderPreviewResponse.of(orderItems, totalOrderAmount);
     }
 
-    /**
-     * 상품 상세 페이지에서 바로 주문을 생성하는 메서드입니다.
-     * 회원과 상품을 조회한 뒤, 상품 상태와 재고를 검증하고 주문/주문상품을 저장합니다.
-     */
+
     @Transactional
     public OrderResponse createDirectOrder(Long memberId, DirectOrderRequest request) {
         Member member = memberService.getMember(memberId);
