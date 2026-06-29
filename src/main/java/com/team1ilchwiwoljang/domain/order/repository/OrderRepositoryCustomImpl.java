@@ -109,8 +109,9 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
             }
         }
         
-        // 기본값: 최신 주문순 (id DESC)
+        // 기본값: 최신 주문순 (createdAt DESC, id DESC)
         if (specifiers.isEmpty()) {
+            specifiers.add(new OrderSpecifier<>(com.querydsl.core.types.Order.DESC, order.createdAt));
             specifiers.add(new OrderSpecifier<>(com.querydsl.core.types.Order.DESC, order.id));
         }
 

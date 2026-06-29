@@ -16,11 +16,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,8 +44,8 @@ class OrderRepositoryTest {
     private ProductRepository productRepository;
 
     @Test
-    @DisplayName("given_orders_when_findOrderHistoryByMemberId_then_returnPagedOrdersDesc")
-    void givenOrders_whenFindOrderHistoryByMemberId_thenReturnPagedOrdersDesc() {
+    @DisplayName("given_orders_when_findOrderHistoryByMemberId_then_returnPagedOrdersByCreatedAtDescAndIdDesc")
+    void givenOrders_whenFindOrderHistoryByMemberId_thenReturnPagedOrdersByCreatedAtDescAndIdDesc() {
         // given
         Member member = Member.create("user@example.com", "password", "홍길동", "010-1234-5678");
         memberRepository.save(member);
@@ -55,7 +56,12 @@ class OrderRepositoryTest {
 
         orderRepository.saveAll(List.of(order1, order2, order3));
 
-        Pageable pageable = PageRequest.of(0, 2, Sort.by(Sort.Direction.DESC, "id"));
+        LocalDateTime now = LocalDateTime.now();
+        ReflectionTestUtils.setField(order1, "createdAt", now);
+        ReflectionTestUtils.setField(order2, "createdAt", now.minusDays(2));
+        ReflectionTestUtils.setField(order3, "createdAt", now.minusDays(1));
+
+        Pageable pageable = PageRequest.of(0, 2);
         OrderSearchCondition condition = new OrderSearchCondition(null, null, null, null);
 
         // when
@@ -66,9 +72,9 @@ class OrderRepositoryTest {
         assertThat(result.getTotalElements()).isEqualTo(3);
         assertThat(result.getTotalPages()).isEqualTo(2);
         
-        // 최신 주문순(id DESC) 정렬 확인
-        assertThat(result.getContent().get(0).getOrderNumber()).isEqualTo("ORD-003");
-        assertThat(result.getContent().get(1).getOrderNumber()).isEqualTo("ORD-002");
+        // 최신 주문순(createdAt DESC, id DESC) 정렬 확인
+        assertThat(result.getContent().get(0).getOrderNumber()).isEqualTo("ORD-001");
+        assertThat(result.getContent().get(1).getOrderNumber()).isEqualTo("ORD-003");
     }
 
     @Test
