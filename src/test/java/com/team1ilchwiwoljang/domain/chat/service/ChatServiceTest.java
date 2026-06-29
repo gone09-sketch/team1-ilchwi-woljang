@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -153,6 +154,23 @@ class ChatServiceTest {
         assertThat(responses)
                 .extracting(ChatMessageResponse::content)
                 .containsExactly("첫 번째 메시지", "두 번째 메시지");
+    }
+
+    @Test
+    @DisplayName("채팅방 주인이 아닌 일반 회원이 메시지 목록을 조회하면 CHAT_ROOM_ACCESS_DENIED 예외가 발생한다")
+    void given_otherMember_whenGetMessages_thenThrowAccessDenied() {
+        Long ownerId = 1L;
+        Long otherMemberId = 2L;
+        Long chatRoomId = 10L;
+        Member owner = createMember(ownerId, MemberRole.MEMBER);
+        ChatRoom chatRoom = createChatRoom(chatRoomId, owner);
+
+        given(chatRoomRepository.findById(chatRoomId)).willReturn(Optional.of(chatRoom));
+
+        assertThatThrownBy(() -> chatService.getMessages(chatRoomId, otherMemberId, MemberRole.MEMBER))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CHAT_ROOM_ACCESS_DENIED);
+        verify(chatMessageRepository, never()).findAllByChatRoomIdOrderByCreatedAtAsc(chatRoomId);
     }
 
     private Member createMember(Long memberId, MemberRole role) {
