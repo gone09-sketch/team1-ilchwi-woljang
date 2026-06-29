@@ -57,6 +57,12 @@ public class OrderService {
                 .map(Order::getId)
                 .toList();
 
+        if (orderIds.isEmpty()) {
+            return PageResponse.from(orderPage.map(order -> OrderHistoryResponse.of(
+                    order.getId(), order.getOrderNumber(), order.getTotalAmount(),
+                    order.getOrderStatus().name(), order.getCreatedAt(), List.of())));
+        }
+
         List<OrderItem> orderItems = orderItemRepository.findByOrderIdIn(orderIds);
 
         Map<Long, List<OrderItemHistoryResponse>> itemsByOrderId = orderItems.stream()
@@ -69,8 +75,8 @@ public class OrderService {
                                         item.getProductPriceSnapshot(),
                                         item.getQuantity(),
                                         item.getTotalPrice(),
-                                        getCategoryId(item),
-                                        getCategoryName(item)
+                                        item.getCategoryIdSnapshot(),
+                                        item.getCategoryNameSnapshot()
                                 ),
                                 Collectors.toList()
                         )
@@ -86,16 +92,6 @@ public class OrderService {
         ));
 
         return PageResponse.from(dtoPage);
-    }
-
-    private Long getCategoryId(OrderItem item) {
-        Category category = item.getProduct().getCategory();
-        return category != null ? category.getId() : null;
-    }
-
-    private String getCategoryName(OrderItem item) {
-        Category category = item.getProduct().getCategory();
-        return category != null ? category.getName() : null;
     }
 
     @Transactional(readOnly = true)
@@ -125,13 +121,16 @@ public class OrderService {
         Order order = Order.create(member, orderNumber, totalAmount, totalAmount);
         orderRepository.save(order);
 
+        Category category = product.getCategory();
         OrderItem orderItem = OrderItem.create(
                 order,
                 product,
                 product.getName(),
                 (long) product.getPrice(),
                 (long) request.quantity(),
-                totalAmount
+                totalAmount,
+                category != null ? category.getId() : null,
+                category != null ? category.getName() : null
         );
         orderItemRepository.save(orderItem);
 
@@ -304,13 +303,16 @@ public class OrderService {
         long quantity = (long) cart.getQuantity();
         long totalPrice = productPrice * quantity;
 
+        Category category = product.getCategory();
         return OrderItem.create(
                 order,
                 product,
                 product.getName(),
                 productPrice,
                 quantity,
-                totalPrice
+                totalPrice,
+                category != null ? category.getId() : null,
+                category != null ? category.getName() : null
         );
     }
 }

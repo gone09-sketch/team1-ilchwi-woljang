@@ -37,9 +37,16 @@ public class OrderItem {
     @Column(nullable = false)
     private Long totalPrice;
 
+    @Column
+    private Long categoryIdSnapshot;
+
+    @Column(length = 50)
+    private String categoryNameSnapshot;
+
     public static OrderItem create(Order order, Product product,
             String productNameSnapshot, Long productPriceSnapshot,
-            Long quantity, Long totalPrice) {
+            Long quantity, Long totalPrice,
+            Long categoryIdSnapshot, String categoryNameSnapshot) {
         OrderItem item = new OrderItem();
         item.order = order;
         item.product = product;
@@ -47,6 +54,8 @@ public class OrderItem {
         item.productPriceSnapshot = productPriceSnapshot;
         item.quantity = quantity;
         item.totalPrice = totalPrice;
+        item.categoryIdSnapshot = categoryIdSnapshot;
+        item.categoryNameSnapshot = categoryNameSnapshot;
         return item;
     }
 }

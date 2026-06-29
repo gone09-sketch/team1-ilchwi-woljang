@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.team1ilchwiwoljang.common.exception.BusinessException;
@@ -439,7 +440,7 @@ class OrderServiceTest {
         Product product = Product.create("노트북 파우치", 20000, 10, ProductStatus.ON_SALE, "설명", category);
         ReflectionTestUtils.setField(product, "id", 10L);
 
-        OrderItem orderItem = OrderItem.create(order, product, "노트북 파우치", 20000L, 1L, 20000L);
+        OrderItem orderItem = OrderItem.create(order, product, "노트북 파우치", 20000L, 1L, 20000L, 20L, "전자기기");
 
         Page<Order> orderPage = new PageImpl<>(List.of(order), pageable, 1);
 
@@ -477,6 +478,7 @@ class OrderServiceTest {
         // then
         assertThat(result.content()).isEmpty();
         assertThat(result.totalElements()).isEqualTo(0);
+        verify(orderItemRepository, never()).findByOrderIdIn(any());
     }
 
     private Cart createCart(Long cartId, Member member, Product product, int quantity) {

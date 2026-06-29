@@ -167,9 +167,9 @@ class OrderRepositoryTest {
         Order order1 = orderRepository.save(Order.create(member, "ORD-001", 10000L, 10000L));
         Order order2 = orderRepository.save(Order.create(member, "ORD-002", 20000L, 20000L));
 
-        orderItemRepository.save(OrderItem.create(order1, product1, "게이밍 노트북", 10000L, 1L, 10000L));
-        orderItemRepository.save(OrderItem.create(order1, product3, "노트북 거치대", 15000L, 1L, 15000L));
-        orderItemRepository.save(OrderItem.create(order2, product2, "기계식 키보드", 20000L, 1L, 20000L));
+        orderItemRepository.save(OrderItem.create(order1, product1, "게이밍 노트북", 10000L, 1L, 10000L, null, null));
+        orderItemRepository.save(OrderItem.create(order1, product3, "노트북 거치대", 15000L, 1L, 15000L, null, null));
+        orderItemRepository.save(OrderItem.create(order2, product2, "기계식 키보드", 20000L, 1L, 20000L, null, null));
 
         OrderSearchCondition condition = new OrderSearchCondition(null, null, null, "노트북");
         Pageable pageable = PageRequest.of(0, 10);
@@ -196,8 +196,8 @@ class OrderRepositoryTest {
         Order cancelledOrder = orderRepository.save(Order.create(member, "ORD-123-CANCELLED", 10000L, 10000L));
         cancelledOrder.cancel(java.time.LocalDateTime.now());
 
-        orderItemRepository.save(OrderItem.create(pendingOrder, product, "게이밍 노트북", 10000L, 1L, 10000L));
-        orderItemRepository.save(OrderItem.create(cancelledOrder, product, "게이밍 노트북", 10000L, 1L, 10000L));
+        orderItemRepository.save(OrderItem.create(pendingOrder, product, "게이밍 노트북", 10000L, 1L, 10000L, null, null));
+        orderItemRepository.save(OrderItem.create(cancelledOrder, product, "게이밍 노트북", 10000L, 1L, 10000L, null, null));
 
         OrderSearchCondition condition = new OrderSearchCondition(
                 LocalDate.now(),
