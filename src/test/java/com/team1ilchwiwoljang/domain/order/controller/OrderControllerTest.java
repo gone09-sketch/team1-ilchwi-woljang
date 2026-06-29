@@ -4,7 +4,6 @@ import org.springframework.data.domain.Pageable;
 import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
 import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderHistoryResponse;
-import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemHistoryResponse;
 
 
 import static org.mockito.ArgumentMatchers.any;
@@ -404,16 +403,7 @@ class OrderControllerTest {
     @DisplayName("인증된 사용자가 주문 내역 조회를 요청하면 200 OK와 함께 페이징된 주문 내역을 반환한다")
     void given_authenticatedUser_whenGetOrderHistory_thenStatus200() throws Exception {
         // given
-        OrderItemHistoryResponse item = new OrderItemHistoryResponse(
-                10L,
-                "노트북 파우치",
-                20000L,
-                1L,
-                20000L,
-                1L,
-                "전자제품 악세서리"
-        );
-        OrderHistoryResponse history = new OrderHistoryResponse(100L, "ORD-123", 20000L, "PENDING", null, List.of(item));
+        OrderHistoryResponse history = new OrderHistoryResponse(100L, "ORD-123", 20000L, "PENDING", null);
         PageResponse<OrderHistoryResponse> pageResponse = new PageResponse<>(List.of(history), 0, 10, 1L, 1, true);
 
         given(orderService.getOrderHistory(
@@ -434,9 +424,9 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].orderId").value(100L))
                 .andExpect(jsonPath("$.data.content[0].orderNumber").value("ORD-123"))
-                .andExpect(jsonPath("$.data.content[0].orderItems[0].productName").value("노트북 파우치"))
-                .andExpect(jsonPath("$.data.content[0].orderItems[0].categoryId").value(1L))
-                .andExpect(jsonPath("$.data.content[0].orderItems[0].categoryName").value("전자제품 악세서리"));
+                .andExpect(jsonPath("$.data.content[0].totalAmount").value(20000L))
+                .andExpect(jsonPath("$.data.content[0].orderStatus").value("PENDING"))
+                .andExpect(jsonPath("$.data.content[0].orderItems").doesNotExist());
     }
 
     @Test

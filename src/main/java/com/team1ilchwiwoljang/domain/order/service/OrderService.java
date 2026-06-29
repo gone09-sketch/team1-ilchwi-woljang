@@ -24,14 +24,11 @@ import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderHistoryResponse;
-import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemHistoryResponse;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -53,42 +50,13 @@ public class OrderService {
     public PageResponse<OrderHistoryResponse> getOrderHistory(Long memberId, OrderSearchCondition condition, Pageable pageable) {
         Page<Order> orderPage = orderRepository.findOrderHistoryByMemberId(memberId, condition, pageable);
 
-        List<Long> orderIds = orderPage.getContent().stream()
-                .map(Order::getId)
-                .toList();
-
-        if (orderIds.isEmpty()) {
-            return PageResponse.from(orderPage.map(order -> OrderHistoryResponse.of(
-                    order.getId(), order.getOrderNumber(), order.getTotalAmount(),
-                    order.getOrderStatus().name(), order.getCreatedAt(), List.of())));
-        }
-
-        List<OrderItem> orderItems = orderItemRepository.findByOrderIdIn(orderIds);
-
-        Map<Long, List<OrderItemHistoryResponse>> itemsByOrderId = orderItems.stream()
-                .collect(Collectors.groupingBy(
-                        item -> item.getOrder().getId(),
-                        Collectors.mapping(
-                                item -> OrderItemHistoryResponse.of(
-                                        item.getProduct().getId(),
-                                        item.getProductNameSnapshot(),
-                                        item.getProductPriceSnapshot(),
-                                        item.getQuantity(),
-                                        item.getTotalPrice(),
-                                        item.getCategoryIdSnapshot(),
-                                        item.getCategoryNameSnapshot()
-                                ),
-                                Collectors.toList()
-                        )
-                ));
-
+        // 주문 목록은 상세 품목을 펼치지 않고, 상세보기 API에서 사용할 주문 식별 정보만 내려준다.
         Page<OrderHistoryResponse> dtoPage = orderPage.map(order -> OrderHistoryResponse.of(
                 order.getId(),
                 order.getOrderNumber(),
                 order.getTotalAmount(),
                 order.getOrderStatus().name(),
-                order.getCreatedAt(),
-                itemsByOrderId.getOrDefault(order.getId(), List.of())
+                order.getCreatedAt()
         ));
 
         return PageResponse.from(dtoPage);

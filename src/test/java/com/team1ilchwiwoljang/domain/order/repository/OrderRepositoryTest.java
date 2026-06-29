@@ -154,8 +154,8 @@ class OrderRepositoryTest {
     }
 
     @Test
-    @DisplayName("keyword가 주문 상품명에 포함되면 주문 내역을 조회한다")
-    void givenKeyword_whenProductNameContainsKeyword_thenReturnOrders() {
+    @DisplayName("keyword가 주문 상품명에만 포함되면 주문 목록에서 조회하지 않는다")
+    void givenKeyword_whenOnlyProductNameContainsKeyword_thenReturnEmptyPage() {
         // given
         Member member = Member.create("product@example.com", "password", "홍길동", "010-1234-5678");
         memberRepository.save(member);
@@ -178,9 +178,8 @@ class OrderRepositoryTest {
         Page<Order> result = orderRepository.findOrderHistoryByMemberId(member.getId(), condition, pageable);
 
         // then
-        assertThat(result.getContent()).hasSize(1);
-        assertThat(result.getTotalElements()).isEqualTo(1);
-        assertThat(result.getContent().get(0).getOrderNumber()).isEqualTo("ORD-001");
+        assertThat(result.getContent()).isEmpty();
+        assertThat(result.getTotalElements()).isEqualTo(0);
     }
 
     @Test
@@ -190,20 +189,15 @@ class OrderRepositoryTest {
         Member member = Member.create("combined@example.com", "password", "홍길동", "010-1234-5678");
         memberRepository.save(member);
 
-        Product product = productRepository.save(Product.create("노트북", 10000, 10, ProductStatus.ON_SALE, "설명", null));
-
         Order pendingOrder = orderRepository.save(Order.create(member, "ORD-123-PENDING", 10000L, 10000L));
         Order cancelledOrder = orderRepository.save(Order.create(member, "ORD-123-CANCELLED", 10000L, 10000L));
         cancelledOrder.cancel(java.time.LocalDateTime.now());
-
-        orderItemRepository.save(OrderItem.create(pendingOrder, product, "게이밍 노트북", 10000L, 1L, 10000L, null, null));
-        orderItemRepository.save(OrderItem.create(cancelledOrder, product, "게이밍 노트북", 10000L, 1L, 10000L, null, null));
 
         OrderSearchCondition condition = new OrderSearchCondition(
                 LocalDate.now(),
                 LocalDate.now(),
                 OrderStatus.CANCELLED,
-                "노트북"
+                "CANCELLED"
         );
         Pageable pageable = PageRequest.of(0, 10);
 
