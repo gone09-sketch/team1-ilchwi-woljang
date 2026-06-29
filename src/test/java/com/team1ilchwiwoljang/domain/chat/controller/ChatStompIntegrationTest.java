@@ -1,9 +1,12 @@
 package com.team1ilchwiwoljang.domain.chat.controller;
 
 import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
+import com.team1ilchwiwoljang.domain.chat.dto.request.ChatMessageRequest;
+import com.team1ilchwiwoljang.domain.chat.dto.response.ChatMessageResponse;
 import com.team1ilchwiwoljang.domain.chat.entity.ChatRoom;
 import com.team1ilchwiwoljang.domain.chat.repository.ChatMessageRepository;
 import com.team1ilchwiwoljang.domain.chat.repository.ChatRoomRepository;
+import com.team1ilchwiwoljang.domain.chat.service.ChatService;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
 import com.team1ilchwiwoljang.domain.member.repository.MemberRepository;
@@ -13,9 +16,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.messaging.converter.StringMessageConverter;
+import org.springframework.messaging.converter.JacksonJsonMessageConverter;
 import org.springframework.messaging.simp.stomp.*;
+import org.springframework.messaging.simp.user.SimpUserRegistry;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
@@ -27,6 +32,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -49,6 +58,12 @@ class ChatStompIntegrationTest {
 
     @Autowired
     private ChatMessageRepository chatMessageRepository;
+
+    @Autowired
+    private SimpUserRegistry simpUserRegistry;
+
+    @MockitoSpyBean
+    private ChatService chatService;
 
     @AfterEach
     void tearDown() {
@@ -94,6 +109,68 @@ class ChatStompIntegrationTest {
         assertThat(sessionHandler.awaitError()).isTrue();
     }
 
+    @Test
+    @DisplayName("채팅방 소유 회원이 메시지를 보내면 메시지를 저장하고 구독자에게 브로드캐스트한다")
+    void given_roomMemberAndSubscription_whenSendMessage_thenSaveAndBroadcastMessage() throws Exception {
+        Member member = memberRepository.save(createMember("member@example.com", MemberRole.MEMBER));
+        ChatRoom chatRoom = chatRoomRepository.save(ChatRoom.create(member));
+        String content = "통합 테스트 메시지";
+
+        WebSocketStompClient stompClient = createStompClient();
+        TestStompSessionHandler sessionHandler = new TestStompSessionHandler();
+        StompSession stompSession = connect(stompClient, sessionHandler, member);
+        TestStompFrameHandler frameHandler = new TestStompFrameHandler();
+        String subscribeDestination = "/sub/chat/rooms/" + chatRoom.getId();
+
+        stompSession.subscribe(
+                subscribeDestination,
+                frameHandler
+        );
+        assertThat(awaitSubscription(subscribeDestination)).isTrue();
+
+        stompSession.send(
+                "/pub/chat/rooms/" + chatRoom.getId() + "/messages",
+                new ChatMessageRequest(content)
+        );
+
+        ChatMessageResponse response = frameHandler.awaitResponse();
+
+        assertThat(response.chatRoomId()).isEqualTo(chatRoom.getId());
+        assertThat(response.senderId()).isEqualTo(member.getId());
+        assertThat(response.content()).isEqualTo(content);
+        assertThat(chatMessageRepository.findAll()).hasSize(1)
+                .first()
+                .satisfies(chatMessage -> {
+                    assertThat(chatMessage.getChatRoom().getId()).isEqualTo(chatRoom.getId());
+                    assertThat(chatMessage.getSender().getId()).isEqualTo(member.getId());
+                    assertThat(chatMessage.getContent()).isEqualTo(content);
+                });
+    }
+
+    @Test
+    @DisplayName("채팅방 접근 권한이 없는 회원이 메시지를 보내면 메시지를 저장하지 않는다")
+    void given_memberWithoutRoomAccess_whenSendMessage_thenDoNotSaveMessage() throws Exception {
+        Member owner = memberRepository.save(createMember("owner@example.com", MemberRole.MEMBER));
+        Member otherMember = memberRepository.save(createMember("other@example.com", MemberRole.MEMBER));
+        ChatRoom chatRoom = chatRoomRepository.save(ChatRoom.create(owner));
+
+        WebSocketStompClient stompClient = createStompClient();
+        TestStompSessionHandler sessionHandler = new TestStompSessionHandler();
+        StompSession stompSession = connect(stompClient, sessionHandler, otherMember);
+
+        stompSession.send(
+                "/pub/chat/rooms/" + chatRoom.getId() + "/messages",
+                new ChatMessageRequest("권한 없는 메시지")
+        );
+
+        verify(chatService, timeout(3000)).sendMessage(
+                eq(chatRoom.getId()),
+                eq(otherMember.getId()),
+                any(ChatMessageRequest.class)
+        );
+        assertThat(chatMessageRepository.findAll()).isEmpty();
+    }
+
     private StompSession connect(
             WebSocketStompClient stompClient,
             TestStompSessionHandler sessionHandler,
@@ -117,8 +194,24 @@ class ChatStompIntegrationTest {
 
     private WebSocketStompClient createStompClient() {
         WebSocketStompClient stompClient = new WebSocketStompClient(new StandardWebSocketClient());
-        stompClient.setMessageConverter(new StringMessageConverter());
+        stompClient.setMessageConverter(new JacksonJsonMessageConverter());
         return stompClient;
+    }
+
+    private boolean awaitSubscription(String destination) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+
+        while (System.nanoTime() < deadline) {
+            if (!simpUserRegistry.findSubscriptions(
+                    subscription -> destination.equals(subscription.getDestination())
+            ).isEmpty()) {
+                return true;
+            }
+
+            TimeUnit.MILLISECONDS.sleep(50);
+        }
+
+        return false;
     }
 
     private String webSocketUrl() {
@@ -174,6 +267,28 @@ class ChatStompIntegrationTest {
 
         @Override
         public void handleFrame(StompHeaders headers, Object payload) {
+        }
+    }
+
+    private static class TestStompFrameHandler implements StompFrameHandler {
+
+        private final CountDownLatch messageLatch = new CountDownLatch(1);
+        private final AtomicReference<ChatMessageResponse> response = new AtomicReference<>();
+
+        @Override
+        public Type getPayloadType(StompHeaders headers) {
+            return ChatMessageResponse.class;
+        }
+
+        @Override
+        public void handleFrame(StompHeaders headers, Object payload) {
+            this.response.set((ChatMessageResponse) payload);
+            messageLatch.countDown();
+        }
+
+        ChatMessageResponse awaitResponse() throws InterruptedException {
+            assertThat(messageLatch.await(3, TimeUnit.SECONDS)).isTrue();
+            return response.get();
         }
     }
 }
