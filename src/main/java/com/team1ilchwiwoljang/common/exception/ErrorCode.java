@@ -36,6 +36,11 @@ public enum ErrorCode {
     INQUIRY_NOT_FOUND(HttpStatus.NOT_FOUND, "문의를 찾을 수 없습니다."),
     ALREADY_ANSWERED_INQUIRY(HttpStatus.BAD_REQUEST, "이미 답변 완료된 문의입니다."),
 
+    // chat
+    CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "채팅방을 찾을 수 없습니다."),
+    CHAT_ROOM_ACCESS_DENIED(HttpStatus.FORBIDDEN, "채팅방 접근 권한이 없습니다."),
+    CHAT_ROOM_CLOSED(HttpStatus.BAD_REQUEST, "종료된 채팅방입니다."),
+
     // order
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "주문을 찾을 수 없습니다."),
     INVALID_ORDER_STATUS(HttpStatus.BAD_REQUEST, "변경할 수 없는 주문 상태입니다."),
