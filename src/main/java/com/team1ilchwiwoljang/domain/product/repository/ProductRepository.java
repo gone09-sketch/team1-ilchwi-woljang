@@ -28,9 +28,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             Pageable pageable
     );
 
-    @Lock(LockModeType.OPTIMISTIC)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Product p where p.id = :productId")
-    Optional<Product> findByWithOptimisticLock(
+    Optional<Product> findByWithPessimisticLock(
             @Param("productId") Long productId
     );
 }

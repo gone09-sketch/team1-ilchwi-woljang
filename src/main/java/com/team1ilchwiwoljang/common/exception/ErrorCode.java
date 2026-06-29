@@ -42,7 +42,8 @@ public enum ErrorCode {
     EMPTY_CART_ORDER(HttpStatus.BAD_REQUEST, "주문할 장바구니 상품이 없습니다."),
     EMPTY_ORDER_PREVIEW(HttpStatus.BAD_REQUEST, "주문할 상품이 없습니다."),
     NOT_ORDERABLE_PRODUCT(HttpStatus.BAD_REQUEST, "주문할 수 없는 상품이 포함되어 있습니다."),
-    OUT_OF_STOCK(HttpStatus.BAD_REQUEST, "재고가 부족합니다.");
+    OUT_OF_STOCK(HttpStatus.BAD_REQUEST, "재고가 부족합니다."),
+    ORDER_CONFLICT(HttpStatus.CONFLICT, "동시에 주문 요청이 처리중입니다. 잠시 후 다시 시도해주세요.");
 
     private final HttpStatus status;
     private final String message;

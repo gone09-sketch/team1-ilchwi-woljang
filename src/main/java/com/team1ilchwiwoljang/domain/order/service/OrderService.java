@@ -46,7 +46,7 @@ public class OrderService {
      */
     @Transactional(readOnly = true)
     public DirectOrderPreviewResponse previewDirectOrder(DirectOrderPreviewRequest request) {
-        Product product = productService.getProduct(request.productId());
+        Product product = productService.getProductWithPessimisticLock(request.productId());
 
         validateOrderableProduct(product, request.quantity());
 
@@ -64,7 +64,7 @@ public class OrderService {
     @Transactional
     public OrderResponse createDirectOrder(Long memberId, DirectOrderRequest request) {
         Member member = memberService.getMember(memberId);
-        Product product = productService.getProduct(request.productId());
+        Product product = productService.getProductWithPessimisticLock(request.productId());
 
         validateOrderableProduct(product, request.quantity());
 
