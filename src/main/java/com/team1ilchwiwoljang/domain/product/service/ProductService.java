@@ -35,6 +35,15 @@ public class ProductService {
     }
 
     /**
+     * 주문 재고 차감
+     */
+    @Transactional(readOnly = true)
+    public Product getProductWithPessimisticLock(Long productId){
+        return productRepository.findByWithPessimisticLock(productId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
+    }
+
+    /**
      * 상품 상세 조회
      */
     public ProductDetailResponse getProductDetail(Long productId) {
@@ -115,12 +124,5 @@ public class ProductService {
                     Sort.by("createdAt").descending();
         };
     }
-    /**
-     * 주문 재고 차감
-     */
-    @Transactional(readOnly = true)
-    public Product getProductWithPessimisticLock(Long productId){
-        return productRepository.findByWithPessimisticLock(productId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
-    }
+
 }

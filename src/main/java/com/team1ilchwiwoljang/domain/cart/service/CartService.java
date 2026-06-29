@@ -98,7 +98,7 @@ public class CartService {
                 .distinct()
                 .toList();
 
-        return getSelectedCartItems(memberId, selectedCartIds);
+        return getOrderPreviewCartItems(memberId, selectedCartIds);
     }
 
     /**

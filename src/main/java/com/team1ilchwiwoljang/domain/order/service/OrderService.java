@@ -23,6 +23,7 @@ import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -95,21 +96,54 @@ public class OrderService {
         Member member = memberService.getMember(memberId);
 
         List<Cart> cartItems = cartService.getOrderCartItems(memberId, request.cartIds());
-        validateCartOrderItems(cartItems);
 
-        Long totalAmount = calculateCartOrderTotalAmount(cartItems);
+        List<Product> lockedProducts = new ArrayList<>();
+
+        for(Cart cartItem : cartItems) {
+            Product product = productService.getProductWithPessimisticLock(cartItem.getProduct().getId());
+            validateOrderableProduct(product, cartItem.getQuantity());
+            lockedProducts.add(product);
+        }
+
+        Long totalAmount = 0L;
+
+        for (int i = 0; i < cartItems.size(); i++){
+            Cart cart = cartItems.get(i);
+            Product product = lockedProducts.get(i);
+
+            totalAmount += (long) product.getPrice() * cart.getQuantity();
+        }
+
         String orderNumber = UUID.randomUUID().toString();
 
         Order order = Order.create(member, orderNumber, totalAmount, totalAmount);
         orderRepository.save(order);
 
-        List<OrderItem> orderItems = cartItems.stream()
-                .map(cart -> createOrderItem(order, cart))
-                .toList();
-        orderItemRepository.saveAll(orderItems);
+        List<OrderItem> orderItems = new ArrayList<>();
 
-        // 주문 저장, 재고 차감, 장바구니 삭제는 같은 트랜잭션 안에서 함께 성공하거나 함께 실패해야 합니다.
-        cartItems.forEach(cart -> cart.getProduct().decreaseStock(cart.getQuantity()));
+        for (int i = 0; i < cartItems.size(); i++){
+            Cart cart = cartItems.get(i);
+            Product product = lockedProducts.get(i);
+
+            long productPrice = product.getPrice();
+            long quantity = cart.getQuantity();
+            long totalPrice = productPrice * quantity;
+
+            OrderItem orderItem = OrderItem.create(
+                    order,
+                    product,
+                    product.getName(),
+                    productPrice,
+                    quantity,
+                    totalPrice
+            );
+
+            orderItems.add(orderItem);
+
+            product.decreaseStock(cart.getQuantity());
+        }
+
+        orderItemRepository.saveAll(orderItems);
         cartService.deleteOrderCartItems(cartItems);
 
         List<OrderItemResponse> orderItemResponses = orderItems.stream()
