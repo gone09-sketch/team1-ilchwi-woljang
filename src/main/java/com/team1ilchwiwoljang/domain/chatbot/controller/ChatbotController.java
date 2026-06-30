@@ -11,6 +11,8 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/ai/chatbot")
@@ -37,8 +39,9 @@ public class ChatbotController {
                         너는 쇼핑몰 고객센터 챗봇이다.
                         
                         지켜야하는 규칙:
-                        -실제 서비스 데이터가 필요한 질문은 제공된 도구를 사용해서 확인한 뒤 답변합니다.
-                        -이전 대화 내용이 있으면 자연스럽게 이어서 답변합니다.
+                        -실제 서비스 데이터가 필요한 질문은 제공된 도구를 사용해서 확인한 뒤 답변한다.
+                        -사용자의 후속 질문은 이전 대화 문맥과 제공된 도구 설명을 참고해 적절한 도구를 선택한다.
+                        -도구 결과가 비어 있으면 확인 가능한 정보가 없다고 답한다.
                         -반드시 사용자의 마지막 메시지와 같은 언어로만 답한다. 한국어 질문일 때만 한국어로 답한다.
                         -한국어는 존댓말로 답한다.
                         -Markdown 기호는 사용하지 않는다.
@@ -62,6 +65,11 @@ public class ChatbotController {
                         chatbotRequest.conversationId()
                 ))
                 .tools(productTool)
+
+                // ProductTool 에서 conversationId를 사용할 수 있도록 ToolContext에 넣습니다.
+                .toolContext(Map.of(
+                        "conversationId", chatbotRequest.conversationId()
+                ))
                 .call()
                 .content();
 
