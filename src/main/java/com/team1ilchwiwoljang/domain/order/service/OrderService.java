@@ -21,11 +21,14 @@ import com.team1ilchwiwoljang.domain.order.repository.OrderItemRepository;
 import com.team1ilchwiwoljang.domain.order.repository.OrderRepository;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
+
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,7 +50,7 @@ public class OrderService {
      */
     @Transactional(readOnly = true)
     public DirectOrderPreviewResponse previewDirectOrder(DirectOrderPreviewRequest request) {
-        Product product = productService.getProductWithPessimisticLock(request.productId());
+        Product product = productService.getProduct(request.productId());
 
         validateOrderableProduct(product, request.quantity());
 
@@ -97,21 +100,20 @@ public class OrderService {
 
         List<Cart> cartItems = cartService.getOrderCartItems(memberId, request.cartIds());
 
+        List<Cart> sortedCartItems = cartItems.stream()
+                .sorted(Comparator.comparing(cart -> cart.getProduct().getId()))
+                .toList();
+
         List<Product> lockedProducts = new ArrayList<>();
-
-        for(Cart cartItem : cartItems) {
-            Product product = productService.getProductWithPessimisticLock(cartItem.getProduct().getId());
-            validateOrderableProduct(product, cartItem.getQuantity());
-            lockedProducts.add(product);
-        }
-
         Long totalAmount = 0L;
 
-        for (int i = 0; i < cartItems.size(); i++){
-            Cart cart = cartItems.get(i);
-            Product product = lockedProducts.get(i);
+        for (Cart cartItem : sortedCartItems) {
+            Product product = productService.getProductWithPessimisticLock(cartItem.getProduct().getId());
 
-            totalAmount += (long) product.getPrice() * cart.getQuantity();
+            validateOrderableProduct(product, cartItem.getQuantity());
+
+            lockedProducts.add(product);
+            totalAmount += (long) product.getPrice() * cartItem.getQuantity();
         }
 
         String orderNumber = UUID.randomUUID().toString();
@@ -121,8 +123,8 @@ public class OrderService {
 
         List<OrderItem> orderItems = new ArrayList<>();
 
-        for (int i = 0; i < cartItems.size(); i++){
-            Cart cart = cartItems.get(i);
+        for (int i = 0; i < sortedCartItems.size(); i++) {
+            Cart cart = sortedCartItems.get(i);
             Product product = lockedProducts.get(i);
 
             long productPrice = product.getPrice();
