@@ -39,6 +39,7 @@ public enum ErrorCode {
     // chat
     CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "채팅방을 찾을 수 없습니다."),
     CHAT_ROOM_ACCESS_DENIED(HttpStatus.FORBIDDEN, "채팅방 접근 권한이 없습니다."),
+    INVALID_CHAT_ROOM_DESTINATION(HttpStatus.BAD_REQUEST, "채팅방 구독 경로가 올바르지 않습니다."),
     CHAT_ROOM_CLOSED(HttpStatus.BAD_REQUEST, "종료된 채팅방입니다."),
 
     // order

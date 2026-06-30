@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat STOMP Test</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f6f7f9;
+            --panel: #ffffff;
+            --line: #d9dee7;
+            --text: #18202f;
+            --muted: #657083;
+            --primary: #0f766e;
+            --primary-dark: #115e59;
+            --danger: #b42318;
+            --ok: #15803d;
+            --warn: #b45309;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--line);
+            background: var(--panel);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+            gap: 18px;
+            padding: 18px;
+        }
+
+        section {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        h2 {
+            margin: 0 0 12px;
+            font-size: 15px;
+        }
+
+        label {
+            display: grid;
+            gap: 6px;
+            margin-bottom: 10px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 10px 11px;
+            color: var(--text);
+            font: inherit;
+            background: #fff;
+        }
+
+        textarea {
+            min-height: 92px;
+            resize: vertical;
+        }
+
+        button {
+            border: 1px solid transparent;
+            border-radius: 6px;
+            padding: 9px 12px;
+            color: #fff;
+            font-weight: 650;
+            background: var(--primary);
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: var(--primary-dark);
+        }
+
+        button.secondary {
+            color: var(--text);
+            border-color: var(--line);
+            background: #fff;
+        }
+
+        button.secondary:hover {
+            background: #eef2f6;
+        }
+
+        button.danger {
+            background: var(--danger);
+        }
+
+        .stack {
+            display: grid;
+            gap: 14px;
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .row > * {
+            flex: 1 1 auto;
+        }
+
+        .row button {
+            flex: 0 0 auto;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 30px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            color: var(--muted);
+            background: #eef2f6;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .status.ok {
+            color: var(--ok);
+            background: #eaf7ef;
+        }
+
+        .status.warn {
+            color: var(--warn);
+            background: #fff4df;
+        }
+
+        .status.error {
+            color: var(--danger);
+            background: #fdecec;
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-rows: auto minmax(280px, 1fr) auto;
+            gap: 14px;
+            min-height: calc(100vh - 100px);
+        }
+
+        .messages {
+            overflow: auto;
+            min-height: 260px;
+            max-height: calc(100vh - 310px);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fbfcfd;
+        }
+
+        .message {
+            display: grid;
+            gap: 4px;
+            padding: 12px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .message:last-child {
+            border-bottom: 0;
+        }
+
+        .message-meta {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            color: var(--muted);
+            font-size: 12px;
+            flex-wrap: wrap;
+        }
+
+        .message-body {
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 14px;
+        }
+
+        .log {
+            overflow: auto;
+            max-height: 160px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 10px;
+            background: #111827;
+            color: #d1d5db;
+            font: 12px/1.5 Consolas, "Courier New", monospace;
+            white-space: pre-wrap;
+        }
+
+        .token {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: min(880px, 70vw);
+            color: var(--muted);
+            font: 12px Consolas, "Courier New", monospace;
+        }
+
+        @media (max-width: 860px) {
+            header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            main {
+                grid-template-columns: 1fr;
+            }
+
+            .workspace {
+                min-height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div>
+        <h1>채팅방 STOMP 테스트</h1>
+        <div class="token" id="tokenView">로그인 전</div>
+    </div>
+    <div class="row">
+        <span class="status" id="authStatus">인증 전</span>
+        <span class="status" id="socketStatus">연결 전</span>
+    </div>
+</header>
+
+<main>
+    <div class="stack">
+        <section>
+            <h2>계정</h2>
+            <label>
+                API Base URL
+                <input id="baseUrl" value="">
+            </label>
+            <label>
+                Email
+                <input id="email" value="member1@example.com" autocomplete="username">
+            </label>
+            <label>
+                Password
+                <input id="password" type="password" value="Password1!" autocomplete="current-password">
+            </label>
+            <div class="row">
+                <button id="loginButton">로그인</button>
+                <button class="secondary" id="signupButton">회원가입</button>
+                <button class="secondary" id="clearTokenButton">토큰 삭제</button>
+            </div>
+        </section>
+
+        <section>
+            <h2>채팅방</h2>
+            <label>
+                Chat Room ID
+                <input id="chatRoomId" type="number" min="1" value="1">
+            </label>
+            <div class="row">
+                <button id="createRoomButton">채팅방 생성</button>
+                <button class="secondary" id="loadMessagesButton">기록 조회</button>
+            </div>
+        </section>
+
+        <section>
+            <h2>WebSocket</h2>
+            <label>
+                WebSocket URL
+                <input id="wsUrl" value="">
+            </label>
+            <div class="row">
+                <button id="connectButton">연결</button>
+                <button class="secondary" id="subscribeButton">구독</button>
+                <button class="danger" id="disconnectButton">해제</button>
+            </div>
+        </section>
+    </div>
+
+    <section class="workspace">
+        <div class="row">
+            <h2>메시지</h2>
+            <button class="secondary" id="clearMessagesButton">화면 비우기</button>
+        </div>
+        <div class="messages" id="messages"></div>
+        <div class="stack">
+            <label>
+                보낼 메시지
+                <textarea id="messageInput">브라우저 테스트 클라이언트에서 보낸 메시지입니다.</textarea>
+            </label>
+            <div class="row">
+                <button id="sendButton">전송</button>
+                <button class="secondary" id="loadAfterSendButton">전송 후 기록 조회</button>
+            </div>
+            <div class="log" id="eventLog"></div>
+        </div>
+    </section>
+</main>
+
+<script>
+    const state = {
+        accessToken: localStorage.getItem("chatTest.accessToken") || "",
+        socket: null,
+        stompConnected: false,
+        subscriptionId: null,
+        frameBuffer: ""
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function defaultBaseUrl() {
+        return window.location.origin && window.location.origin !== "null"
+            ? window.location.origin
+            : "http://localhost:8080";
+    }
+
+    function defaultWsUrl() {
+        const host = window.location.host || "localhost:8080";
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        return `${protocol}//${host}/ws`;
+    }
+
+    function initDefaults() {
+        $("baseUrl").value = localStorage.getItem("chatTest.baseUrl") || defaultBaseUrl();
+        $("wsUrl").value = localStorage.getItem("chatTest.wsUrl") || defaultWsUrl();
+        $("chatRoomId").value = localStorage.getItem("chatTest.chatRoomId") || "1";
+        updateAuthStatus();
+        updateSocketStatus("연결 전");
+    }
+
+    function updateAuthStatus() {
+        const payload = decodeJwt(state.accessToken);
+        $("authStatus").className = `status ${state.accessToken ? "ok" : ""}`;
+        $("authStatus").textContent = state.accessToken
+            ? `로그인됨 ${payload ? `#${payload.sub} ${payload.role}` : ""}`
+            : "인증 전";
+        $("tokenView").textContent = state.accessToken || "로그인 전";
+    }
+
+    function updateSocketStatus(text, mode = "") {
+        $("socketStatus").className = `status ${mode}`;
+        $("socketStatus").textContent = text;
+    }
+
+    function log(message, data) {
+        const time = new Date().toLocaleTimeString();
+        const line = data ? `${time} ${message}\n${JSON.stringify(data, null, 2)}` : `${time} ${message}`;
+        $("eventLog").textContent = `${line}\n${$("eventLog").textContent}`.trim();
+    }
+
+    function decodeJwt(token) {
+        if (!token || !token.includes(".")) {
+            return null;
+        }
+
+        try {
+            const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+            const json = decodeURIComponent(
+                atob(base64).split("").map((char) => `%${("00" + char.charCodeAt(0).toString(16)).slice(-2)}`).join("")
+            );
+            return JSON.parse(json);
+        } catch (error) {
+            return null;
+        }
+    }
+
+    async function api(path, options = {}) {
+        const baseUrl = $("baseUrl").value.replace(/\/$/, "");
+        localStorage.setItem("chatTest.baseUrl", baseUrl);
+
+        const headers = new Headers(options.headers || {});
+        headers.set("Content-Type", "application/json");
+        if (state.accessToken) {
+            headers.set("Authorization", `Bearer ${state.accessToken}`);
+        }
+
+        const response = await fetch(`${baseUrl}${path}`, {
+            ...options,
+            headers
+        });
+        const text = await response.text();
+        const body = text ? JSON.parse(text) : null;
+
+        if (!response.ok) {
+            throw new Error(body?.message || `HTTP ${response.status}`);
+        }
+
+        return body;
+    }
+
+    async function signup() {
+        const email = $("email").value.trim();
+        const password = $("password").value;
+        const suffix = Date.now().toString().slice(-4);
+        const body = {
+            email,
+            password,
+            name: email.split("@")[0] || "사용자",
+            phone: `010-${suffix}-${suffix}`
+        };
+        const response = await api("/api/auth/signup", {
+            method: "POST",
+            body: JSON.stringify(body)
+        });
+        log("회원가입 성공", response.data);
+    }
+
+    async function login() {
+        const response = await api("/api/auth/login", {
+            method: "POST",
+            body: JSON.stringify({
+                email: $("email").value.trim(),
+                password: $("password").value
+            })
+        });
+        state.accessToken = response.data.accessToken;
+        localStorage.setItem("chatTest.accessToken", state.accessToken);
+        updateAuthStatus();
+        log("로그인 성공", decodeJwt(state.accessToken));
+    }
+
+    async function createRoom() {
+        const response = await api("/api/chat/rooms", {method: "POST"});
+        $("chatRoomId").value = response.data.id;
+        localStorage.setItem("chatTest.chatRoomId", response.data.id);
+        log("채팅방 생성", response.data);
+    }
+
+    async function loadMessages() {
+        const chatRoomId = currentRoomId();
+        const response = await api(`/api/chat/rooms/${chatRoomId}/messages`);
+        renderMessages(response.data || []);
+        log(`채팅방 ${chatRoomId} 기록 조회`, {count: response.data?.length || 0});
+    }
+
+    function connectSocket() {
+        if (!state.accessToken) {
+            alert("먼저 로그인해 주세요.");
+            return;
+        }
+
+        if (state.socket && state.socket.readyState === WebSocket.OPEN) {
+            log("이미 WebSocket이 연결되어 있습니다.");
+            return;
+        }
+
+        const wsUrl = $("wsUrl").value.trim();
+        localStorage.setItem("chatTest.wsUrl", wsUrl);
+        state.socket = new WebSocket(wsUrl);
+        state.frameBuffer = "";
+        state.stompConnected = false;
+        state.subscriptionId = null;
+        updateSocketStatus("WebSocket 연결 중", "warn");
+
+        state.socket.onopen = () => {
+            log("WebSocket 연결됨");
+            sendFrame("CONNECT", {
+                "accept-version": "1.2",
+                host: "localhost",
+                Authorization: `Bearer ${state.accessToken}`
+            });
+        };
+
+        state.socket.onmessage = (event) => {
+            state.frameBuffer += event.data;
+            consumeFrames();
+        };
+
+        state.socket.onerror = () => {
+            updateSocketStatus("WebSocket 오류", "error");
+            log("WebSocket 오류");
+        };
+
+        state.socket.onclose = () => {
+            state.stompConnected = false;
+            state.subscriptionId = null;
+            updateSocketStatus("연결 종료", "error");
+            log("WebSocket 연결 종료");
+        };
+    }
+
+    function disconnectSocket() {
+        if (!state.socket) {
+            return;
+        }
+
+        if (state.socket.readyState === WebSocket.OPEN && state.stompConnected) {
+            sendFrame("DISCONNECT", {});
+        }
+        state.socket.close();
+    }
+
+    function subscribeRoom() {
+        ensureConnected();
+        const chatRoomId = currentRoomId();
+        state.subscriptionId = `room-${chatRoomId}-${Date.now()}`;
+        sendFrame("SUBSCRIBE", {
+            id: state.subscriptionId,
+            destination: `/sub/chat/rooms/${chatRoomId}`
+        });
+        log(`채팅방 ${chatRoomId} 구독 요청`);
+    }
+
+    function sendMessage() {
+        ensureConnected();
+        const content = $("messageInput").value.trim();
+        if (!content) {
+            alert("메시지를 입력해 주세요.");
+            return;
+        }
+
+        const chatRoomId = currentRoomId();
+        sendFrame(
+            "SEND",
+            {
+                destination: `/pub/chat/rooms/${chatRoomId}/messages`,
+                "content-type": "application/json"
+            },
+            JSON.stringify({content})
+        );
+        log(`채팅방 ${chatRoomId} 메시지 전송`);
+    }
+
+    function sendFrame(command, headers, body = "") {
+        const headerLines = Object.entries(headers)
+            .map(([key, value]) => `${key}:${value}`)
+            .join("\n");
+        const frame = `${command}\n${headerLines}\n\n${body}\0`;
+        state.socket.send(frame);
+    }
+
+    function consumeFrames() {
+        const frames = state.frameBuffer.split("\0");
+        state.frameBuffer = frames.pop() || "";
+        frames.filter(Boolean).forEach(handleFrame);
+    }
+
+    function handleFrame(rawFrame) {
+        const [head, body = ""] = rawFrame.split(/\n\n/);
+        const lines = head.split("\n").filter(Boolean);
+        const command = lines.shift();
+        const headers = Object.fromEntries(lines.map((line) => {
+            const index = line.indexOf(":");
+            return index === -1 ? [line, ""] : [line.slice(0, index), line.slice(index + 1)];
+        }));
+
+        if (command === "CONNECTED") {
+            state.stompConnected = true;
+            updateSocketStatus("STOMP 연결됨", "ok");
+            log("STOMP CONNECT 성공", headers);
+            return;
+        }
+
+        if (command === "MESSAGE") {
+            const message = JSON.parse(body);
+            appendMessage(message);
+            log("메시지 수신", message);
+            return;
+        }
+
+        if (command === "ERROR") {
+            updateSocketStatus("STOMP 오류", "error");
+            log("STOMP ERROR", {headers, body});
+            return;
+        }
+
+        log(`STOMP ${command || "UNKNOWN"}`, {headers, body});
+    }
+
+    function renderMessages(messages) {
+        $("messages").innerHTML = "";
+        messages.forEach(appendMessage);
+    }
+
+    function appendMessage(message) {
+        const item = document.createElement("div");
+        item.className = "message";
+        item.innerHTML = `
+            <div class="message-meta">
+                <strong>#${escapeHtml(message.id ?? "-")}</strong>
+                <span>room ${escapeHtml(message.chatRoomId)}</span>
+                <span>sender ${escapeHtml(message.senderId)} ${escapeHtml(message.senderRole)}</span>
+                <span>${escapeHtml(formatDate(message.createdAt))}</span>
+            </div>
+            <div class="message-body">${escapeHtml(message.content)}</div>
+        `;
+        $("messages").appendChild(item);
+        $("messages").scrollTop = $("messages").scrollHeight;
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function formatDate(value) {
+        if (!value) {
+            return "";
+        }
+        return value.replace("T", " ").slice(0, 19);
+    }
+
+    function currentRoomId() {
+        const chatRoomId = $("chatRoomId").value.trim();
+        if (!chatRoomId) {
+            throw new Error("Chat Room ID가 필요합니다.");
+        }
+        localStorage.setItem("chatTest.chatRoomId", chatRoomId);
+        return chatRoomId;
+    }
+
+    function ensureConnected() {
+        if (!state.socket || state.socket.readyState !== WebSocket.OPEN || !state.stompConnected) {
+            throw new Error("먼저 WebSocket/STOMP 연결을 완료해 주세요.");
+        }
+    }
+
+    function bind(id, handler) {
+        $(id).addEventListener("click", async () => {
+            try {
+                await handler();
+            } catch (error) {
+                log("오류", {message: error.message});
+                alert(error.message);
+            }
+        });
+    }
+
+    bind("signupButton", signup);
+    bind("loginButton", login);
+    bind("clearTokenButton", () => {
+        state.accessToken = "";
+        localStorage.removeItem("chatTest.accessToken");
+        updateAuthStatus();
+        log("토큰 삭제");
+    });
+    bind("createRoomButton", createRoom);
+    bind("loadMessagesButton", loadMessages);
+    bind("connectButton", connectSocket);
+    bind("subscribeButton", subscribeRoom);
+    bind("disconnectButton", disconnectSocket);
+    bind("sendButton", sendMessage);
+    bind("loadAfterSendButton", async () => {
+        sendMessage();
+        setTimeout(loadMessages, 300);
+    });
+    bind("clearMessagesButton", () => {
+        $("messages").innerHTML = "";
+        log("화면 메시지 비움");
+    });
+
+    initDefaults();
+</script>
+</body>
+</html>

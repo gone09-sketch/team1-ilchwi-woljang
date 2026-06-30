@@ -76,6 +76,9 @@ public class SecurityConfig {
                                 "/error",
                                 "/error/**",
 
+                                // chat test client
+                                "/chat-test.html",
+
                                 // ws
                                 "/ws",
                                 "/ws/**"

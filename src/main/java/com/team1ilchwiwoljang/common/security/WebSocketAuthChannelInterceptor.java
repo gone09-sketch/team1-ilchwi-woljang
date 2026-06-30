@@ -1,5 +1,6 @@
 package com.team1ilchwiwoljang.common.security;
 
+import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.common.security.auth.AuthMember;
 import com.team1ilchwiwoljang.domain.chat.service.ChatService;
 import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
@@ -56,13 +57,13 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         String authorizationHeader = accessor.getFirstNativeHeader(HttpHeaders.AUTHORIZATION);
 
         if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER_PREFIX)) {
-            throw new AccessDeniedException("Authentication is required");
+            throw accessDenied(ErrorCode.UNAUTHORIZED);
         }
 
         String accessToken = authorizationHeader.substring(BEARER_PREFIX.length()).trim();
 
         if (accessToken.isBlank()) {
-            throw new AccessDeniedException("Authentication is required");
+            throw accessDenied(ErrorCode.UNAUTHORIZED);
         }
 
         try {
@@ -71,7 +72,7 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
             MemberRole role = tokenPayload.role();
 
             if (!memberService.existsActiveMember(memberId)) {
-                throw new AccessDeniedException("Authentication is required");
+                throw accessDenied(ErrorCode.UNAUTHORIZED);
             }
 
             AuthMember authMember = new AuthMember(memberId, role);
@@ -83,7 +84,7 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
                     List.of(authority)
             );
         } catch (JwtException | IllegalArgumentException e) {
-            throw new AccessDeniedException("Authentication is required", e);
+            throw accessDenied(ErrorCode.UNAUTHORIZED, e);
         }
     }
 
@@ -106,13 +107,13 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         String chatRoomId = destination.substring(CHAT_ROOM_SUBSCRIBE_PREFIX.length());
 
         if (chatRoomId.isBlank() || chatRoomId.contains("/")) {
-            throw new AccessDeniedException("Invalid chat room destination");
+            throw accessDenied(ErrorCode.INVALID_CHAT_ROOM_DESTINATION);
         }
 
         try {
             return Long.valueOf(chatRoomId);
         } catch (NumberFormatException e) {
-            throw new AccessDeniedException("Invalid chat room destination", e);
+            throw accessDenied(ErrorCode.INVALID_CHAT_ROOM_DESTINATION, e);
         }
     }
 
@@ -122,6 +123,14 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
             return authMember;
         }
 
-        throw new AccessDeniedException("Authentication is required");
+        throw accessDenied(ErrorCode.UNAUTHORIZED);
+    }
+
+    private AccessDeniedException accessDenied(ErrorCode errorCode) {
+        return new AccessDeniedException(errorCode.getMessage());
+    }
+
+    private AccessDeniedException accessDenied(ErrorCode errorCode, Throwable cause) {
+        return new AccessDeniedException(errorCode.getMessage(), cause);
     }
 }
