@@ -18,6 +18,12 @@ repositories {
     mavenCentral()
 }
 
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.ai:spring-ai-bom:2.0.0"
+    }
+}
+
 dependencies {
     // Spring Boot Starters
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -28,6 +34,9 @@ dependencies {
     // Spring Retry
     implementation 'org.springframework.retry:spring-retry:2.0.11'
     implementation 'org.springframework:spring-aspects'
+
+    // Spring AI (OpenAI)
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
 
     // Lombok
     compileOnly 'org.projectlombok:lombok'
