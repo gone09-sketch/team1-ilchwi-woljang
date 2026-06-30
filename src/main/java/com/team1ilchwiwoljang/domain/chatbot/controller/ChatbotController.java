@@ -3,9 +3,11 @@ package com.team1ilchwiwoljang.domain.chatbot.controller;
 import com.team1ilchwiwoljang.common.response.ApiResponse;
 import com.team1ilchwiwoljang.domain.chatbot.dto.request.ChatbotRequest;
 import com.team1ilchwiwoljang.domain.chatbot.dto.response.ChatbotResponse;
+import com.team1ilchwiwoljang.domain.chatbot.tool.ProductTool;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 public class ChatbotController {
 
     private final ChatClient chatClient;
+    private final ProductTool productTool;
 
     @GetMapping("/welcome")
     public ApiResponse<String> welcome() {
@@ -34,7 +37,9 @@ public class ChatbotController {
                         너는 쇼핑몰 고객센터 챗봇이다.
                         
                         지켜야하는 규칙:
-                        - 반드시 사용자의 마지막 메시지와 같은 언어로만 답한다. 한국어 질문일 때만 한국어로 답한다.
+                        -실제 서비스 데이터가 필요한 질문은 제공된 도구를 사용해서 확인한 뒤 답변합니다.
+                        -이전 대화 내용이 있으면 자연스럽게 이어서 답변합니다.
+                        -반드시 사용자의 마지막 메시지와 같은 언어로만 답한다. 한국어 질문일 때만 한국어로 답한다.
                         -한국어는 존댓말로 답한다.
                         -Markdown 기호는 사용하지 않는다.
                         -문장마다 줄바꿈하지 않는다. 다만 내용의 종류가 바뀌거나 답변이 길어질 때는 가독성을 위해 문단을 나눈다.
@@ -52,6 +57,11 @@ public class ChatbotController {
                         상담 시간: 평일 09:00~18:00, 점심시간 12:00~13:00, 주말 및 공휴일 휴무
                         """)
                 .user(chatbotRequest.message())
+                .advisors(advisor -> advisor.param(
+                        ChatMemory.CONVERSATION_ID,
+                        chatbotRequest.conversationId()
+                ))
+                .tools(productTool)
                 .call()
                 .content();
 
