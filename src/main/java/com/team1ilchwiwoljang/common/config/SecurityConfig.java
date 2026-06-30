@@ -67,38 +67,35 @@ public class SecurityConfig {
 
                 // 인가 설정
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/auth/signup",
-                                "/api/auth/login",
-                                "/api/auth/refresh",
-
-                                // Spring 내부 에러 경로
-                                "/error",
-                                "/error/**"
-                        ).permitAll()
-
-                        .requestMatchers(
-                                // 카테고리 목록 조회는 로그인 없이 볼 수 있게 허용
-                                HttpMethod.GET,
-                                "/api/categories",
-                                "/api/categories/**"
-                        ).permitAll()
-
-                                .requestMatchers(
-                                        // 상품 목록 조회와 상품 상세 조회는 로그인 없이 볼 수 있게 허용
-                                        HttpMethod.GET,
-                                        "/api/products",
-                                        "/api/products/**"
-                                ).permitAll()
-
-                        .requestMatchers("/api/admins/**").hasRole("ADMIN")
+                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
+                        .requestMatchers(ADMIN_ENDPOINTS).hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
 
                 // Controller에 도착하기 전에 JWT를 먼저 검증합니다.
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-
         return http.build();
     }
+
+    private static final String[] PUBLIC_ENDPOINTS = {
+            "/api/auth/signup",
+            "/api/auth/login",
+            "/api/auth/refresh",
+            "/error",
+            "/error/**",
+            "/api/ai/chatbot"
+    };
+
+    private static final String[] PUBLIC_GET_ENDPOINTS = {
+            "/api/categories",
+            "/api/categories/**",
+            "/api/products",
+            "/api/products/**"
+    };
+
+    private static final String[] ADMIN_ENDPOINTS = {
+            "/api/admins/**"
+    };
 }
