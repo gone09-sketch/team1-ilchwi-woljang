@@ -85,7 +85,9 @@ public class SecurityConfig {
             "/api/auth/refresh",
             "/error",
             "/error/**",
-            "/api/ai/chatbot"
+            "/api/ai/chatbot",
+            "/api/ai/chatbot/**",
+            "/chatbot-test.html"
     };
 
     private static final String[] PUBLIC_GET_ENDPOINTS = {
