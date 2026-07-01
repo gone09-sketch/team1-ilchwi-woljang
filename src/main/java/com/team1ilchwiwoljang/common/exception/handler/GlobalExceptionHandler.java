@@ -5,7 +5,9 @@ import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.common.response.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -64,5 +66,15 @@ public class GlobalExceptionHandler {
         log.error("예상하지 못한 서버 오류가 발생했습니다.", e);
         ErrorResponse response = ErrorResponse.of("INTERNAL_SERVER_ERROR", "서버 오류가 발생했습니다.");
         return ResponseEntity.internalServerError().body(response);
+    }
+
+    @ExceptionHandler(PessimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handlePessimisticLockException(
+            PessimisticLockingFailureException e
+    ){
+        ErrorCode errorCode = ErrorCode.ORDER_CONFLICT;
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(ErrorResponse.of(errorCode.name(), errorCode.getMessage()));
     }
 }

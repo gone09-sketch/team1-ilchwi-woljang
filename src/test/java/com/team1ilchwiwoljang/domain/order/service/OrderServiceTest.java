@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.team1ilchwiwoljang.common.exception.BusinessException;
@@ -39,6 +40,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import com.team1ilchwiwoljang.common.response.PageResponse;
+import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
+import com.team1ilchwiwoljang.domain.order.dto.response.OrderHistoryResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import static org.mockito.ArgumentMatchers.eq;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -140,7 +150,7 @@ class OrderServiceTest {
         Member member = createMember(memberId);
         Product product = createProduct(1L, "product", 10_000, 10, ProductStatus.ON_SALE);
         given(memberService.getMember(memberId)).willReturn(member);
-        given(productService.getProduct(request.productId())).willReturn(product);
+        given(productService.getProductWithPessimisticLock(request.productId())).willReturn(product);
 
         OrderResponse response = orderService.createDirectOrder(memberId, request);
 
@@ -176,7 +186,7 @@ class OrderServiceTest {
         Long memberId = 1L;
         DirectOrderRequest request = new DirectOrderRequest(999L, 2);
         given(memberService.getMember(memberId)).willReturn(createMember(memberId));
-        given(productService.getProduct(request.productId()))
+        given(productService.getProductWithPessimisticLock(request.productId()))
                 .willThrow(new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
 
         assertThatThrownBy(() -> orderService.createDirectOrder(memberId, request))
@@ -191,7 +201,7 @@ class OrderServiceTest {
         DirectOrderRequest request = new DirectOrderRequest(1L, 5);
         Product product = createProduct(1L, "product", 10_000, 3, ProductStatus.ON_SALE);
         given(memberService.getMember(memberId)).willReturn(createMember(memberId));
-        given(productService.getProduct(request.productId())).willReturn(product);
+        given(productService.getProductWithPessimisticLock(request.productId())).willReturn(product);
 
         assertThatThrownBy(() -> orderService.createDirectOrder(memberId, request))
                 .isInstanceOf(BusinessException.class)
@@ -205,7 +215,7 @@ class OrderServiceTest {
         DirectOrderRequest request = new DirectOrderRequest(1L, 2);
         Product product = createProduct(1L, "product", 10_000, 10, ProductStatus.STOPPED);
         given(memberService.getMember(memberId)).willReturn(createMember(memberId));
-        given(productService.getProduct(request.productId())).willReturn(product);
+        given(productService.getProductWithPessimisticLock(request.productId())).willReturn(product);
 
         assertThatThrownBy(() -> orderService.createDirectOrder(memberId, request))
                 .isInstanceOf(BusinessException.class)
@@ -226,6 +236,8 @@ class OrderServiceTest {
         given(memberService.getMember(memberId)).willReturn(member);
         given(cartService.getOrderCartItems(memberId, request.cartIds()))
                 .willReturn(List.of(firstCart, secondCart));
+        given(productService.getProductWithPessimisticLock(firstProduct.getId())).willReturn(firstProduct);
+        given(productService.getProductWithPessimisticLock(secondProduct.getId())).willReturn(secondProduct);
 
         OrderResponse response = orderService.createCartOrder(memberId, request);
 
@@ -254,6 +266,7 @@ class OrderServiceTest {
         Cart cart = createCart(10L, member, product, 2);
         given(memberService.getMember(memberId)).willReturn(member);
         given(cartService.getOrderCartItems(memberId, request.cartIds())).willReturn(List.of(cart));
+        given(productService.getProductWithPessimisticLock(product.getId())).willReturn(product);
 
         assertThatThrownBy(() -> orderService.createCartOrder(memberId, request))
                 .isInstanceOf(BusinessException.class)
@@ -270,6 +283,7 @@ class OrderServiceTest {
         Cart cart = createCart(10L, member, product, 1);
         given(memberService.getMember(memberId)).willReturn(member);
         given(cartService.getOrderCartItems(memberId, request.cartIds())).willReturn(List.of(cart));
+        given(productService.getProductWithPessimisticLock(product.getId())).willReturn(product);
 
         assertThatThrownBy(() -> orderService.createCartOrder(memberId, request))
                 .isInstanceOf(BusinessException.class)
@@ -408,6 +422,55 @@ class OrderServiceTest {
         assertThat(order.getOrderStatus()).isEqualTo(OrderStatus.CANCELLED);
         assertThat(order.getCanceledAt()).isNotNull();
         assertThat(order.getPaidAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("회원의 주문 내역이 존재하면 주문 요약만 담은 페이징 응답을 반환한다")
+    void given_validMemberAndOrders_whenGetOrderHistory_thenReturnPagedOrderHistoryResponse() {
+        // given
+        Long memberId = 1L;
+        Pageable pageable = PageRequest.of(0, 10);
+
+        Member member = Member.create("test@example.com", "password", "홍길동", "010-1234-5678");
+        ReflectionTestUtils.setField(member, "id", memberId);
+
+        Order order = Order.create(member, "ORD-123", 20000L, 20000L);
+        ReflectionTestUtils.setField(order, "id", 100L);
+
+        Page<Order> orderPage = new PageImpl<>(List.of(order), pageable, 1);
+
+        given(orderRepository.findOrderHistoryByMemberId(eq(memberId), any(OrderSearchCondition.class), eq(pageable))).willReturn(orderPage);
+
+        // when
+        PageResponse<OrderHistoryResponse> result = orderService.getOrderHistory(memberId, new OrderSearchCondition(null, null, null, null), pageable);
+
+        // then
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.totalElements()).isEqualTo(1);
+        assertThat(result.content().get(0).orderId()).isEqualTo(100L);
+        assertThat(result.content().get(0).orderNumber()).isEqualTo("ORD-123");
+        assertThat(result.content().get(0).totalAmount()).isEqualTo(20000L);
+        assertThat(result.content().get(0).orderStatus()).isEqualTo("PENDING");
+        verify(orderItemRepository, never()).findByOrderIdIn(any());
+    }
+
+    @Test
+    @DisplayName("주문 내역이 없는 회원이면 빈 페이지 응답을 반환하고 추가 쿼리를 수행하지 않는다")
+    void given_noOrders_whenGetOrderHistory_thenReturnEmptyPageResponse() {
+        // given
+        Long memberId = 1L;
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Order> emptyPage = new PageImpl<>(List.of(), pageable, 0);
+
+        given(orderRepository.findOrderHistoryByMemberId(eq(memberId), any(OrderSearchCondition.class), eq(pageable))).willReturn(emptyPage);
+
+        // when
+        PageResponse<OrderHistoryResponse> result = orderService.getOrderHistory(memberId, new OrderSearchCondition(null, null, null, null), pageable);
+
+        // then
+        assertThat(result.content()).isEmpty();
+        assertThat(result.totalElements()).isEqualTo(0);
+        verify(orderItemRepository, never()).findByOrderIdIn(any());
     }
 
     private Cart createCart(Long cartId, Member member, Product product, int quantity) {
