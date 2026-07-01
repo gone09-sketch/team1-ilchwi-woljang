@@ -8,7 +8,6 @@ import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
 import com.team1ilchwiwoljang.domain.order.entity.Order;
 import com.team1ilchwiwoljang.domain.order.entity.OrderStatus;
 import com.team1ilchwiwoljang.domain.order.entity.QOrder;
-import com.team1ilchwiwoljang.domain.order.entity.QOrderItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -28,32 +27,13 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
     @Override
     public Page<Order> findOrderHistoryByMemberId(Long memberId, OrderSearchCondition condition, Pageable pageable) {
         QOrder order = QOrder.order;
-        QOrderItem orderItem = QOrderItem.orderItem;
 
         BooleanExpression baseWhere = order.member.id.eq(memberId)
                 .and(orderStatusEq(condition.orderStatus()))
                 .and(createdAtBetween(condition.startDate(), condition.endDate()));
 
-        BooleanExpression whereClause;
-        if (condition.keyword() != null && !condition.keyword().isBlank()) {
-            // keyword가 있을 때: exists 서브쿼리를 사용하여 1:N 조인 없이 페이징 정합성과 성능 최적화 확보
-            QOrderItem subOrderItem = new QOrderItem("subOrderItem");
-            whereClause = baseWhere.and(
-                    order.orderNumber.containsIgnoreCase(condition.keyword())
-                            .or(
-                                    JPAExpressions.selectOne()
-                                            .from(subOrderItem)
-                                            .where(
-                                                    subOrderItem.order.id.eq(order.id)
-                                                            .and(subOrderItem.productNameSnapshot.containsIgnoreCase(condition.keyword()))
-                                            )
-                                            .exists()
-                            )
-            );
-        } else {
-            // keyword 없을 때: join 없이 Order만 조회 → 복합 인덱스 스캔 활용
-            whereClause = baseWhere;
-        }
+        // 목록 조회는 Order 테이블만 대상으로 한다. 상품명 검색은 주문 상세 조회/검색에서 분리한다.
+        BooleanExpression whereClause = baseWhere.and(orderNumberContains(condition.keyword()));
 
         List<Order> content = queryFactory
                 .select(order)
@@ -77,6 +57,12 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
 
     private BooleanExpression orderStatusEq(OrderStatus orderStatus) {
         return orderStatus != null ? QOrder.order.orderStatus.eq(orderStatus) : null;
+    }
+
+    private BooleanExpression orderNumberContains(String keyword) {
+        return keyword != null && !keyword.isBlank()
+                ? QOrder.order.orderNumber.containsIgnoreCase(keyword)
+                : null;
     }
 
     private BooleanExpression createdAtBetween(LocalDate startDate, LocalDate endDate) {
@@ -112,8 +98,9 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
             }
         }
         
-        // 기본값: 최신 주문순 (id DESC)
+        // 기본값: 최신 주문순 (createdAt DESC, id DESC)
         if (specifiers.isEmpty()) {
+            specifiers.add(new OrderSpecifier<>(com.querydsl.core.types.Order.DESC, order.createdAt));
             specifiers.add(new OrderSpecifier<>(com.querydsl.core.types.Order.DESC, order.id));
         }
 

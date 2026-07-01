@@ -4,13 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.domain.cart.entity.Cart;
 import com.team1ilchwiwoljang.domain.cart.service.CartService;
-import com.team1ilchwiwoljang.domain.category.entity.Category;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.order.dto.request.CartOrderRequest;
@@ -150,7 +150,7 @@ class OrderServiceTest {
         Member member = createMember(memberId);
         Product product = createProduct(1L, "product", 10_000, 10, ProductStatus.ON_SALE);
         given(memberService.getMember(memberId)).willReturn(member);
-        given(productService.getProduct(request.productId())).willReturn(product);
+        given(productService.getProductWithPessimisticLock(request.productId())).willReturn(product);
 
         OrderResponse response = orderService.createDirectOrder(memberId, request);
 
@@ -187,7 +187,7 @@ class OrderServiceTest {
         Long memberId = 1L;
         DirectOrderRequest request = new DirectOrderRequest(999L, 2);
         given(memberService.getMember(memberId)).willReturn(createMember(memberId));
-        given(productService.getProduct(request.productId()))
+        given(productService.getProductWithPessimisticLock(request.productId()))
                 .willThrow(new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
 
         assertThatThrownBy(() -> orderService.createDirectOrder(memberId, request))
@@ -202,7 +202,7 @@ class OrderServiceTest {
         DirectOrderRequest request = new DirectOrderRequest(1L, 5);
         Product product = createProduct(1L, "product", 10_000, 3, ProductStatus.ON_SALE);
         given(memberService.getMember(memberId)).willReturn(createMember(memberId));
-        given(productService.getProduct(request.productId())).willReturn(product);
+        given(productService.getProductWithPessimisticLock(request.productId())).willReturn(product);
 
         assertThatThrownBy(() -> orderService.createDirectOrder(memberId, request))
                 .isInstanceOf(BusinessException.class)
@@ -216,7 +216,7 @@ class OrderServiceTest {
         DirectOrderRequest request = new DirectOrderRequest(1L, 2);
         Product product = createProduct(1L, "product", 10_000, 10, ProductStatus.STOPPED);
         given(memberService.getMember(memberId)).willReturn(createMember(memberId));
-        given(productService.getProduct(request.productId())).willReturn(product);
+        given(productService.getProductWithPessimisticLock(request.productId())).willReturn(product);
 
         assertThatThrownBy(() -> orderService.createDirectOrder(memberId, request))
                 .isInstanceOf(BusinessException.class)
@@ -237,6 +237,8 @@ class OrderServiceTest {
         given(memberService.getMember(memberId)).willReturn(member);
         given(cartService.getOrderCartItems(memberId, request.cartIds()))
                 .willReturn(List.of(firstCart, secondCart));
+        given(productService.getProductWithPessimisticLock(firstProduct.getId())).willReturn(firstProduct);
+        given(productService.getProductWithPessimisticLock(secondProduct.getId())).willReturn(secondProduct);
 
         OrderResponse response = orderService.createCartOrder(memberId, request);
 
@@ -267,6 +269,7 @@ class OrderServiceTest {
         Cart cart = createCart(10L, member, product, 2);
         given(memberService.getMember(memberId)).willReturn(member);
         given(cartService.getOrderCartItems(memberId, request.cartIds())).willReturn(List.of(cart));
+        given(productService.getProductWithPessimisticLock(product.getId())).willReturn(product);
 
         assertThatThrownBy(() -> orderService.createCartOrder(memberId, request))
                 .isInstanceOf(BusinessException.class)
@@ -283,6 +286,7 @@ class OrderServiceTest {
         Cart cart = createCart(10L, member, product, 1);
         given(memberService.getMember(memberId)).willReturn(member);
         given(cartService.getOrderCartItems(memberId, request.cartIds())).willReturn(List.of(cart));
+        given(productService.getProductWithPessimisticLock(product.getId())).willReturn(product);
 
         assertThatThrownBy(() -> orderService.createCartOrder(memberId, request))
                 .isInstanceOf(BusinessException.class)
@@ -424,7 +428,7 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("회원의 주문 내역이 존재하면 페이징된 주문 내역 DTO 목록을 반환한다")
+    @DisplayName("회원의 주문 내역이 존재하면 주문 요약만 담은 페이징 응답을 반환한다")
     void given_validMemberAndOrders_whenGetOrderHistory_thenReturnPagedOrderHistoryResponse() {
         // given
         Long memberId = 1L;
@@ -436,18 +440,9 @@ class OrderServiceTest {
         Order order = Order.create(member, "ORD-123", 20000L, 20000L);
         ReflectionTestUtils.setField(order, "id", 100L);
 
-        Category category = Category.createRoot("전자기기");
-        ReflectionTestUtils.setField(category, "id", 20L);
-
-        Product product = Product.create("노트북 파우치", 20000, 10, ProductStatus.ON_SALE, "설명", category);
-        ReflectionTestUtils.setField(product, "id", 10L);
-
-        OrderItem orderItem = OrderItem.create(order, product, "노트북 파우치", 20000L, 1L, 20000L);
-
         Page<Order> orderPage = new PageImpl<>(List.of(order), pageable, 1);
 
         given(orderRepository.findOrderHistoryByMemberId(eq(memberId), any(OrderSearchCondition.class), eq(pageable))).willReturn(orderPage);
-        given(orderItemRepository.findByOrderIdIn(List.of(100L))).willReturn(List.of(orderItem));
 
         // when
         PageResponse<OrderHistoryResponse> result = orderService.getOrderHistory(memberId, new OrderSearchCondition(null, null, null, null), pageable);
@@ -457,11 +452,9 @@ class OrderServiceTest {
         assertThat(result.totalElements()).isEqualTo(1);
         assertThat(result.content().get(0).orderId()).isEqualTo(100L);
         assertThat(result.content().get(0).orderNumber()).isEqualTo("ORD-123");
-        assertThat(result.content().get(0).orderItems()).hasSize(1);
-        assertThat(result.content().get(0).orderItems().get(0).productName()).isEqualTo("노트북 파우치");
-        assertThat(result.content().get(0).orderItems().get(0).categoryId()).isEqualTo(20L);
-        assertThat(result.content().get(0).orderItems().get(0).categoryName()).isEqualTo("전자기기");
-        assertThat(result.content().get(0).orderItems().get(0).quantity()).isEqualTo(1L);
+        assertThat(result.content().get(0).totalAmount()).isEqualTo(20000L);
+        assertThat(result.content().get(0).orderStatus()).isEqualTo("PENDING");
+        verify(orderItemRepository, never()).findByOrderIdIn(any());
     }
 
     @Test
@@ -480,6 +473,7 @@ class OrderServiceTest {
         // then
         assertThat(result.content()).isEmpty();
         assertThat(result.totalElements()).isEqualTo(0);
+        verify(orderItemRepository, never()).findByOrderIdIn(any());
     }
 
     private Cart createCart(Long cartId, Member member, Product product, int quantity) {

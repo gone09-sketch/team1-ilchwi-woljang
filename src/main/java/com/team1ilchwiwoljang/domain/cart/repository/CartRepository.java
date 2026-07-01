@@ -24,7 +24,6 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
     @Query("""
             select c
             from Cart c
-            join fetch c.product
             where c.member.id = :memberId
               and c.id in :cartIds
             order by c.id desc
