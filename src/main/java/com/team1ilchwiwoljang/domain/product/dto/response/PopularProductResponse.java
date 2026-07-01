@@ -10,7 +10,7 @@ public record PopularProductResponse(
         int stock,
         ProductStatus status,
         int salesCount
-) {
+) implements java.io.Serializable {
     public static PopularProductResponse from(Product product) {
         return new PopularProductResponse(
                 product.getId(),

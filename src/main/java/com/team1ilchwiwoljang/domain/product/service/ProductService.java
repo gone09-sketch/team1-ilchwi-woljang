@@ -13,6 +13,7 @@ import com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse
 import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -124,6 +125,20 @@ public class ProductService {
      */
     @Cacheable(value = "popularProducts", key = "#limit")
     public List<PopularProductResponse> getPopularProducts(int limit) {
+        Pageable pageable = PageRequest.of(0, limit);
+        return productRepository.findByStatusOrderBySalesCountDesc(ProductStatus.ON_SALE, pageable)
+                .stream()
+                .map(PopularProductResponse::from)
+                .toList();
+    }
+
+    /**
+     * 캐시 웜업(Warm-up) 전용 메서드.
+     * @CachePut은 캐시 유무와 관계없이 항상 DB를 조회하고 캐시를 새로 덮어씌워(TTL 리셋) 스탬피드를 방어합니다.
+     * 스케줄러(PopularProductCacheScheduler)에서만 호출됩니다.
+     */
+    @CachePut(value = "popularProducts", key = "#limit")
+    public List<PopularProductResponse> warmUpPopularProductsCache(int limit) {
         Pageable pageable = PageRequest.of(0, limit);
         return productRepository.findByStatusOrderBySalesCountDesc(ProductStatus.ON_SALE, pageable)
                 .stream()
