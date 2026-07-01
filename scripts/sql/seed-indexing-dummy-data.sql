@@ -11,6 +11,9 @@
 -- Target login account:
 -- - email: target@test.com
 -- - raw password: Test1234!
+-- Admin login accounts:
+-- - email: admin01@test.com ~ admin10@test.com
+-- - raw password: Test1234!
 
 SET @target_email = _utf8mb4'target@test.com' COLLATE utf8mb4_unicode_ci;
 SET @dummy_password = '$2y$10$Ec9O2XWgpKzSXt1jaIO.yuIjdgAX4umqI8N1H4dWBrkvzvABkIKAy';
