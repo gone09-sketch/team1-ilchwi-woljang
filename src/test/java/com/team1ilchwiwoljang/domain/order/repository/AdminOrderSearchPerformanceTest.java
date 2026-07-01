@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,10 +42,48 @@ class AdminOrderSearchPerformanceTest {
     @Autowired
     private EntityManager entityManager;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @Test
     @DisplayName("관리자 주문 검색 조건별 응답 시간을 Markdown 표로 출력한다")
     void givenAdminOrderSearchConditions_whenMeasure_thenPrintMarkdownTable() {
-        List<Scenario> scenarios = List.of(
+        List<Scenario> scenarios = scenarios();
+
+        System.out.println();
+        System.out.println("warm-up: " + WARM_UP_COUNT + ", measure: " + MEASURE_COUNT + ", page: 0, size: 10, sort: default(id DESC)");
+        System.out.println("| 시나리오 | 요청 | 평균(ms) | 중앙값(ms) | 최소(ms) | 최대(ms) | totalElements |");
+        System.out.println("|---|---|---:|---:|---:|---:|---:|");
+
+        for (Scenario scenario : scenarios) {
+            Measurement measurement = measure(scenario.condition());
+            System.out.printf(
+                    Locale.KOREA,
+                    "| %s | `%s` | %.1f | %d | %d | %d | %d |%n",
+                    scenario.name(),
+                    scenario.requestPath(),
+                    measurement.averageMs(),
+                    measurement.medianMs(),
+                    measurement.minMs(),
+                    measurement.maxMs(),
+                    measurement.totalElements()
+            );
+        }
+
+        System.out.println();
+        System.out.println("SQL 단위 측정: content query와 count query를 분리해 측정");
+        System.out.println("| 시나리오 | 쿼리 | 평균(ms) | 중앙값(ms) | 최소(ms) | 최대(ms) | 결과 수 |");
+        System.out.println("|---|---|---:|---:|---:|---:|---:|");
+
+        for (Scenario scenario : scenarios) {
+            QueryMeasurements measurements = measureQueries(scenario.condition());
+            printQueryMeasurement(scenario.name(), "목록 조회", measurements.content());
+            printQueryMeasurement(scenario.name(), "count", measurements.count());
+        }
+    }
+
+    private List<Scenario> scenarios() {
+        return List.of(
                 new Scenario(
                         "주문 상태 + 기간 + 금액 범위",
                         "/api/admins/orders?orderStatus=PAID&startDate=2026-01-01&endDate=2026-06-30&minTotalAmount=10000&maxTotalAmount=50000&page=0&size=10",
@@ -124,26 +163,6 @@ class AdminOrderSearchPerformanceTest {
                         )
                 )
         );
-
-        System.out.println();
-        System.out.println("warm-up: " + WARM_UP_COUNT + ", measure: " + MEASURE_COUNT + ", page: 0, size: 10, sort: default(id DESC)");
-        System.out.println("| 시나리오 | 요청 | 평균(ms) | 중앙값(ms) | 최소(ms) | 최대(ms) | totalElements |");
-        System.out.println("|---|---|---:|---:|---:|---:|---:|");
-
-        for (Scenario scenario : scenarios) {
-            Measurement measurement = measure(scenario.condition());
-            System.out.printf(
-                    Locale.KOREA,
-                    "| %s | `%s` | %.1f | %d | %d | %d | %d |%n",
-                    scenario.name(),
-                    scenario.requestPath(),
-                    measurement.averageMs(),
-                    measurement.medianMs(),
-                    measurement.minMs(),
-                    measurement.maxMs(),
-                    measurement.totalElements()
-            );
-        }
     }
 
     private Measurement measure(AdminOrderSearchCondition condition) {
@@ -166,6 +185,144 @@ class AdminOrderSearchPerformanceTest {
         }
 
         return Measurement.from(elapsedTimes, totalElements);
+    }
+
+    private QueryMeasurements measureQueries(AdminOrderSearchCondition condition) {
+        Query contentQuery = createContentQuery(condition);
+        Query countQuery = createCountQuery(condition);
+
+        return new QueryMeasurements(
+                measureQuery(() -> jdbcTemplate.queryForList(contentQuery.sql(), contentQuery.params().toArray()).size()),
+                measureQuery(() -> jdbcTemplate.queryForObject(countQuery.sql(), Long.class, countQuery.params().toArray()))
+        );
+    }
+
+    private Measurement measureQuery(QueryRunner runner) {
+        for (int i = 0; i < WARM_UP_COUNT; i++) {
+            runner.run();
+        }
+
+        List<Long> elapsedTimes = new ArrayList<>();
+        long resultCount = 0;
+
+        for (int i = 0; i < MEASURE_COUNT; i++) {
+            long startedAt = System.nanoTime();
+            resultCount = runner.run();
+            long elapsedMs = (System.nanoTime() - startedAt) / 1_000_000;
+            elapsedTimes.add(elapsedMs);
+        }
+
+        return Measurement.from(elapsedTimes, resultCount);
+    }
+
+    private Query createContentQuery(AdminOrderSearchCondition condition) {
+        QueryParts queryParts = createQueryParts(condition);
+        List<Object> params = new ArrayList<>(queryParts.params());
+        params.add(PAGEABLE.getPageSize());
+        params.add(PAGEABLE.getOffset());
+
+        return new Query("""
+                SELECT
+                    o.id,
+                    o.canceled_at,
+                    o.created_at,
+                    o.member_id,
+                    o.order_number,
+                    o.order_status,
+                    o.paid_at,
+                    o.pg_amount,
+                    o.total_amount,
+                    o.updated_at
+                FROM orders o
+                %s
+                ORDER BY o.id DESC
+                LIMIT ? OFFSET ?
+                """.formatted(queryParts.whereClause()), params);
+    }
+
+    private Query createCountQuery(AdminOrderSearchCondition condition) {
+        QueryParts queryParts = createQueryParts(condition);
+        return new Query("""
+                SELECT COUNT(o.id)
+                FROM orders o
+                %s
+                """.formatted(queryParts.whereClause()), queryParts.params());
+    }
+
+    private QueryParts createQueryParts(AdminOrderSearchCondition condition) {
+        List<String> conditions = new ArrayList<>();
+        List<Object> params = new ArrayList<>();
+
+        if (condition.orderStatus() != null) {
+            conditions.add("o.order_status = ?");
+            params.add(condition.orderStatus().name());
+        }
+
+        if (condition.startDate() != null && condition.endDate() != null) {
+            conditions.add("o.created_at BETWEEN ? AND ?");
+            params.add(condition.startDate().atStartOfDay());
+            params.add(condition.endDate().atTime(23, 59, 59, 999_999_999));
+        } else if (condition.startDate() != null) {
+            conditions.add("o.created_at >= ?");
+            params.add(condition.startDate().atStartOfDay());
+        } else if (condition.endDate() != null) {
+            conditions.add("o.created_at <= ?");
+            params.add(condition.endDate().atTime(23, 59, 59, 999_999_999));
+        }
+
+        if (condition.minTotalAmount() != null && condition.maxTotalAmount() != null) {
+            conditions.add("o.total_amount BETWEEN ? AND ?");
+            params.add(condition.minTotalAmount());
+            params.add(condition.maxTotalAmount());
+        } else if (condition.minTotalAmount() != null) {
+            conditions.add("o.total_amount >= ?");
+            params.add(condition.minTotalAmount());
+        } else if (condition.maxTotalAmount() != null) {
+            conditions.add("o.total_amount <= ?");
+            params.add(condition.maxTotalAmount());
+        }
+
+        if (condition.keyword() != null && !condition.keyword().isBlank()) {
+            conditions.add("""
+                    (
+                        LOWER(o.order_number) LIKE ? ESCAPE '!'
+                        OR EXISTS (
+                            SELECT 1
+                            FROM order_items oi
+                            WHERE oi.order_id = o.id
+                              AND LOWER(oi.product_name_snapshot) LIKE ? ESCAPE '!'
+                        )
+                    )
+                    """);
+            String keyword = "%" + condition.keyword().toLowerCase(Locale.ROOT) + "%";
+            params.add(keyword);
+            params.add(keyword);
+        }
+
+        if (condition.memberId() != null) {
+            conditions.add("o.member_id = ?");
+            params.add(condition.memberId());
+        }
+
+        if (conditions.isEmpty()) {
+            return new QueryParts("", params);
+        }
+
+        return new QueryParts("WHERE " + String.join("\n  AND ", conditions), params);
+    }
+
+    private void printQueryMeasurement(String scenarioName, String queryName, Measurement measurement) {
+        System.out.printf(
+                Locale.KOREA,
+                "| %s | %s | %.1f | %d | %d | %d | %d |%n",
+                scenarioName,
+                queryName,
+                measurement.averageMs(),
+                measurement.medianMs(),
+                measurement.minMs(),
+                measurement.maxMs(),
+                measurement.totalElements()
+        );
     }
 
     private record Scenario(
@@ -200,5 +357,19 @@ class AdminOrderSearchPerformanceTest {
                     totalElements
             );
         }
+    }
+
+    @FunctionalInterface
+    private interface QueryRunner {
+        long run();
+    }
+
+    private record Query(String sql, List<Object> params) {
+    }
+
+    private record QueryParts(String whereClause, List<Object> params) {
+    }
+
+    private record QueryMeasurements(Measurement content, Measurement count) {
     }
 }
