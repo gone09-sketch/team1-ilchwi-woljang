@@ -37,7 +37,7 @@ public class ProductService {
     /**
      * 주문 재고 차감
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public Product getProductWithPessimisticLock(Long productId){
         return productRepository.findByWithPessimisticLock(productId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));
