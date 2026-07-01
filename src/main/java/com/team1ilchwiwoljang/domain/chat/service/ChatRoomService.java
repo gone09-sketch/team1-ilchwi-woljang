@@ -2,6 +2,7 @@ package com.team1ilchwiwoljang.domain.chat.service;
 
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
+import com.team1ilchwiwoljang.domain.chat.dto.response.ChatRoomListResponse;
 import com.team1ilchwiwoljang.domain.chat.entity.ChatRoom;
 import com.team1ilchwiwoljang.domain.chat.repository.ChatRoomRepository;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
@@ -10,6 +11,8 @@ import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /**
  * 채팅방 생성, 조회, WebSocket 접속 권한 검증을 담당하는 서비스입니다.
@@ -73,5 +76,21 @@ public class ChatRoomService {
         }
 
         throw new BusinessException(ErrorCode.FORBIDDEN);
+    }
+
+    /**
+     * 관리자가 모든 회원 채팅방 목록을 조회합니다.
+     * 일반 회원은 전체 채팅방 목록을 볼 수 없으므로
+     * ADMIN이 아니면 FORBIDDEN 예외를 던집니다.
+     */
+    public List<ChatRoomListResponse> getAllChatRooms(MemberRole role) {
+        if (role != MemberRole.ADMIN) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+
+        return chatRoomRepository.findAllByOrderByCreatedAtDesc()
+                .stream()
+                .map(ChatRoomListResponse::from)
+                .toList();
     }
 }
