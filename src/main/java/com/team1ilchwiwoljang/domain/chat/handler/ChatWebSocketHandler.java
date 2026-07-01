@@ -33,6 +33,10 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         Long chatRoomId = getChatRoomId(session);
 
+        /*
+         * chatRoomId에 해당하는 세션 목록이 없으면 새로 만들고,
+         * 이미 있으면 기존 목록에 현재 세션을 추가합니다.
+         */
         roomSessions
                 .computeIfAbsent(chatRoomId, id -> ConcurrentHashMap.newKeySet())
                 .add(session);
@@ -43,16 +47,21 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         Long chatRoomId = getChatRoomId(session);
-        Long senderId = (Long) session.getAttributes().get("memberId");
-        MemberRole role = (MemberRole) session.getAttributes().get("role");
+        Long senderId = getMemberId(session);
+        MemberRole role = getRole(session);
 
         String payload = message.getPayload();
 
-        // 현재 단계에서는 메시지 저장 없이 같은 채팅방에 연결된 세션들에게만 전달합니다.
-        // 이후 ChatMessage Entity를 만들면 여기에서 DB 저장 후 broadcast하면 됩니다.
+        /*
+         * 현재 단계에서는 메시지 저장 없이 같은 채팅방에 연결된 세션들에게만 전달합니다.
+         * 이후 ChatMessage Entity를 만들면 여기에서 DB 저장 후 broadcast 예정입니다.
+         */
         String broadcastMessage = "[" + role + ":" + senderId + "] " + payload;
 
-        for (WebSocketSession targetSession : roomSessions.getOrDefault(chatRoomId, Set.of())) {
+        // 현재 메시지를 보낸 사용자의 chatRoomId와 같은 방에 있는 세션에게만 보냅니다.
+        Set<WebSocketSession> sessions = roomSessions.getOrDefault(chatRoomId, Set.of());
+
+        for (WebSocketSession targetSession : sessions) {
             if (targetSession.isOpen()) {
                 targetSession.sendMessage(new TextMessage(broadcastMessage));
             }
@@ -69,16 +78,41 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        // 현재 종료된 세션을 채팅방 세션 목록에서 제거합니다.
         sessions.remove(session);
 
-        // 채팅방에 남은 연결이 없으면 Map에서 제거합니다.
+        /*
+         * 채팅방에 더 이상 접속자가 없으면 Map에서도 제거하여
+         * 비어있는 Set이 계속 남아있지 않게 합니다.
+         */
         if (sessions.isEmpty()) {
             roomSessions.remove(chatRoomId);
         }
     }
 
+    /**
+     * ChatHandshakeInterceptor에서 저장한 chatRoomId를 꺼냅니다.
+     * 이 값은 WebSocket 연결 전에 이미 검증된 채팅방 ID입니다.
+     */
     private Long getChatRoomId(WebSocketSession session) {
         return (Long) session.getAttributes().get("chatRoomId");
+    }
+
+
+    /**
+     * ChatHandshakeInterceptor에서 저장한 memberId를 꺼냅니다.
+     * 메시지를 누가 보냈는지 구분하기 위해 사용합니다.
+     */
+    private Long getMemberId(WebSocketSession session) {
+        return (Long) session.getAttributes().get("memberId");
+    }
+
+    /**
+     * ChatHandshakeInterceptor에서 저장한 role을 꺼냅니다.
+     * MEMBER가 보낸 메시지인지, ADMIN이 보낸 메시지인지 구분하기 위해 사용합니다.
+     */
+    private MemberRole getRole(WebSocketSession session) {
+        return (MemberRole) session.getAttributes().get("role");
     }
 }
 

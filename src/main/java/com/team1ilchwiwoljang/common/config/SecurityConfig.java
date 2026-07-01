@@ -72,6 +72,13 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/refresh",
 
+                                /*
+                                 * 순수 WebSocket 채팅 테스트 화면과 handshake 경로입니다.
+                                 * /ws/chat의 실제 인증/인가 검증은 ChatHandshakeInterceptor에서 처리합니다.
+                                 */
+                                "/chat-test.html",
+                                "/ws/chat",
+
                                 // Spring 내부 에러 경로
                                 "/error",
                                 "/error/**"
