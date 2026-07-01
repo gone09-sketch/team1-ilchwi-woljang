@@ -54,4 +54,25 @@ public class ProductController {
         PageResponse<ProductSearchItemResponse> response = productService.searchProducts(keyword, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    @GetMapping("/price-range")
+    public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> getProductsByPriceRange(
+            @RequestParam int minPrice,
+            @RequestParam int maxPrice,
+            @Min(0) @RequestParam(defaultValue = "0") int page,
+            @Min(1) @RequestParam(defaultValue = "20") int size
+    ) {
+        PageResponse<ProductResponse> responses = PageResponse.from(productService.getProductsByPriceRange(minPrice, maxPrice, page, size));
+        return ResponseEntity.ok(ApiResponse.success(responses));
+    }
+
+    @GetMapping("/search-fulltext")
+    public ResponseEntity<ApiResponse<PageResponse<ProductSearchItemResponse>>> searchProductsFullText(
+            @RequestParam String keyword,
+            @Min(0) @RequestParam(defaultValue = "0") int page,
+            @Min(1) @RequestParam(defaultValue = "20") int size
+    ) {
+        PageResponse<ProductSearchItemResponse> response = productService.searchProductsFullText(keyword, page, size);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
 }
