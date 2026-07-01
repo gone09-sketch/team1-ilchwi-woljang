@@ -1,7 +1,6 @@
 package com.team1ilchwiwoljang.domain.order.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.in;
 
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
@@ -21,7 +20,6 @@ import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
 
-import java.lang.reflect.Executable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -35,9 +33,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ActiveProfilesResolver;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles(resolver = OrderServiceIntegrationTest.TestProfileResolver.class)
 class OrderServiceIntegrationTest {
 
     @Autowired
@@ -109,8 +108,8 @@ class OrderServiceIntegrationTest {
     }
     @Test
     void 동시에_직접_주문을_요청해도_재고보다_많은_주문은_생성되지_않는다() throws InterruptedException {
-        int stock = 10;
-        int requestCount = 20;
+        int stock = 1000;
+        int requestCount = 2000;
 
         // given
         Member member = memberRepository.save(
@@ -230,11 +229,28 @@ class OrderServiceIntegrationTest {
         doneLatch.await();
         executorService.shutdown();
 
-        Product savedProduct = productRepository.findById(product.getId()).orElseThrow();
+        Product finalProduct = productRepository.findById(product.getId()).orElseThrow();
 
         assertThat(successCount.get()).isEqualTo(stock);
         assertThat(outOfStockFailCount.get()).isEqualTo(requestCount - stock);
-        assertThat(savedProduct.getStock()).isEqualTo(0);
+        assertThat(finalProduct.getStock()).isEqualTo(0);
+    }
+    static class TestProfileResolver implements ActiveProfilesResolver {
+
+        @Override
+        public String[] resolve(Class<?> testClass){
+            String profile = System.getProperty("spring.profiles.active");
+
+            if (profile == null || profile.isBlank()){
+                profile = System.getenv("spring.profiles.active");
+            }
+            if ("mysql".equals(profile)){
+                return new String[]{"mysql-test"};
+            }
+
+            return new String[]{"test"};
+        }
+
     }
 
 }
