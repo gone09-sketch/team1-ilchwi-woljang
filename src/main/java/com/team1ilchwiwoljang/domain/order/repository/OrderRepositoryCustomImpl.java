@@ -2,6 +2,7 @@ package com.team1ilchwiwoljang.domain.order.repository;
 
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
 import com.team1ilchwiwoljang.domain.order.entity.Order;
@@ -35,17 +36,19 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
 
         BooleanExpression whereClause;
         if (condition.keyword() != null && !condition.keyword().isBlank()) {
-            // keyword가 있을 때: orderItem에서 매칭 order_id 선조회 후 IN 쿼리로 분리
-            // → 1:N join + distinct 없이 페이징 정합성과 인덱스 스캔 모두 확보
-            List<Long> matchedOrderIds = queryFactory
-                    .select(orderItem.order.id)
-                    .from(orderItem)
-                    .where(orderItem.productNameSnapshot.containsIgnoreCase(condition.keyword()))
-                    .fetch();
-
+            // keyword가 있을 때: exists 서브쿼리를 사용하여 1:N 조인 없이 페이징 정합성과 성능 최적화 확보
+            QOrderItem subOrderItem = new QOrderItem("subOrderItem");
             whereClause = baseWhere.and(
                     order.orderNumber.containsIgnoreCase(condition.keyword())
-                            .or(order.id.in(matchedOrderIds))
+                            .or(
+                                    JPAExpressions.selectOne()
+                                            .from(subOrderItem)
+                                            .where(
+                                                    subOrderItem.order.id.eq(order.id)
+                                                            .and(subOrderItem.productNameSnapshot.containsIgnoreCase(condition.keyword()))
+                                            )
+                                            .exists()
+                            )
             );
         } else {
             // keyword 없을 때: join 없이 Order만 조회 → 복합 인덱스 스캔 활용
