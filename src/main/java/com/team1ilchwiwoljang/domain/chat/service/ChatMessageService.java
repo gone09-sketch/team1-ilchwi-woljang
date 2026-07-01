@@ -25,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChatMessageService {
 
+    private static final int MAX_MESSAGE_CONTENT_LENGTH = 1000;
+
     private final ChatRoomService chatRoomService;
     private final ChatMessageRepository chatMessageRepository;
     private final MemberService memberService;
@@ -66,6 +68,18 @@ public class ChatMessageService {
         }
 
         /*
+         * DB의 chat_messages.content 컬럼 길이가 1000자이므로
+         * 저장 전에 서비스 계층에서 먼저 길이를 검증합니다.
+         * 이렇게 하면 DB 예외가 그대로 노출되는 대신
+         * 일관된 검증 실패 예외로 처리할 수 있습니다.
+         */
+        String trimmedContent = content.trim();
+
+        if (trimmedContent.length() > MAX_MESSAGE_CONTENT_LENGTH) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+
+        /*
          * MEMBER가 본인 채팅방이 아닌 chatRoomId로 메시지를 보내면 FORBIDDEN 예외가 발생합니다.
          * ADMIN은 모든 채팅방 접근이 허용됩니다.
          */
@@ -82,7 +96,7 @@ public class ChatMessageService {
         ChatMessage chatMessage = ChatMessage.create(
                 chatRoom,
                 sender,
-                content.trim()
+                trimmedContent
         );
 
         ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
