@@ -3,16 +3,18 @@ package com.team1ilchwiwoljang.domain.chat.controller;
 import com.team1ilchwiwoljang.common.response.ApiResponse;
 import com.team1ilchwiwoljang.common.security.annotation.Auth;
 import com.team1ilchwiwoljang.common.security.auth.AuthMember;
+import com.team1ilchwiwoljang.domain.chat.dto.response.ChatMessageResponse;
+import com.team1ilchwiwoljang.domain.chat.dto.response.ChatRoomListResponse;
 import com.team1ilchwiwoljang.domain.chat.dto.response.ChatRoomResponse;
 import com.team1ilchwiwoljang.domain.chat.entity.ChatRoom;
+import com.team1ilchwiwoljang.domain.chat.service.ChatMessageService;
 import com.team1ilchwiwoljang.domain.chat.service.ChatRoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 채팅방 생성과 조회를 담당하는 Controller입니다.
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ChatRoomController {
 
     private final ChatRoomService chatRoomService;
+    private final ChatMessageService chatMessageService;
 
     /**
      * 로그인한 회원 본인에게 채팅방을 생성합니다.
@@ -51,5 +54,39 @@ public class ChatRoomController {
         ChatRoom chatRoom = chatRoomService.getMyChatRoom(authMember.memberId());
 
         return ResponseEntity.ok(ApiResponse.success(ChatRoomResponse.from(chatRoom)));
+    }
+
+    /**
+     * 관리자가 모든 회원 채팅방 목록을 조회합니다.
+     * MEMBER가 호출하면 ChatRoomService에서 FORBIDDEN 예외가 발생합니다.
+     */
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<ChatRoomListResponse>>> getAllChatRooms(
+            @Auth AuthMember authMember
+    ) {
+        List<ChatRoomListResponse> response =
+                chatRoomService.getAllChatRooms(authMember.role());
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * 특정 채팅방의 메시지를 조회합니다.
+     * MEMBER는 본인 채팅방 메시지만 조회할 수 있습니다.
+     * ADMIN은 모든 채팅방 메시지를 조회할 수 있습니다.
+     */
+    @GetMapping("/{chatRoomId}/messages")
+    public ResponseEntity<ApiResponse<List<ChatMessageResponse>>> getMessages(
+            @Auth AuthMember authMember,
+            @PathVariable Long chatRoomId
+    ) {
+        List<ChatMessageResponse> response =
+                chatMessageService.getMessages(
+                        authMember.memberId(),
+                        authMember.role(),
+                        chatRoomId
+                );
+
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
