@@ -33,19 +33,25 @@ public class ChatbotService {
      * Controller는 HTTP 요청/응답만 처리하고, FAQ 문맥 조회부터 LLM 호출까지의 실제 작업은 여기서 처리합니다.
      */
     public ChatbotResponse chat(ChatbotRequest chatbotRequest) {
-        // 사용자가 계속 대화 중인지 판단하기 위해 요청마다 마지막 사용 시간을 갱신합니다.
-        // 마지막 사용 후 30분이 지난 conversationId만 ChatMemory와 상품 페이지 상태에서 함께 정리합니다.
+        /*
+         * 사용자가 계속 대화 중인지 판단하기 위해 요청마다 마지막 사용 시간을 갱신합니다.
+         * 마지막 사용 후 30분이 지난 conversationId만 ChatMemory와 상품 페이지 상태에서 함께 정리합니다.
+         */
         cleanupExpiredConversationStates(chatbotRequest.conversationId());
 
-        // 사용자 질문과 관련 있는 FAQ 문맥을 먼저 조회해 system prompt에 함께 넣습니다.
-        // FAQ 조회가 실패해도 챗봇 답변 자체는 계속 진행되도록 안전하게 처리합니다.
+        /*
+         * 사용자 질문과 관련 있는 FAQ 문맥을 먼저 조회해 system prompt에 함께 넣습니다.
+         * FAQ 조회가 실패해도 챗봇 답변 자체는 계속 진행되도록 안전하게 처리합니다.
+         */
         String faqContext = retrieveFaqContextSafely(chatbotRequest.message());
 
         // 긴 system prompt 조립 책임은 PromptBuilder로 분리해 Service의 흐름을 읽기 쉽게 유지합니다.
         String systemPrompt = chatbotPromptBuilder.build(faqContext);
 
-        // ChatMemory는 conversationId를 기준으로 이전 대화 내용을 이어서 참고합니다.
-        // 같은 conversationId가 들어오면 같은 대화 흐름으로 처리됩니다.
+        /*
+         * ChatMemory는 conversationId를 기준으로 이전 대화 내용을 이어서 참고합니다.
+         * 같은 conversationId가 들어오면 같은 대화 흐름으로 처리됩니다.
+         */
         String answer = chatClient.prompt()
                 .system(systemPrompt)
                 .user(chatbotRequest.message())
