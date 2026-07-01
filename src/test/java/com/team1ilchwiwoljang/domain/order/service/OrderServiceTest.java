@@ -163,6 +163,7 @@ class OrderServiceTest {
         assertThat(response.orderItems().get(0).quantity()).isEqualTo(2L);
         assertThat(response.orderItems().get(0).totalPrice()).isEqualTo(20_000L);
         assertThat(product.getStock()).isEqualTo(8);
+        assertThat(product.getSalesCount()).isEqualTo(2);
         verify(orderRepository).save(any(Order.class));
         verify(orderItemRepository).save(any(OrderItem.class));
     }
@@ -248,7 +249,9 @@ class OrderServiceTest {
         assertThat(response.orderItems().get(0).quantity()).isEqualTo(2L);
         assertThat(response.orderItems().get(0).totalPrice()).isEqualTo(20_000L);
         assertThat(firstProduct.getStock()).isEqualTo(8);
+        assertThat(firstProduct.getSalesCount()).isEqualTo(2);
         assertThat(secondProduct.getStock()).isEqualTo(9);
+        assertThat(secondProduct.getSalesCount()).isEqualTo(1);
         verify(orderRepository).save(any(Order.class));
         verify(orderItemRepository).saveAll(any());
         verify(cartService).deleteOrderCartItems(List.of(firstCart, secondCart));

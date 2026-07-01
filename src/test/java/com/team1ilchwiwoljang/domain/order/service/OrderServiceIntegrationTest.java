@@ -88,7 +88,9 @@ class OrderServiceIntegrationTest {
                 .containsExactlyInAnyOrder(20_000L, 15_000L);
 
         assertThat(savedKeyboard.getStock()).isEqualTo(8);
+        assertThat(savedKeyboard.getSalesCount()).isEqualTo(2);
         assertThat(savedMouse.getStock()).isEqualTo(5);
+        assertThat(savedMouse.getSalesCount()).isEqualTo(3);
         assertThat(cartRepository.findAll()).isEmpty();
     }
 

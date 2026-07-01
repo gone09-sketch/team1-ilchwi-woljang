@@ -136,6 +136,7 @@ public class OrderService {
         orderItemRepository.save(orderItem);
 
         product.decreaseStock(request.quantity());
+        product.increaseSalesCount(request.quantity());
 
         List<OrderItemResponse> orderItems = List.of(OrderItemResponse.from(orderItem));
         return OrderResponse.from(order, orderItems);
@@ -159,8 +160,12 @@ public class OrderService {
                 .toList();
         orderItemRepository.saveAll(orderItems);
 
-        // 주문 저장, 재고 차감, 장바구니 삭제는 같은 트랜잭션 안에서 함께 성공하거나 함께 실패해야 합니다.
-        cartItems.forEach(cart -> cart.getProduct().decreaseStock(cart.getQuantity()));
+        // 주문 저장, 재고 차감, 판매량 증가, 장바구니 삭제는 같은 트랜잭션 안에서 함께 성공하거나 함께 실패해야 합니다.
+        cartItems.forEach(cart -> {
+            Product product = cart.getProduct();
+            product.decreaseStock(cart.getQuantity());
+            product.increaseSalesCount(cart.getQuantity());
+        });
         cartService.deleteOrderCartItems(cartItems);
 
         List<OrderItemResponse> orderItemResponses = orderItems.stream()

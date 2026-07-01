@@ -9,8 +9,11 @@ import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.product.dto.response.ProductSearchItemResponse;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
+import com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse;
 import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -119,12 +122,12 @@ public class ProductService {
     /**
      * 누적 판매량 기준 인기 상품 목록 조회 (캐싱 적용)
      */
-    @org.springframework.cache.annotation.Cacheable(value = "popularProducts", key = "#limit")
-    public java.util.List<com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse> getPopularProducts(int limit) {
+    @Cacheable(value = "popularProducts", key = "#limit")
+    public List<PopularProductResponse> getPopularProducts(int limit) {
         Pageable pageable = PageRequest.of(0, limit);
         return productRepository.findByStatusOrderBySalesCountDesc(ProductStatus.ON_SALE, pageable)
                 .stream()
-                .map(com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse::from)
+                .map(PopularProductResponse::from)
                 .toList();
     }
 }

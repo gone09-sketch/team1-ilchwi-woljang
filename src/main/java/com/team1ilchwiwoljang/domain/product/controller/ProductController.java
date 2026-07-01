@@ -5,8 +5,11 @@ import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.product.dto.ProductResponse;
 import com.team1ilchwiwoljang.domain.product.dto.response.ProductDetailResponse;
 import com.team1ilchwiwoljang.domain.product.dto.response.ProductSearchItemResponse;
+import com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -56,10 +59,10 @@ public class ProductController {
     }
 
     @GetMapping("/popular")
-    public ResponseEntity<ApiResponse<java.util.List<com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse>>> getPopularProducts(
-            @RequestParam(defaultValue = "10") @Min(1) int limit
+    public ResponseEntity<ApiResponse<List<PopularProductResponse>>> getPopularProducts(
+            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int limit
     ) {
-        java.util.List<com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse> response = productService.getPopularProducts(limit);
+        List<PopularProductResponse> response = productService.getPopularProducts(limit);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
