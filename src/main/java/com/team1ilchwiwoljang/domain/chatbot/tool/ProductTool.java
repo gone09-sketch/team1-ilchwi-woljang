@@ -27,7 +27,7 @@ public class ProductTool {
             description = "현재 판매 중인 최신 상품 첫 페이지 5개를 조회합니다. 사용자가 상품 목록을 처음 물어볼 때 사용합니다."
     )
     public ChatbotProductToolResponse getLatestProducts(ToolContext toolContext) {
-        // 첫 상품 목록 조회는 항상 0페이지부터 시작하고, 해당 conversationId의 마지막 사용 시간을 갱신합니다.
+        // 첫 상품 목록 조회는 항상 0페이지부터 시작하고, 해당 conversationId의 상품 페이지 상태를 초기화합니다.
         String conversationId = getConversationId(toolContext);
         int page = productPageState.firstPage(conversationId);
 
@@ -39,7 +39,7 @@ public class ProductTool {
             description = "이전에 조회한 최신 상품 목록의 다음 페이지 5개를 조회합니다. 사용자가 더 보기, 더 있어요, 다른 상품을 보여달라고 말할 때 사용합니다."
     )
     public ChatbotProductToolResponse getMoreLatestProducts(ToolContext toolContext) {
-        // 다음 페이지 조회도 상태를 사용하는 요청이므로, 내부에서 만료된 상태 정리와 마지막 사용 시간 갱신이 함께 일어납니다.
+        // 다음 페이지 조회는 conversationId별로 저장된 상품 페이지 상태를 이어갑니다.
         String conversationId = getConversationId(toolContext);
         ChatbotProductPageState.PageStateResult pageState = productPageState.nextPage(conversationId);
 
@@ -61,14 +61,13 @@ public class ProductTool {
 
     /**
      * ChatbotService가 ToolContext에 넣어준 conversationId를 꺼냅니다.
-     * 실제 챗봇 요청에서는 ChatbotRequest 검증으로 conversationId를 필수로 받지만,
-     * ToolContext 누락 상황에서도 도구 호출이 실패하지 않도록 기본값을 둡니다.
+     * conversationId가 빠지면 여러 사용자가 같은 상품 페이지 상태를 공유할 수 있으므로 즉시 예외를 던집니다.
      */
     private String getConversationId(ToolContext toolContext) {
         Object conversationId = toolContext.getContext().get("conversationId");
 
         if (conversationId == null) {
-            return "default";
+            throw new IllegalArgumentException("ToolContext에 conversationId가 없습니다.");
         }
 
         return conversationId.toString();
