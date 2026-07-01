@@ -1,13 +1,40 @@
 package com.team1ilchwiwoljang.domain.order.controller;
 
-import org.springframework.data.domain.Pageable;
-import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
-import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
+import com.team1ilchwiwoljang.common.config.SecurityConfig;
+import com.team1ilchwiwoljang.common.exception.BusinessException;
+import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.common.response.PageResponse;
+import com.team1ilchwiwoljang.common.security.JwtAuthenticationFilter;
+import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
+import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
+import com.team1ilchwiwoljang.common.security.WithMockAuthMember;
+import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
+import com.team1ilchwiwoljang.domain.member.service.MemberService;
+import com.team1ilchwiwoljang.domain.order.dto.request.CartOrderRequest;
+import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderPreviewRequest;
+import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
+import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
 import com.team1ilchwiwoljang.domain.order.dto.response.AdminOrderDetailResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.AdminOrderSearchResponse;
+import com.team1ilchwiwoljang.domain.order.dto.response.DirectOrderPreviewResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderHistoryResponse;
+import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemResponse;
+import com.team1ilchwiwoljang.domain.order.dto.response.OrderPreviewResponse;
+import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
+import com.team1ilchwiwoljang.domain.order.service.OrderService;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.ObjectMapper;
 
+import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -19,34 +46,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import com.team1ilchwiwoljang.common.config.SecurityConfig;
-import com.team1ilchwiwoljang.common.exception.BusinessException;
-import com.team1ilchwiwoljang.common.exception.ErrorCode;
-import com.team1ilchwiwoljang.common.security.JwtAuthenticationFilter;
-import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
-import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
-import com.team1ilchwiwoljang.common.security.WithMockAuthMember;
-import com.team1ilchwiwoljang.domain.member.service.MemberService;
-import com.team1ilchwiwoljang.domain.order.dto.request.CartOrderRequest;
-import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderPreviewRequest;
-import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
-import com.team1ilchwiwoljang.domain.order.dto.response.DirectOrderPreviewResponse;
-import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemResponse;
-import com.team1ilchwiwoljang.domain.order.dto.response.OrderPreviewResponse;
-import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
-import com.team1ilchwiwoljang.domain.order.service.OrderService;
-import java.time.LocalDateTime;
-import java.util.List;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.ObjectMapper;
 
 @WebMvcTest({
         OrderController.class,
@@ -413,6 +412,8 @@ class OrderControllerTest {
         OrderHistoryResponse history = new OrderHistoryResponse(100L, "ORD-123", 20000L, "PENDING", null);
         PageResponse<OrderHistoryResponse> pageResponse = new PageResponse<>(List.of(history), 0, 10, 1L, 1, true);
 
+        // 일반 회원 주문 내역은 아직 OrderSearchCondition.keyword를 사용한다.
+        // 관리자 검색 조건만 keyword를 orderNumber/productName으로 분리했다.
         given(orderService.getOrderHistory(
                 eq(MEMBER_ID),
                 argThat(condition -> "ORD-123".equals(condition.keyword())),
@@ -457,10 +458,14 @@ class OrderControllerTest {
 
         given(orderService.getAdminOrders(
                 argThat(condition ->
-                        condition.orderStatus().name().equals("PAID")
+                        condition != null
+                                && condition.orderStatus().name().equals("PAID")
                                 && condition.minTotalAmount().equals(10000L)
                                 && condition.maxTotalAmount().equals(500000L)
-                                && "TARGET".equals(condition.keyword())
+                                // 관리자 주문번호 검색은 기존 keyword가 아니라 orderNumber 파라미터를 사용한다.
+                                // Repository에서는 orderNumber를 contains가 아닌 eq 조건으로 처리한다.
+                                && "TARGET-ORDER-000002".equals(condition.orderNumber())
+                                && condition.productName() == null
                 ),
                 any(Pageable.class)
         )).willReturn(pageResponse);
@@ -472,7 +477,8 @@ class OrderControllerTest {
                         .param("orderStatus", "PAID")
                         .param("minTotalAmount", "10000")
                         .param("maxTotalAmount", "500000")
-                        .param("keyword", "TARGET")
+                        // 기존 keyword 대신 orderNumber로 요청한다.
+                        .param("orderNumber", "TARGET-ORDER-000002")
                         .param("page", "0")
                         .param("size", "20"))
                 .andExpect(status().isOk())
@@ -501,7 +507,9 @@ class OrderControllerTest {
                                 && condition.orderStatus() == null
                                 && condition.minTotalAmount() == null
                                 && condition.maxTotalAmount() == null
-                                && condition.keyword() == null
+                                // 관리자 검색 조건은 keyword 대신 orderNumber와 productName으로 분리했다.
+                                && condition.orderNumber() == null
+                                && condition.productName() == null
                                 && condition.memberId() == null
                 ),
                 any(Pageable.class)

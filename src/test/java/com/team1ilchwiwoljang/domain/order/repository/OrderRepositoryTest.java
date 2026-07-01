@@ -72,7 +72,7 @@ class OrderRepositoryTest {
         assertThat(result.getContent()).hasSize(2);
         assertThat(result.getTotalElements()).isEqualTo(3);
         assertThat(result.getTotalPages()).isEqualTo(2);
-        
+
         // 최신 주문순(createdAt DESC, id DESC) 정렬 확인
         assertThat(result.getContent().get(0).getOrderNumber()).isEqualTo("ORD-001");
         assertThat(result.getContent().get(1).getOrderNumber()).isEqualTo("ORD-003");
@@ -108,18 +108,21 @@ class OrderRepositoryTest {
         orderRepository.saveAll(List.of(order1, order2, order3));
 
         // order2는 취소 상태로 변경
-        order2.cancel(java.time.LocalDateTime.now());
+        order2.cancel(LocalDateTime.now());
         orderRepository.save(order2);
 
         Pageable pageable = PageRequest.of(0, 10);
 
-        // 1. 주문 번호 검색 필터 ("MATCH")
+        // 1. 일반 회원 주문 내역 검색은 기존 OrderSearchCondition.keyword를 사용한다.
+        // 이 부분은 관리자 검색 최적화와 별개다.
         OrderSearchCondition cond1 = new OrderSearchCondition(null, null, null, "MATCH");
         Page<Order> result1 = orderRepository.findOrderHistoryByMemberId(member.getId(), cond1, pageable);
         assertThat(result1.getContent()).hasSize(2);
-        assertThat(result1.getContent()).extracting("orderNumber").containsExactlyInAnyOrder("ORD-MATCH-01", "ORD-MATCH-02");
+        assertThat(result1.getContent())
+                .extracting("orderNumber")
+                .containsExactlyInAnyOrder("ORD-MATCH-01", "ORD-MATCH-02");
 
-        // 2. 주문 상태 검색 필터 ("CANCELLED")
+        // 2. 주문 상태 검색 필터
         OrderSearchCondition cond2 = new OrderSearchCondition(null, null, OrderStatus.CANCELLED, null);
         Page<Order> result2 = orderRepository.findOrderHistoryByMemberId(member.getId(), cond2, pageable);
         assertThat(result2.getContent()).hasSize(1);
@@ -142,6 +145,7 @@ class OrderRepositoryTest {
         Order order2 = Order.create(member, "ORD-999-001", 20000L, 20000L);
         orderRepository.saveAll(List.of(order1, order2));
 
+        // 일반 회원 주문 내역 검색은 아직 keyword 부분 검색 정책을 유지한다.
         OrderSearchCondition condition = new OrderSearchCondition(null, null, null, "ORD-123");
         Pageable pageable = PageRequest.of(0, 10);
 
@@ -172,6 +176,7 @@ class OrderRepositoryTest {
         orderItemRepository.save(OrderItem.create(order1, product3, "노트북 거치대", 15000L, 1L, 15000L, null, null));
         orderItemRepository.save(OrderItem.create(order2, product2, "기계식 키보드", 20000L, 1L, 20000L, null, null));
 
+        // 일반 회원 주문 목록에서는 상품명 검색을 하지 않는 정책 확인
         OrderSearchCondition condition = new OrderSearchCondition(null, null, null, "노트북");
         Pageable pageable = PageRequest.of(0, 10);
 
@@ -192,8 +197,9 @@ class OrderRepositoryTest {
 
         Order pendingOrder = orderRepository.save(Order.create(member, "ORD-123-PENDING", 10000L, 10000L));
         Order cancelledOrder = orderRepository.save(Order.create(member, "ORD-123-CANCELLED", 10000L, 10000L));
-        cancelledOrder.cancel(java.time.LocalDateTime.now());
+        cancelledOrder.cancel(LocalDateTime.now());
 
+        // 일반 회원 주문 내역 검색은 기존 keyword 방식 유지
         OrderSearchCondition condition = new OrderSearchCondition(
                 LocalDate.now(),
                 LocalDate.now(),
@@ -230,13 +236,18 @@ class OrderRepositoryTest {
 
         ReflectionTestUtils.setField(match1, "orderStatus", OrderStatus.PAID);
         ReflectionTestUtils.setField(match1, "createdAt", baseTime);
+
         ReflectionTestUtils.setField(match2, "orderStatus", OrderStatus.PAID);
         ReflectionTestUtils.setField(match2, "createdAt", baseTime.minusHours(1));
+
         ReflectionTestUtils.setField(pendingOrder, "createdAt", baseTime);
+
         ReflectionTestUtils.setField(highAmountOrder, "orderStatus", OrderStatus.PAID);
         ReflectionTestUtils.setField(highAmountOrder, "createdAt", baseTime);
+
         ReflectionTestUtils.setField(noKeywordOrder, "orderStatus", OrderStatus.PAID);
         ReflectionTestUtils.setField(noKeywordOrder, "createdAt", baseTime);
+
         ReflectionTestUtils.setField(oldOrder, "orderStatus", OrderStatus.PAID);
         ReflectionTestUtils.setField(oldOrder, "createdAt", baseTime.minusYears(1));
 
@@ -246,8 +257,9 @@ class OrderRepositoryTest {
                 OrderStatus.PAID,
                 10000L,
                 500000L,
-                "MATCH",
-                null
+                "ADM-MATCH-02", // orderNumber: 주문번호 정확 검색
+                null,           // productName: 상품명 검색 안 함
+                null            // memberId: 회원 ID 검색 안 함
         );
         Pageable pageable = PageRequest.of(0, 10);
 
@@ -255,16 +267,17 @@ class OrderRepositoryTest {
         Page<Order> result = orderRepository.findAdminOrders(condition, pageable);
 
         // then
-        assertThat(result.getContent()).hasSize(2);
-        assertThat(result.getTotalElements()).isEqualTo(2);
-        assertThat(result.getContent())
-                .extracting(Order::getOrderNumber)
-                .containsExactly("ADM-MATCH-02", "ADM-MATCH-01");
+        // orderNumber는 contains가 아니라 eq 조건으로 검색한다.
+        // 따라서 ADM-MATCH-01, ADM-MATCH-02를 모두 찾는 것이 아니라
+        // 정확히 ADM-MATCH-02 한 건만 조회되어야 한다.
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent().get(0).getOrderNumber()).isEqualTo("ADM-MATCH-02");
     }
 
     @Test
-    @DisplayName("관리자 주문 검색은 keyword가 주문 상품명에 포함되면 주문을 조회한다")
-    void givenAdminKeyword_whenProductNameContainsKeyword_thenReturnOrders() {
+    @DisplayName("관리자 주문 검색은 productName이 주문 상품명에 포함되면 주문을 조회한다")
+    void givenAdminProductName_whenProductNameContainsKeyword_thenReturnOrders() {
         // given
         Member member = Member.create("admin-product@example.com", "password", "회원", "010-3333-4444");
         memberRepository.save(member);
@@ -284,8 +297,9 @@ class OrderRepositoryTest {
                 null,
                 null,
                 null,
-                "게이밍 노트북",
-                null
+                null,           // orderNumber: 주문번호 검색 안 함
+                "게이밍 노트북",  // productName: 주문 상품명 검색
+                null            // memberId: 회원 ID 검색 안 함
         );
         Pageable pageable = PageRequest.of(0, 10);
 
@@ -293,6 +307,8 @@ class OrderRepositoryTest {
         Page<Order> result = orderRepository.findAdminOrders(condition, pageable);
 
         // then
+        // 관리자 상품명 검색은 order_items.product_name_snapshot을 대상으로 조회한다.
+        // 따라서 상품명 스냅샷에 "게이밍 노트북"이 들어간 order1만 조회되어야 한다.
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getTotalElements()).isEqualTo(1);
         assertThat(result.getContent().get(0).getOrderNumber()).isEqualTo("ADM-PRODUCT-01");
@@ -315,8 +331,9 @@ class OrderRepositoryTest {
                 null,
                 null,
                 null,
-                null,
-                null
+                null, // orderNumber: 주문번호 검색 안 함
+                null, // productName: 상품명 검색 안 함
+                null  // memberId: 회원 ID 검색 안 함
         );
         Pageable pageable = PageRequest.of(0, 10);
 
@@ -324,6 +341,7 @@ class OrderRepositoryTest {
         Page<Order> result = orderRepository.findAdminOrders(condition, pageable);
 
         // then
+        // 선택 필터가 없어도 날짜 조건만으로 관리자 주문 목록 조회가 가능해야 한다.
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().get(0).getOrderNumber()).isEqualTo("ADM-DATE-01");
     }

@@ -13,7 +13,8 @@ public record AdminOrderSearchCondition(
         OrderStatus orderStatus,
         Long minTotalAmount,
         Long maxTotalAmount,
-        String keyword,
+        String orderNumber,
+        String productName,
         Long memberId
 ) {
 }

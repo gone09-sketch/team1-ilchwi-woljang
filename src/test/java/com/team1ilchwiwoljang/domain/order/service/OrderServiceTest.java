@@ -494,9 +494,11 @@ class OrderServiceTest {
                 OrderStatus.PAID,
                 10000L,
                 500000L,
-                "TARGET",
-                null
+                "TARGET-ORDER-000002", // orderNumber: 관리자 주문번호 검색은 정확 검색으로 처리한다.
+                null,                  // productName: 상품명 검색 조건은 사용하지 않는다.
+                null                   // memberId: 특정 회원 검색 조건은 사용하지 않는다.
         );
+
         Page<Order> orderPage = new PageImpl<>(List.of(order), pageable, 1);
 
         given(orderRepository.findAdminOrders(eq(condition), eq(pageable))).willReturn(orderPage);
@@ -514,6 +516,9 @@ class OrderServiceTest {
         assertThat(result.content().get(0).pgAmount()).isEqualTo(20000L);
         assertThat(result.content().get(0).orderStatus()).isEqualTo("PAID");
         assertThat(result.content().get(0).paidAt()).isEqualTo(LocalDateTime.of(2026, 6, 30, 12, 10));
+
+        // 관리자 주문 목록 조회는 주문 요약 정보만 반환한다.
+        // 주문 상품 목록은 상세 조회에서만 가져오므로 추가 order_items 조회가 없어야 한다.
         verify(orderItemRepository, never()).findByOrderIdIn(any());
     }
 

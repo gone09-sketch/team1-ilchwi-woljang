@@ -93,60 +93,65 @@ class AdminOrderSearchPerformanceTest {
                                 OrderStatus.PAID,
                                 10_000L,
                                 50_000L,
-                                null,
-                                null
+                                null, // orderNumber
+                                null, // productName
+                                null  // memberId
                         )
                 ),
                 new Scenario(
-                        "주문 상태 + 기간 + 금액 범위 + keyword",
-                        "/api/admins/orders?orderStatus=PAID&startDate=2026-01-01&endDate=2026-06-30&minTotalAmount=10000&maxTotalAmount=50000&keyword=target&page=0&size=10",
+                        "주문 상태 + 기간 + 금액 범위 + 상품명",
+                        "/api/admins/orders?orderStatus=PAID&startDate=2026-01-01&endDate=2026-06-30&minTotalAmount=10000&maxTotalAmount=50000&productName=target&page=0&size=10",
                         new AdminOrderSearchCondition(
                                 LocalDate.of(2026, 1, 1),
                                 LocalDate.of(2026, 6, 30),
                                 OrderStatus.PAID,
                                 10_000L,
                                 50_000L,
-                                "target",
-                                null
+                                null,     // orderNumber
+                                "target", // productName
+                                null      // memberId
                         )
                 ),
                 new Scenario(
-                        "주문 상태 + 기간 + 정확한 주문번호 keyword",
-                        "/api/admins/orders?orderStatus=PAID&startDate=2026-01-01&endDate=2026-06-30&keyword=target-order-000002&page=0&size=10",
+                        "주문 상태 + 기간 + 정확한 주문번호",
+                        "/api/admins/orders?orderStatus=PAID&startDate=2026-01-01&endDate=2026-06-30&orderNumber=target-order-000002&page=0&size=10",
                         new AdminOrderSearchCondition(
                                 LocalDate.of(2026, 1, 1),
                                 LocalDate.of(2026, 6, 30),
                                 OrderStatus.PAID,
                                 null,
                                 null,
-                                "target-order-000002",
-                                null
+                                "target-order-000002", // orderNumber
+                                null,                  // productName
+                                null                   // memberId
                         )
                 ),
                 new Scenario(
-                        "기간 + 금액 범위 + keyword",
-                        "/api/admins/orders?startDate=2026-01-01&endDate=2026-06-30&minTotalAmount=10000&maxTotalAmount=50000&keyword=target&page=0&size=10",
+                        "기간 + 금액 범위 + 상품명",
+                        "/api/admins/orders?startDate=2026-01-01&endDate=2026-06-30&minTotalAmount=10000&maxTotalAmount=50000&productName=target&page=0&size=10",
                         new AdminOrderSearchCondition(
                                 LocalDate.of(2026, 1, 1),
                                 LocalDate.of(2026, 6, 30),
                                 null,
                                 10_000L,
                                 50_000L,
-                                "target",
-                                null
+                                null,     // orderNumber
+                                "target", // productName
+                                null      // memberId
                         )
                 ),
                 new Scenario(
-                        "주문 상태 + 금액 범위 + keyword",
-                        "/api/admins/orders?orderStatus=PAID&minTotalAmount=10000&maxTotalAmount=50000&keyword=target&page=0&size=10",
+                        "주문 상태 + 금액 범위 + 상품명",
+                        "/api/admins/orders?orderStatus=PAID&minTotalAmount=10000&maxTotalAmount=50000&productName=target&page=0&size=10",
                         new AdminOrderSearchCondition(
                                 null,
                                 null,
                                 OrderStatus.PAID,
                                 10_000L,
                                 50_000L,
-                                "target",
-                                null
+                                null,     // orderNumber
+                                "target", // productName
+                                null      // memberId
                         )
                 ),
                 new Scenario(
@@ -158,13 +163,13 @@ class AdminOrderSearchPerformanceTest {
                                 OrderStatus.CANCELLED,
                                 10_000L,
                                 50_000L,
-                                null,
-                                null
+                                null, // orderNumber
+                                null, // productName
+                                null  // memberId
                         )
                 )
         );
     }
-
     private Measurement measure(AdminOrderSearchCondition condition) {
         for (int i = 0; i < WARM_UP_COUNT; i++) {
             orderRepository.findAdminOrders(condition, PAGEABLE);
@@ -222,7 +227,7 @@ class AdminOrderSearchPerformanceTest {
         params.add(PAGEABLE.getOffset());
 
         return new Query("""
-                SELECT
+                %s
                     o.id,
                     o.canceled_at,
                     o.created_at,
@@ -233,25 +238,40 @@ class AdminOrderSearchPerformanceTest {
                     o.pg_amount,
                     o.total_amount,
                     o.updated_at
-                FROM orders o
+                %s
                 %s
                 ORDER BY o.id DESC
                 LIMIT ? OFFSET ?
-                """.formatted(queryParts.whereClause()), params);
+                """.formatted(queryParts.selectKeyword(), queryParts.fromClause(), queryParts.whereClause()), params);
     }
 
     private Query createCountQuery(AdminOrderSearchCondition condition) {
         QueryParts queryParts = createQueryParts(condition);
         return new Query("""
-                SELECT COUNT(o.id)
-                FROM orders o
+                SELECT %s
                 %s
-                """.formatted(queryParts.whereClause()), queryParts.params());
+                %s
+                """.formatted(queryParts.countExpression(), queryParts.fromClause(), queryParts.whereClause()), queryParts.params());
     }
 
     private QueryParts createQueryParts(AdminOrderSearchCondition condition) {
         List<String> conditions = new ArrayList<>();
         List<Object> params = new ArrayList<>();
+        boolean productNameSearch = condition.productName() != null && !condition.productName().isBlank();
+
+        String selectKeyword = productNameSearch ? "SELECT DISTINCT" : "SELECT";
+        String countExpression = productNameSearch ? "COUNT(DISTINCT o.id)" : "COUNT(o.id)";
+        String fromClause = productNameSearch
+                ? """
+                FROM order_items oi
+                JOIN orders o ON o.id = oi.order_id
+                """
+                : "FROM orders o";
+
+        if (productNameSearch) {
+            conditions.add("MATCH(oi.product_name_snapshot) AGAINST (? IN BOOLEAN MODE)");
+            params.add(condition.productName().trim());
+        }
 
         if (condition.orderStatus() != null) {
             conditions.add("o.order_status = ?");
@@ -282,21 +302,9 @@ class AdminOrderSearchPerformanceTest {
             params.add(condition.maxTotalAmount());
         }
 
-        if (condition.keyword() != null && !condition.keyword().isBlank()) {
-            conditions.add("""
-                    (
-                        LOWER(o.order_number) LIKE ? ESCAPE '!'
-                        OR EXISTS (
-                            SELECT 1
-                            FROM order_items oi
-                            WHERE oi.order_id = o.id
-                              AND LOWER(oi.product_name_snapshot) LIKE ? ESCAPE '!'
-                        )
-                    )
-                    """);
-            String keyword = "%" + condition.keyword().toLowerCase(Locale.ROOT) + "%";
-            params.add(keyword);
-            params.add(keyword);
+        if (condition.orderNumber() != null && !condition.orderNumber().isBlank()) {
+            conditions.add("o.order_number = ?");
+            params.add(condition.orderNumber().trim());
         }
 
         if (condition.memberId() != null) {
@@ -305,10 +313,10 @@ class AdminOrderSearchPerformanceTest {
         }
 
         if (conditions.isEmpty()) {
-            return new QueryParts("", params);
+            return new QueryParts(selectKeyword, countExpression, fromClause, "", params);
         }
 
-        return new QueryParts("WHERE " + String.join("\n  AND ", conditions), params);
+        return new QueryParts(selectKeyword, countExpression, fromClause, "WHERE " + String.join("\n  AND ", conditions), params);
     }
 
     private void printQueryMeasurement(String scenarioName, String queryName, Measurement measurement) {
@@ -367,7 +375,13 @@ class AdminOrderSearchPerformanceTest {
     private record Query(String sql, List<Object> params) {
     }
 
-    private record QueryParts(String whereClause, List<Object> params) {
+    private record QueryParts(
+            String selectKeyword,
+            String countExpression,
+            String fromClause,
+            String whereClause,
+            List<Object> params
+    ) {
     }
 
     private record QueryMeasurements(Measurement content, Measurement count) {
