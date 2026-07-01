@@ -54,6 +54,12 @@
             line-height: 1.3;
         }
 
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         .status {
             color: var(--muted);
             font-size: 13px;
@@ -152,6 +158,17 @@
             opacity: 0.55;
         }
 
+        button.secondary {
+            min-width: 76px;
+            color: var(--text);
+            background: #eef2f7;
+            border: 1px solid var(--line);
+        }
+
+        button.secondary:hover:not(:disabled) {
+            background: #e2e8f0;
+        }
+
         @media (max-width: 640px) {
             .app {
                 border: 0;
@@ -172,6 +189,11 @@
             .status {
                 white-space: normal;
             }
+
+            .header-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
         }
     </style>
 </head>
@@ -179,7 +201,10 @@
 <main class="app">
     <header>
         <h1>AI Chatbot Test</h1>
-        <div class="status" id="status">Ready</div>
+        <div class="header-actions">
+            <div class="status" id="status">Ready</div>
+            <button class="secondary" type="button" id="newChatButton">새 대화</button>
+        </div>
     </header>
 
     <section class="messages" id="messages" aria-live="polite"></section>
@@ -208,7 +233,9 @@
     const input = document.getElementById("messageInput");
     const counter = document.getElementById("counter");
     const sendButton = document.getElementById("sendButton");
+    const newChatButton = document.getElementById("newChatButton");
     const CONVERSATION_ID_KEY = "chatbotConversationId";
+    let isWaiting = false;
 
     function getConversationId() {
         let conversationId = localStorage.getItem(CONVERSATION_ID_KEY);
@@ -240,7 +267,7 @@
 
         counter.textContent = `${length} / ${MAX_MESSAGE_LENGTH}`;
         counter.classList.toggle("over", isOver);
-        sendButton.disabled = isBlank || isOver;
+        sendButton.disabled = isWaiting || isBlank || isOver;
     }
 
     async function loadWelcome() {
@@ -268,9 +295,9 @@
 
         addMessage(message, "user");
         input.value = "";
+        isWaiting = true;
         updateInputState();
         setStatus("Waiting for response...");
-        sendButton.disabled = true;
 
         try {
             const response = await fetch(`${API_BASE_URL}/api/ai/chatbot`, {
@@ -295,8 +322,19 @@
             addMessage("답변을 가져오지 못했습니다. 서버 로그를 확인해주세요.", "bot");
             setStatus("Error");
         } finally {
+            isWaiting = false;
             updateInputState();
         }
+    });
+
+    newChatButton.addEventListener("click", () => {
+        localStorage.removeItem(CONVERSATION_ID_KEY);
+        messages.replaceChildren();
+        setStatus("Ready");
+        input.value = "";
+        isWaiting = false;
+        updateInputState();
+        loadWelcome();
     });
 
     input.addEventListener("input", updateInputState);
