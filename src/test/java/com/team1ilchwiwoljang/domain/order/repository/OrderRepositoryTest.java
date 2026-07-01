@@ -2,6 +2,7 @@ package com.team1ilchwiwoljang.domain.order.repository;
 
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.repository.MemberRepository;
+import com.team1ilchwiwoljang.domain.order.dto.request.AdminOrderSearchCondition;
 import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
 import com.team1ilchwiwoljang.domain.order.entity.Order;
 import com.team1ilchwiwoljang.domain.order.entity.OrderItem;
@@ -208,5 +209,122 @@ class OrderRepositoryTest {
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getTotalElements()).isEqualTo(1);
         assertThat(result.getContent().get(0).getOrderNumber()).isEqualTo("ORD-123-CANCELLED");
+    }
+
+    @Test
+    @DisplayName("관리자 주문 검색 조건으로 전체 주문을 필터링한다")
+    void givenAdminOrderSearchCondition_whenFindAdminOrders_thenReturnFilteredOrders() {
+        // given
+        Member member1 = Member.create("admin-search-1@example.com", "password", "회원1", "010-1111-1111");
+        Member member2 = Member.create("admin-search-2@example.com", "password", "회원2", "010-2222-2222");
+        memberRepository.saveAll(List.of(member1, member2));
+
+        LocalDateTime baseTime = LocalDateTime.of(2026, 6, 30, 12, 0);
+
+        Order match1 = orderRepository.save(Order.create(member1, "ADM-MATCH-01", 20000L, 20000L));
+        Order match2 = orderRepository.save(Order.create(member2, "ADM-MATCH-02", 30000L, 30000L));
+        Order pendingOrder = orderRepository.save(Order.create(member1, "ADM-MATCH-03", 20000L, 20000L));
+        Order highAmountOrder = orderRepository.save(Order.create(member1, "ADM-MATCH-04", 800000L, 800000L));
+        Order noKeywordOrder = orderRepository.save(Order.create(member1, "ADM-OTHER-05", 20000L, 20000L));
+        Order oldOrder = orderRepository.save(Order.create(member1, "ADM-MATCH-06", 20000L, 20000L));
+
+        ReflectionTestUtils.setField(match1, "orderStatus", OrderStatus.PAID);
+        ReflectionTestUtils.setField(match1, "createdAt", baseTime);
+        ReflectionTestUtils.setField(match2, "orderStatus", OrderStatus.PAID);
+        ReflectionTestUtils.setField(match2, "createdAt", baseTime.minusHours(1));
+        ReflectionTestUtils.setField(pendingOrder, "createdAt", baseTime);
+        ReflectionTestUtils.setField(highAmountOrder, "orderStatus", OrderStatus.PAID);
+        ReflectionTestUtils.setField(highAmountOrder, "createdAt", baseTime);
+        ReflectionTestUtils.setField(noKeywordOrder, "orderStatus", OrderStatus.PAID);
+        ReflectionTestUtils.setField(noKeywordOrder, "createdAt", baseTime);
+        ReflectionTestUtils.setField(oldOrder, "orderStatus", OrderStatus.PAID);
+        ReflectionTestUtils.setField(oldOrder, "createdAt", baseTime.minusYears(1));
+
+        AdminOrderSearchCondition condition = new AdminOrderSearchCondition(
+                baseTime.toLocalDate(),
+                baseTime.toLocalDate(),
+                OrderStatus.PAID,
+                10000L,
+                500000L,
+                "MATCH",
+                null
+        );
+        Pageable pageable = PageRequest.of(0, 10);
+
+        // when
+        Page<Order> result = orderRepository.findAdminOrders(condition, pageable);
+
+        // then
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getTotalElements()).isEqualTo(2);
+        assertThat(result.getContent())
+                .extracting(Order::getOrderNumber)
+                .containsExactly("ADM-MATCH-02", "ADM-MATCH-01");
+    }
+
+    @Test
+    @DisplayName("관리자 주문 검색은 keyword가 주문 상품명에 포함되면 주문을 조회한다")
+    void givenAdminKeyword_whenProductNameContainsKeyword_thenReturnOrders() {
+        // given
+        Member member = Member.create("admin-product@example.com", "password", "회원", "010-3333-4444");
+        memberRepository.save(member);
+
+        Product product1 = productRepository.save(Product.create("노트북", 10000, 10, ProductStatus.ON_SALE, "설명", null));
+        Product product2 = productRepository.save(Product.create("키보드", 20000, 10, ProductStatus.ON_SALE, "설명", null));
+
+        Order order1 = orderRepository.save(Order.create(member, "ADM-PRODUCT-01", 10000L, 10000L));
+        Order order2 = orderRepository.save(Order.create(member, "ADM-PRODUCT-02", 20000L, 20000L));
+
+        orderItemRepository.save(OrderItem.create(order1, product1, "게이밍 노트북", 10000L, 1L, 10000L, null, null));
+        orderItemRepository.save(OrderItem.create(order2, product2, "기계식 키보드", 20000L, 1L, 20000L, null, null));
+
+        AdminOrderSearchCondition condition = new AdminOrderSearchCondition(
+                null,
+                null,
+                null,
+                null,
+                null,
+                "게이밍 노트북",
+                null
+        );
+        Pageable pageable = PageRequest.of(0, 10);
+
+        // when
+        Page<Order> result = orderRepository.findAdminOrders(condition, pageable);
+
+        // then
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent().get(0).getOrderNumber()).isEqualTo("ADM-PRODUCT-01");
+    }
+
+    @Test
+    @DisplayName("관리자 주문 검색은 선택 필터 없이 날짜 조건만으로도 조회한다")
+    void givenOnlyDateCondition_whenFindAdminOrders_thenReturnOrders() {
+        // given
+        Member member = Member.create("admin-date@example.com", "password", "회원", "010-3333-3333");
+        memberRepository.save(member);
+
+        LocalDateTime baseTime = LocalDateTime.of(2026, 6, 30, 12, 0);
+        Order order = orderRepository.save(Order.create(member, "ADM-DATE-01", 20000L, 20000L));
+        ReflectionTestUtils.setField(order, "createdAt", baseTime);
+
+        AdminOrderSearchCondition condition = new AdminOrderSearchCondition(
+                baseTime.toLocalDate(),
+                baseTime.toLocalDate(),
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+        Pageable pageable = PageRequest.of(0, 10);
+
+        // when
+        Page<Order> result = orderRepository.findAdminOrders(condition, pageable);
+
+        // then
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getOrderNumber()).isEqualTo("ADM-DATE-01");
     }
 }

@@ -1,8 +1,11 @@
 package com.team1ilchwiwoljang.domain.order.controller;
 
 import org.springframework.data.domain.Pageable;
+import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
 import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
 import com.team1ilchwiwoljang.common.response.PageResponse;
+import com.team1ilchwiwoljang.domain.order.dto.response.AdminOrderDetailResponse;
+import com.team1ilchwiwoljang.domain.order.dto.response.AdminOrderSearchResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderHistoryResponse;
 
 
@@ -33,6 +36,7 @@ import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderPreviewResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
 import com.team1ilchwiwoljang.domain.order.service.OrderService;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,7 +48,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
-@WebMvcTest(OrderController.class)
+@WebMvcTest({
+        OrderController.class,
+        AdminOrderController.class
+})
 @Import({
         SecurityConfig.class,
         JwtAuthenticationFilter.class,
@@ -427,6 +434,128 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.data.content[0].totalAmount").value(20000L))
                 .andExpect(jsonPath("$.data.content[0].orderStatus").value("PENDING"))
                 .andExpect(jsonPath("$.data.content[0].orderItems").doesNotExist());
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 10L, role = MemberRole.ADMIN)
+    @DisplayName("관리자가 전체 주문 검색을 요청하면 200 OK와 함께 페이징된 주문 목록을 반환한다")
+    void given_admin_whenGetAdminOrders_thenStatus200() throws Exception {
+        // given
+        AdminOrderSearchResponse order = new AdminOrderSearchResponse(
+                100L,
+                "TARGET-ORDER-000002",
+                1L,
+                20000L,
+                20000L,
+                "PAID",
+                LocalDateTime.of(2026, 6, 30, 12, 0),
+                LocalDateTime.of(2026, 6, 30, 12, 10),
+                null
+        );
+        PageResponse<AdminOrderSearchResponse> pageResponse =
+                new PageResponse<>(List.of(order), 0, 20, 1L, 1, true);
+
+        given(orderService.getAdminOrders(
+                argThat(condition ->
+                        condition.orderStatus().name().equals("PAID")
+                                && condition.minTotalAmount().equals(10000L)
+                                && condition.maxTotalAmount().equals(500000L)
+                                && "TARGET".equals(condition.keyword())
+                ),
+                any(Pageable.class)
+        )).willReturn(pageResponse);
+
+        // when & then
+        mockMvc.perform(get("/api/admins/orders")
+                        .param("startDate", "2026-01-01")
+                        .param("endDate", "2026-06-30")
+                        .param("orderStatus", "PAID")
+                        .param("minTotalAmount", "10000")
+                        .param("maxTotalAmount", "500000")
+                        .param("keyword", "TARGET")
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].orderId").value(100L))
+                .andExpect(jsonPath("$.data.content[0].orderNumber").value("TARGET-ORDER-000002"))
+                .andExpect(jsonPath("$.data.content[0].memberId").value(1L))
+                .andExpect(jsonPath("$.data.content[0].totalAmount").value(20000L))
+                .andExpect(jsonPath("$.data.content[0].pgAmount").value(20000L))
+                .andExpect(jsonPath("$.data.content[0].orderStatus").value("PAID"));
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 10L, role = MemberRole.ADMIN)
+    @DisplayName("관리자가 검색 조건 없이 전체 주문 조회를 요청하면 200 OK를 반환한다")
+    void given_adminWithoutCondition_whenGetAdminOrders_thenStatus200() throws Exception {
+        // given
+        PageResponse<AdminOrderSearchResponse> pageResponse =
+                new PageResponse<>(List.of(), 0, 20, 0L, 0, true);
+
+        given(orderService.getAdminOrders(
+                argThat(condition ->
+                        condition != null
+                                && condition.startDate() == null
+                                && condition.endDate() == null
+                                && condition.orderStatus() == null
+                                && condition.minTotalAmount() == null
+                                && condition.maxTotalAmount() == null
+                                && condition.keyword() == null
+                                && condition.memberId() == null
+                ),
+                any(Pageable.class)
+        )).willReturn(pageResponse);
+
+        // when & then
+        mockMvc.perform(get("/api/admins/orders")
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.totalElements").value(0L));
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 10L, role = MemberRole.ADMIN)
+    @DisplayName("관리자가 주문 상세 조회를 요청하면 200 OK와 함께 주문 상품 목록을 반환한다")
+    void given_admin_whenGetAdminOrderDetail_thenStatus200() throws Exception {
+        // given
+        Long orderId = 100L;
+        AdminOrderDetailResponse response = new AdminOrderDetailResponse(
+                orderId,
+                "TARGET-ORDER-000002",
+                1L,
+                30000L,
+                30000L,
+                "PAID",
+                LocalDateTime.of(2026, 6, 30, 12, 0),
+                LocalDateTime.of(2026, 6, 30, 12, 10),
+                null,
+                List.of(new OrderItemResponse("게이밍 노트북", 10000L, 2L, 20000L))
+        );
+
+        given(orderService.getAdminOrderDetail(orderId)).willReturn(response);
+
+        // when & then
+        mockMvc.perform(get("/api/admins/orders/{orderId}", orderId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.orderId").value(orderId))
+                .andExpect(jsonPath("$.data.orderNumber").value("TARGET-ORDER-000002"))
+                .andExpect(jsonPath("$.data.memberId").value(1L))
+                .andExpect(jsonPath("$.data.orderItems[0].productName").value("게이밍 노트북"))
+                .andExpect(jsonPath("$.data.orderItems[0].quantity").value(2L));
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 1L)
+    @DisplayName("일반 회원이 관리자 전체 주문 검색을 요청하면 403 Forbidden을 반환한다")
+    void given_member_whenGetAdminOrders_thenStatus403() throws Exception {
+        mockMvc.perform(get("/api/admins/orders")
+                        .param("startDate", "2026-01-01")
+                        .param("endDate", "2026-06-30"))
+                .andExpect(status().isForbidden());
     }
 
     @Test
