@@ -235,7 +235,7 @@ class OrderServiceTest {
         Cart secondCart = createCart(20L, member, secondProduct, 1);
 
         given(memberService.getMember(memberId)).willReturn(member);
-        given(cartService.getOrderCartItems(memberId, request.cartIds()))
+        given(cartService.getOrderCartItemsWithoutProduct(memberId, request.cartIds()))
                 .willReturn(List.of(firstCart, secondCart));
         given(productService.getProductWithPessimisticLock(firstProduct.getId())).willReturn(firstProduct);
         given(productService.getProductWithPessimisticLock(secondProduct.getId())).willReturn(secondProduct);
@@ -268,7 +268,7 @@ class OrderServiceTest {
         Product product = createProduct(100L, "keyboard", 10_000, 1, ProductStatus.ON_SALE);
         Cart cart = createCart(10L, member, product, 2);
         given(memberService.getMember(memberId)).willReturn(member);
-        given(cartService.getOrderCartItems(memberId, request.cartIds())).willReturn(List.of(cart));
+        given(cartService.getOrderCartItemsWithoutProduct(memberId, request.cartIds())).willReturn(List.of(cart));
         given(productService.getProductWithPessimisticLock(product.getId())).willReturn(product);
 
         assertThatThrownBy(() -> orderService.createCartOrder(memberId, request))
@@ -285,7 +285,7 @@ class OrderServiceTest {
         Product product = createProduct(100L, "keyboard", 10_000, 10, ProductStatus.STOPPED);
         Cart cart = createCart(10L, member, product, 1);
         given(memberService.getMember(memberId)).willReturn(member);
-        given(cartService.getOrderCartItems(memberId, request.cartIds())).willReturn(List.of(cart));
+        given(cartService.getOrderCartItemsWithoutProduct(memberId, request.cartIds())).willReturn(List.of(cart));
         given(productService.getProductWithPessimisticLock(product.getId())).willReturn(product);
 
         assertThatThrownBy(() -> orderService.createCartOrder(memberId, request))
