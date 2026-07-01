@@ -19,19 +19,19 @@
 ```sql
 SELECT * FROM orders 
 WHERE member_id = :memberId 
-ORDER BY id DESC 
+ORDER BY created_at DESC, id DESC 
 LIMIT :limit OFFSET :offset;
 ```
 
-### 2.2 인덱스 설계: `(member_id, id)` 복합 인덱스
-* **인덱스 명칭**: `idx_orders_member_id_id`
+### 2.2 인덱스 설계: `(member_id, created_at, id)` 복합 인덱스
+* **인덱스 명칭**: `idx_orders_member_id_created_at_id`
 * **설계 기준**:
   * **동등 조건 필터링 우선**: `WHERE` 절에 사용되는 동등(=) 조건 컬럼인 `member_id`를 복합 인덱스의 첫 번째 컬럼으로 지정합니다.
-  * **정렬 순서(Order By) 일치**: `ORDER BY`에 사용되는 정렬 기준 컬럼인 `id`를 두 번째 컬럼으로 지정하여 정렬(Filesort)을 회피합니다.
+  * **정렬 순서(Order By) 일치**: `ORDER BY`에 사용되는 정렬 기준 컬럼인 `created_at DESC, id DESC`를 뒤에 배치하여 정렬(Filesort)을 회피합니다.
+  * **안정적인 최신순 보장**: `created_at`이 같은 주문이 있을 수 있으므로 `id DESC`를 보조 정렬 기준으로 둡니다.
 * **InnoDB 특성을 고려한 원리**:
   * MySQL의 InnoDB 스토리지 엔진에서 보조 인덱스(Secondary Index)는 항상 내부적으로 PK(여기서는 `id`)를 리프 노드에 포함하고 있습니다.
-  * 즉, `(member_id)` 단일 인덱스만 생성해도 물리적으로는 `(member_id, id)` 형태로 보조 인덱스가 구성됩니다.
-  * 하지만 **의도적인 복합 인덱스 설계의 코딩 관례** 및 다른 스토리지 엔진(혹은 명시적인 정렬 최적화)을 위해 DDL 상에 `(member_id, id DESC)` 복합 인덱스를 명시하여 인덱스 커버링과 정렬 스캔의 효율성을 높입니다.
+  * 다만 이번 조회의 기본 정렬 기준은 `id` 단독이 아니라 `created_at DESC, id DESC`이므로, 정렬 기준까지 명시한 `(member_id, created_at DESC, id DESC)` 복합 인덱스를 사용합니다.
 
 ---
 
@@ -90,10 +90,10 @@ LIMIT :limit OFFSET :offset;
 ```sql
 EXPLAIN SELECT * FROM orders 
 WHERE member_id = 1 
-ORDER BY id DESC 
+ORDER BY created_at DESC, id DESC 
 LIMIT 10;
 ```
-* **성공적인 결과 지표**: `type: ref`, `key: idx_orders_member_id_id`, `Extra: Using index condition` (혹은 빈 값 - Using filesort가 없어야 함).
+* **성공적인 결과 지표**: `type: ref`, `key: idx_orders_member_id_created_at_id`, `Extra: Using index condition` (혹은 빈 값 - Using filesort가 없어야 함).
 
 ---
 
