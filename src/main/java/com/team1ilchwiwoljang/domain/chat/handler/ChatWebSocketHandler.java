@@ -1,16 +1,19 @@
 package com.team1ilchwiwoljang.domain.chat.handler;
 
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.team1ilchwiwoljang.domain.chat.dto.response.ChatMessageResponse;
+import com.team1ilchwiwoljang.domain.chat.service.ChatMessageService;
 import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * ChatHandshakeInterceptor에서 이미 검증된 chatRoomId를 꺼내서
@@ -19,7 +22,11 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
  * Handler는 "이미 연결이 허용된 세션"만 관리합니다.
  */
 @Component
+@RequiredArgsConstructor
 public class ChatWebSocketHandler extends TextWebSocketHandler {
+
+    private final ChatMessageService chatMessageService;
+    private final ObjectMapper objectMapper;
 
     /**
      * 채팅방 ID별 WebSocket 세션 목록입니다.
@@ -52,13 +59,18 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
         String payload = message.getPayload();
 
-        /*
-         * 현재 단계에서는 메시지 저장 없이 같은 채팅방에 연결된 세션들에게만 전달합니다.
-         * 이후 ChatMessage Entity를 만들면 여기에서 DB 저장 후 broadcast 예정입니다.
-         */
-        String broadcastMessage = "[" + role + ":" + senderId + "] " + payload;
+        // 1. WebSocket으로 받은 메시지를 먼저 DB에 저장합니다.
+        ChatMessageResponse savedMessage = chatMessageService.saveMessage(
+                senderId,
+                role,
+                chatRoomId,
+                payload
+        );
 
-        // 현재 메시지를 보낸 사용자의 chatRoomId와 같은 방에 있는 세션에게만 보냅니다.
+        // 2. 저장된 메시지를 JSON 문자열로 변환합니다.
+        String broadcastMessage = objectMapper.writeValueAsString(savedMessage);
+
+        // 3. 같은 채팅방에 연결된 세션들에게만 메시지를 전달합니다.
         Set<WebSocketSession> sessions = roomSessions.getOrDefault(chatRoomId, Set.of());
 
         for (WebSocketSession targetSession : sessions) {
