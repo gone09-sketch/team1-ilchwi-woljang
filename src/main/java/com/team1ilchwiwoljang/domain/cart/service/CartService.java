@@ -62,6 +62,7 @@ public class CartService {
         return CartAddResponse.from(cart);
     }
 
+    // 동시요청시 일어날 수 있는 예외로 DB 예외로 보내지않고, 서비스 예외로 바꿔주는 역할을함
     @Recover
     public CartAddResponse recoverAddCartItem(
             DataIntegrityViolationException e, Long memberId, CartCreateRequest request) {

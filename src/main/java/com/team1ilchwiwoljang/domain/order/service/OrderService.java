@@ -25,10 +25,14 @@ import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderHistoryResponse;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
+
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -79,7 +83,7 @@ public class OrderService {
     @Transactional
     public OrderResponse createDirectOrder(Long memberId, DirectOrderRequest request) {
         Member member = memberService.getMember(memberId);
-        Product product = productService.getProduct(request.productId());
+        Product product = productService.getProductWithPessimisticLock(request.productId());
 
         validateOrderableProduct(product, request.quantity());
 
@@ -113,21 +117,41 @@ public class OrderService {
         Member member = memberService.getMember(memberId);
 
         List<Cart> cartItems = cartService.getOrderCartItems(memberId, request.cartIds());
-        validateCartOrderItems(cartItems);
 
-        Long totalAmount = calculateCartOrderTotalAmount(cartItems);
+        List<Cart> sortedCartItems = cartItems.stream()
+                .sorted(Comparator.comparing(cart -> cart.getProduct().getId()))
+                .toList();
+
+        List<Product> lockedProducts = new ArrayList<>();
+        Long totalAmount = 0L;
+
+        for (Cart cartItem : sortedCartItems) {
+            Product product = productService.getProductWithPessimisticLock(cartItem.getProduct().getId());
+
+            validateOrderableProduct(product, cartItem.getQuantity());
+
+            lockedProducts.add(product);
+            totalAmount += (long) product.getPrice() * cartItem.getQuantity();
+        }
+
         String orderNumber = UUID.randomUUID().toString();
 
         Order order = Order.create(member, orderNumber, totalAmount, totalAmount);
         orderRepository.save(order);
 
-        List<OrderItem> orderItems = cartItems.stream()
-                .map(cart -> createOrderItem(order, cart))
-                .toList();
-        orderItemRepository.saveAll(orderItems);
+        List<OrderItem> orderItems = new ArrayList<>();
 
-        // 주문 저장, 재고 차감, 장바구니 삭제는 같은 트랜잭션 안에서 함께 성공하거나 함께 실패해야 합니다.
-        cartItems.forEach(cart -> cart.getProduct().decreaseStock(cart.getQuantity()));
+        for (int i = 0; i < sortedCartItems.size(); i++) {
+            Cart cart = sortedCartItems.get(i);
+            Product product = lockedProducts.get(i);
+
+            OrderItem orderItem = createOrderItem(order, product, cart.getQuantity());
+            orderItems.add(orderItem);
+
+            product.decreaseStock(cart.getQuantity());
+        }
+
+        orderItemRepository.saveAll(orderItems);
         cartService.deleteOrderCartItems(cartItems);
 
         List<OrderItemResponse> orderItemResponses = orderItems.stream()
@@ -259,16 +283,8 @@ public class OrderService {
         }
     }
 
-    private Long calculateCartOrderTotalAmount(List<Cart> cartItems) {
-        return cartItems.stream()
-                .mapToLong(cart -> (long) cart.getProduct().getPrice() * cart.getQuantity())
-                .sum();
-    }
-
-    private OrderItem createOrderItem(Order order, Cart cart) {
-        Product product = cart.getProduct();
+    private OrderItem createOrderItem(Order order, Product product, long quantity) {
         long productPrice = (long) product.getPrice();
-        long quantity = (long) cart.getQuantity();
         long totalPrice = productPrice * quantity;
 
         Category category = product.getCategory();
