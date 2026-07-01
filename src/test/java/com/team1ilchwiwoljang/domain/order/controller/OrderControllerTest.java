@@ -1,6 +1,13 @@
 package com.team1ilchwiwoljang.domain.order.controller;
 
+import org.springframework.data.domain.Pageable;
+import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
+import com.team1ilchwiwoljang.common.response.PageResponse;
+import com.team1ilchwiwoljang.domain.order.dto.response.OrderHistoryResponse;
+
+
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
@@ -389,5 +396,44 @@ class OrderControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("INVALID_ORDER_STATUS"));
+    }
+
+    @Test
+    @WithMockAuthMember(memberId = 1L)
+    @DisplayName("인증된 사용자가 주문 내역 조회를 요청하면 200 OK와 함께 페이징된 주문 내역을 반환한다")
+    void given_authenticatedUser_whenGetOrderHistory_thenStatus200() throws Exception {
+        // given
+        OrderHistoryResponse history = new OrderHistoryResponse(100L, "ORD-123", 20000L, "PENDING", null);
+        PageResponse<OrderHistoryResponse> pageResponse = new PageResponse<>(List.of(history), 0, 10, 1L, 1, true);
+
+        given(orderService.getOrderHistory(
+                eq(MEMBER_ID),
+                argThat(condition -> "ORD-123".equals(condition.keyword())),
+                any(Pageable.class)
+        )).willReturn(pageResponse);
+
+        // when & then
+        mockMvc.perform(get("/api/orders")
+                        .param("startDate", "2026-06-01")
+                        .param("endDate", "2026-06-25")
+                        .param("orderStatus", "PENDING")
+                        .param("keyword", "ORD-123")
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].orderId").value(100L))
+                .andExpect(jsonPath("$.data.content[0].orderNumber").value("ORD-123"))
+                .andExpect(jsonPath("$.data.content[0].totalAmount").value(20000L))
+                .andExpect(jsonPath("$.data.content[0].orderStatus").value("PENDING"))
+                .andExpect(jsonPath("$.data.content[0].orderItems").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("인증되지 않은 사용자가 주문 내역 조회를 요청하면 401 Unauthorized를 반환한다")
+    void given_unauthenticatedUser_whenGetOrderHistory_thenStatus401() throws Exception {
+        // when & then
+        mockMvc.perform(get("/api/orders"))
+                .andExpect(status().isUnauthorized());
     }
 }

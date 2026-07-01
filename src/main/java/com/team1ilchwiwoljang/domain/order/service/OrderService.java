@@ -4,6 +4,7 @@ import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.domain.cart.entity.Cart;
 import com.team1ilchwiwoljang.domain.cart.service.CartService;
+import com.team1ilchwiwoljang.domain.category.entity.Category;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.order.dto.request.CartOrderRequest;
@@ -20,6 +21,9 @@ import com.team1ilchwiwoljang.domain.order.entity.OrderItem;
 import com.team1ilchwiwoljang.domain.order.repository.OrderItemRepository;
 import com.team1ilchwiwoljang.domain.order.repository.OrderRepository;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
+import com.team1ilchwiwoljang.common.response.PageResponse;
+import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
+import com.team1ilchwiwoljang.domain.order.dto.response.OrderHistoryResponse;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
 
 import java.time.Clock;
@@ -30,6 +34,8 @@ import java.util.List;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,10 +50,22 @@ public class OrderService {
     private final ProductService productService;
     private final CartService cartService;
 
-    /**
-     * 상품 상세 페이지에서 바로 주문하기 전 주문서 미리보기 정보를 생성합니다.
-     * 실제 주문 저장, 주문상품 저장, 재고 차감은 하지 않습니다.
-     */
+    @Transactional(readOnly = true)
+    public PageResponse<OrderHistoryResponse> getOrderHistory(Long memberId, OrderSearchCondition condition, Pageable pageable) {
+        Page<Order> orderPage = orderRepository.findOrderHistoryByMemberId(memberId, condition, pageable);
+
+        // 주문 목록은 상세 품목을 펼치지 않고, 상세보기 API에서 사용할 주문 식별 정보만 내려준다.
+        Page<OrderHistoryResponse> dtoPage = orderPage.map(order -> OrderHistoryResponse.of(
+                order.getId(),
+                order.getOrderNumber(),
+                order.getTotalAmount(),
+                order.getOrderStatus().name(),
+                order.getCreatedAt()
+        ));
+
+        return PageResponse.from(dtoPage);
+    }
+
     @Transactional(readOnly = true)
     public DirectOrderPreviewResponse previewDirectOrder(DirectOrderPreviewRequest request) {
         Product product = productService.getProduct(request.productId());
@@ -61,10 +79,7 @@ public class OrderService {
         return DirectOrderPreviewResponse.of(orderItems, totalOrderAmount);
     }
 
-    /**
-     * 상품 상세 페이지에서 바로 주문을 생성하는 메서드입니다.
-     * 회원과 상품을 조회한 뒤, 상품 상태와 재고를 검증하고 주문/주문상품을 저장합니다.
-     */
+
     @Transactional
     public OrderResponse createDirectOrder(Long memberId, DirectOrderRequest request) {
         Member member = memberService.getMember(memberId);
@@ -78,13 +93,16 @@ public class OrderService {
         Order order = Order.create(member, orderNumber, totalAmount, totalAmount);
         orderRepository.save(order);
 
+        Category category = product.getCategory();
         OrderItem orderItem = OrderItem.create(
                 order,
                 product,
                 product.getName(),
                 (long) product.getPrice(),
                 (long) request.quantity(),
-                totalAmount
+                totalAmount,
+                category != null ? category.getId() : null,
+                category != null ? category.getName() : null
         );
         orderItemRepository.save(orderItem);
 
@@ -127,19 +145,7 @@ public class OrderService {
             Cart cart = sortedCartItems.get(i);
             Product product = lockedProducts.get(i);
 
-            long productPrice = product.getPrice();
-            long quantity = cart.getQuantity();
-            long totalPrice = productPrice * quantity;
-
-            OrderItem orderItem = OrderItem.create(
-                    order,
-                    product,
-                    product.getName(),
-                    productPrice,
-                    quantity,
-                    totalPrice
-            );
-
+            OrderItem orderItem = createOrderItem(order, product, cart.getQuantity());
             orderItems.add(orderItem);
 
             product.decreaseStock(cart.getQuantity());
@@ -277,25 +283,20 @@ public class OrderService {
         }
     }
 
-    private Long calculateCartOrderTotalAmount(List<Cart> cartItems) {
-        return cartItems.stream()
-                .mapToLong(cart -> (long) cart.getProduct().getPrice() * cart.getQuantity())
-                .sum();
-    }
-
-    private OrderItem createOrderItem(Order order, Cart cart) {
-        Product product = cart.getProduct();
+    private OrderItem createOrderItem(Order order, Product product, long quantity) {
         long productPrice = (long) product.getPrice();
-        long quantity = (long) cart.getQuantity();
         long totalPrice = productPrice * quantity;
 
+        Category category = product.getCategory();
         return OrderItem.create(
                 order,
                 product,
                 product.getName(),
                 productPrice,
                 quantity,
-                totalPrice
+                totalPrice,
+                category != null ? category.getId() : null,
+                category != null ? category.getName() : null
         );
     }
 }
