@@ -73,6 +73,13 @@ public class SecurityConfig {
                                 "/api/auth/refresh",
 
                                 /*
+                                 * STOMP WebSocket handshake endpoint입니다.
+                                 * HTTP Security에서는 통과시키고,
+                                 * 실제 JWT 인증은 STOMP CONNECT 프레임에서 처리합니다.
+                                 */
+                                "/ws/chat",
+
+                                /*
                                  * 순수 WebSocket 채팅 테스트 화면과 handshake 경로입니다.
                                  * /ws/chat의 실제 인증/인가 검증은 ChatHandshakeInterceptor에서 처리합니다.
                                  */
@@ -104,7 +111,6 @@ public class SecurityConfig {
 
                 // Controller에 도착하기 전에 JWT를 먼저 검증합니다.
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
 
         return http.build();
     }
