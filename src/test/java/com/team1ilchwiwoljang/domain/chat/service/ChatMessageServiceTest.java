@@ -47,10 +47,6 @@ class ChatMessageServiceTest {
         completedChatRoom.changeStatus(ChatRoomStatus.IN_PROGRESS);
         completedChatRoom.changeStatus(ChatRoomStatus.COMPLETED);
 
-        /*
-         * saveMessage()는 메시지를 저장하기 전에 먼저 채팅방 접근 권한을 확인합니다.
-         * 이 테스트에서는 권한 검증은 통과했고, 반환된 채팅방이 이미 COMPLETED인 상황만 검증합니다.
-         */
         given(chatRoomService.getAccessibleChatRoom(senderId, MemberRole.MEMBER, chatRoomId))
                 .willReturn(completedChatRoom);
 
@@ -60,15 +56,23 @@ class ChatMessageServiceTest {
                 chatRoomId,
                 "완료된 채팅방에 보내는 메시지"
         ))
-    @DisplayName("빈 메시지는 저장하지 않고 검증 예외를 던진다")
-    void saveMessageThrowsValidationWhenContentIsBlank() {
-        assertThatThrownBy(() -> chatMessageService.saveMessage(1L, MemberRole.MEMBER, 10L, " "))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue(
                         "errorCode",
                         ErrorCode.COMPLETED_CHAT_ROOM_MESSAGE_NOT_ALLOWED
                 );
+
+        verify(chatMessageRepository, never()).save(any(ChatMessage.class));
+    }
+
+    @Test
+    @DisplayName("빈 메시지는 저장하지 않고 검증 예외를 던진다")
+    void saveMessageThrowsValidationWhenContentIsBlank() {
+        assertThatThrownBy(() -> chatMessageService.saveMessage(1L, MemberRole.MEMBER, 10L, " "))
+                .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VALIDATION_FAILED);
+
+        verify(chatMessageRepository, never()).save(any(ChatMessage.class));
     }
 
     @Test
@@ -76,26 +80,10 @@ class ChatMessageServiceTest {
     void saveMessageThrowsValidationWhenContentExceedsLimit() {
         String content = "a".repeat(1001);
 
-        /*
-         * 완료된 채팅방이면 sender 조회나 메시지 저장까지 진행되면 안 됩니다.
-         * 여기서는 저장 Repository가 호출되지 않았는지만 명확히 확인합니다.
-         */
-        verify(chatMessageRepository, never()).save(any(ChatMessage.class));
         assertThatThrownBy(() -> chatMessageService.saveMessage(1L, MemberRole.MEMBER, 10L, content))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VALIDATION_FAILED);
-    }
 
-    private ChatRoom createChatRoom(Long id, Member member) {
-        ChatRoom chatRoom = ChatRoom.create(member);
-        ReflectionTestUtils.setField(chatRoom, "id", id);
-        return chatRoom;
-    }
-
-    private Member createMember(Long id, MemberRole role) {
-        Member member = Member.create("member" + id + "@example.com", "password", "member", "010-1234-5678");
-        ReflectionTestUtils.setField(member, "id", id);
-        ReflectionTestUtils.setField(member, "role", role);
-        return member;
+        verify(chatMessageRepository, never()).save(any(ChatMessage.class));
     }
 }
