@@ -73,8 +73,9 @@ public class SecurityConfig {
                                 "/api/auth/refresh",
 
                                 /*
-                                 * 순수 WebSocket 채팅 테스트 화면과 handshake 경로입니다.
-                                 * /ws/chat의 실제 인증/인가 검증은 ChatHandshakeInterceptor에서 처리합니다.
+                                 * /chat-test.html은 ChatTestPageController가 local 프로파일에서만 제공합니다.
+                                 * /ws/chat은 HTTP 필터에서 JWT를 읽을 수 없는 WebSocket handshake 경로라 permitAll로 열고,
+                                 * 실제 인증/인가는 ChatHandshakeInterceptor에서 처리합니다.
                                  */
                                 "/chat-test.html",
                                 "/ws/chat",
