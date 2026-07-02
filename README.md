@@ -1,189 +1,215 @@
-# team1-ilchwi-woljang
+# 일취월장
 
-팀 프로젝트 초기 Spring Boot 백엔드 뼈대입니다.
+팀 프로젝트 `일취월장`은 상품 조회, 장바구니, 주문, 문의, 실시간 상담, AI 챗봇을 제공하는 Spring Boot 기반 이커머스 API 서버입니다.
 
-아직 서비스 도메인은 확정되지 않았으며, 공통 개발 환경과 컨벤션, 에이전트 사용 기준을 먼저 맞추는 단계입니다.
+현재 `dev` 브랜치는 기본 커머스 기능 위에 실시간 통신, 인증/인가, 주문/상품 조회 성능 개선, 동시성 제어, 인기 데이터 캐싱을 고도화한 상태입니다.
 
-## Tech Stack
+## 팀 구성 및 고도화 구현
+
+| 이름 | 담당 영역 | 구현 내용 |
+| --- | --- | --- |
+| 양지원 | 실시간 통신 및 인증/인가 | STOMP 기반 WebSocket 채팅, JWT 기반 STOMP `CONNECT` 인증, 채팅방 `SUBSCRIBE` 권한 검증, HTTP API JWT 인증 |
+| 한예진 | 관리자 주문 내역 인덱싱 | Querydsl 기반 관리자 주문 동적 검색, 주문번호 정확 일치 검색, 상품명 Full-Text 검색, 주문 조회 성능 검증 문서화 |
+| 박송이 | 동시성 문제 | 상품 재고 차감 시 비관적 락을 적용하여 동시 주문 상황의 재고 정합성 보장 |
+| 전용운 | 인기검색어 및 인기상품 캐싱 | Redis Cache 기반 인기검색어/인기상품 캐싱, 스케줄러 기반 캐시 웜업, 캐시 장애 시 DB 조회 fallback |
+| 민병준 | 상품 목록 인덱싱 | 상품 목록 조회용 복합 인덱스, 상품명 Full-Text 인덱스 자동 생성, 가격/카테고리/상태 조건 조회 최적화 |
+
+## 주요 기능
+
+- 회원가입, 로그인, JWT Access Token/Refresh Token 재발급
+- 상품 목록, 상품 상세, 카테고리별 상품, 가격 범위, 상품명 검색, 인기 상품 조회
+- 장바구니 상품 추가, 조회, 수량 변경, 삭제
+- 바로 주문, 장바구니 주문, 주문 미리보기, 주문 취소, 주문 내역 조회
+- 관리자 주문 목록 검색 및 주문 상세 조회
+- 회원 문의 등록, 관리자 답변 등록
+- STOMP WebSocket 기반 실시간 채팅
+- Spring AI OpenAI 기반 상품 추천/FAQ 챗봇
+- 인기검색어 및 인기상품 Redis 캐싱
+
+## 기술 스택
 
 - Java 17
 - Spring Boot 4.1.0
-- Gradle
-- Spring MVC
-- Spring Data JPA
-- Spring Security
-- Bean Validation
+- Spring MVC, Spring Data JPA, Spring Security
+- Spring WebSocket, STOMP
+- Spring Cache, Redis
+- Spring AI OpenAI
+- Querydsl 5.0.0
+- MySQL, H2(test)
 - JWT: JJWT 0.13.0
-- MySQL
-- H2: test runtime only
+- Gradle
 - Lombok
 
-## Local Setup
-
-### JDK
-
-프로젝트 기준 Java 버전은 17입니다.
-
-`build.gradle`에도 Java 17 toolchain이 설정되어 있습니다.
-
-```gradle
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
-}
-```
-
-IntelliJ에서는 아래 설정을 확인합니다.
-
-- `File > Project Structure > Project`
-  - SDK: JDK 17
-  - Language level: 17
-- `File > Project Structure > Modules`
-  - Module SDK: Project SDK 또는 JDK 17
-- `Settings > Build, Execution, Deployment > Build Tools > Gradle`
-  - Gradle JVM: Project SDK 또는 JDK 17
-  - Build and run using: Gradle
-  - Run tests using: Gradle
-
-### Line Endings
-
-저장소의 텍스트 파일은 LF 기준으로 관리합니다.
-
-Windows 사용자는 아래 설정을 권장합니다.
-
-```bash
-git config --global core.autocrlf false
-```
-
-IntelliJ에서는 아래 설정을 확인합니다.
+## 프로젝트 구조
 
 ```text
-Settings > Editor > Code Style > Line separator: Unix and macOS (\n)
+src/main/java/com/team1ilchwiwoljang
+├── common
+│   ├── config        # Security, WebSocket, Cache, Querydsl, JPA 설정
+│   ├── entity        # 공통 BaseEntity
+│   ├── exception     # 공통 예외 및 에러 응답
+│   ├── response      # 공통 API 응답
+│   └── security      # JWT 인증 필터, 토큰 provider, @Auth
+└── domain
+    ├── auth          # 회원가입, 로그인, 토큰 재발급
+    ├── cart          # 장바구니
+    ├── category      # 카테고리
+    ├── chat          # 실시간 채팅
+    ├── chatbot       # AI 챗봇
+    ├── inquiry       # 문의
+    ├── member        # 회원
+    ├── order         # 주문 및 관리자 주문 검색
+    ├── product       # 상품 조회, 검색, 재고
+    └── search        # 검색어 및 인기검색어
 ```
 
-줄바꿈 정책은 `.gitattributes`를 따릅니다.
+## 고도화 포인트
 
-## Gradle Commands
+### 실시간 채팅 및 인증/인가
 
-프로젝트 루트에서 실행합니다.
+- WebSocket/STOMP endpoint: `/ws/chat`
+- 메시지 발행 destination: `/pub/chat/rooms/{chatRoomId}/messages`
+- 메시지 구독 destination: `/sub/chat/rooms/{chatRoomId}`
+- STOMP `CONNECT` frame의 `Authorization: Bearer {accessToken}` header를 검증합니다.
+- `MEMBER`는 본인 채팅방만 구독할 수 있고, `ADMIN`은 모든 회원 채팅방을 구독할 수 있습니다.
+- STOMP 처리 중 발생한 인증/인가 오류는 전용 error handler를 통해 STOMP `ERROR` frame으로 응답합니다.
+
+### 관리자 주문 내역 검색 최적화
+
+- 관리자 주문 API는 `GET /api/admins/orders`에서 상태, 기간, 금액, 주문번호, 회원 ID, 상품명 조건을 조합해 검색합니다.
+- 주문번호는 인덱스를 활용하기 위해 부분 검색이 아닌 정확 일치 검색으로 처리합니다.
+- 상품명 검색은 MySQL `MATCH ... AGAINST` Full-Text 검색을 사용하고, 테스트용 H2 환경에서는 `LIKE` 검색으로 fallback합니다.
+- 사용자 주문 내역 조회는 `(member_id, created_at DESC, id DESC)` 복합 인덱스를 기준으로 최신순 페이징을 최적화합니다.
+
+### 재고 동시성 제어
+
+- 상품 재고 조회 시 `PESSIMISTIC_WRITE` 락을 사용합니다.
+- 주문 생성 과정에서 동일 상품에 대한 동시 재고 차감 요청이 들어와도 재고가 음수가 되지 않도록 보호합니다.
+- JPA 2차 캐시 영향을 피하기 위해 락 조회 쿼리에 cache bypass hint를 적용합니다.
+
+### 인기 데이터 캐싱
+
+- 인기 상품 cache name: `popularProducts`
+- 인기 검색어 cache name: `popularKeywords`
+- Redis CacheManager를 사용하며 기본 TTL은 30분입니다.
+- 인기 상품/검색어는 9분 30초 주기의 스케줄러로 캐시를 미리 갱신합니다.
+- Redis 장애 시 캐시 예외를 무시하고 DB 조회로 fallback합니다.
+
+### 상품 목록 인덱싱
+
+- `products` 테이블 복합 인덱스
+  - `idx_product_status_created_at`: 판매 상태 + 최신순 조회
+  - `idx_product_category_status_created_at`: 카테고리 + 판매 상태 + 최신순 조회
+  - `idx_product_status_price`: 판매 상태 + 가격 범위 조회
+- 상품명 검색용 Full-Text 인덱스
+  - `idx_product_name_fulltext`
+  - 애플리케이션 시작 시 MySQL `information_schema.statistics`를 확인하고 없으면 자동 생성합니다.
+
+## 주요 API
+
+| 영역 | Method | Endpoint | 설명 |
+| --- | --- | --- | --- |
+| Auth | `POST` | `/api/auth/signup` | 회원가입 |
+| Auth | `POST` | `/api/auth/login` | 로그인 |
+| Auth | `POST` | `/api/auth/refresh` | Access Token 재발급 |
+| Product | `GET` | `/api/products` | 상품 목록 조회 |
+| Product | `GET` | `/api/products/{productId}` | 상품 상세 조회 |
+| Product | `GET` | `/api/products/search` | 상품명 검색 |
+| Product | `GET` | `/api/products/search-fulltext` | 상품명 Full-Text 검색 |
+| Product | `GET` | `/api/products/popular` | 인기 상품 조회 |
+| Search | `GET` | `/api/search/popular` | 인기검색어 조회 |
+| Cart | `POST` | `/api/carts/items` | 장바구니 상품 추가 |
+| Cart | `GET` | `/api/carts` | 장바구니 조회 |
+| Cart | `PATCH` | `/api/carts/items/{cartItemId}` | 장바구니 수량 변경 |
+| Cart | `DELETE` | `/api/carts/items/{cartItemId}` | 장바구니 상품 삭제 |
+| Order | `GET` | `/api/orders/preview` | 장바구니 주문 미리보기 |
+| Order | `POST` | `/api/orders/direct/preview` | 바로 주문 미리보기 |
+| Order | `POST` | `/api/orders/direct` | 바로 주문 |
+| Order | `POST` | `/api/orders/carts` | 장바구니 주문 |
+| Order | `POST` | `/api/orders/{orderId}/cancel` | 주문 취소 |
+| Order | `GET` | `/api/orders` | 내 주문 내역 조회 |
+| Admin Order | `GET` | `/api/admins/orders` | 관리자 주문 검색 |
+| Admin Order | `GET` | `/api/admins/orders/{orderId}` | 관리자 주문 상세 조회 |
+| Chat | `POST` | `/api/chat/rooms/my` | 내 채팅방 생성/조회 |
+| Chat | `GET` | `/api/chat/rooms/my` | 내 채팅방 조회 |
+| Chat | `GET` | `/api/chat/rooms` | 관리자 채팅방 목록 조회 |
+| Chat | `GET` | `/api/chat/rooms/{chatRoomId}/messages` | 채팅 메시지 조회 |
+| Chat | `PATCH` | `/api/chat/rooms/{chatRoomId}/status` | 채팅방 상태 변경 |
+| Chatbot | `GET` | `/api/ai/chatbot/welcome` | 챗봇 웰컴 메시지 |
+| Chatbot | `POST` | `/api/ai/chatbot` | 챗봇 질의 |
+| Inquiry | `POST` | `/api/members/inquiry` | 회원 문의 등록 |
+| Inquiry | `POST` | `/api/admins/inquiry` | 관리자 문의 답변 |
+
+## 실행 방법
+
+### 1. 환경 변수 준비
+
+`.env.example`을 참고해 프로젝트 루트에 `.env` 파일을 생성합니다.
+
+```properties
+DB_URL=jdbc:mysql://localhost:3306/team1_db?serverTimezone=UTC
+DB_USERNAME=
+DB_PASSWORD=
+
+JPA_DDL_AUTO=update
+JPA_SHOW_SQL=true
+JPA_FORMAT_SQL=true
+
+JWT_SECRET=change-this-secret-to-at-least-32-characters
+JWT_ACCESS_TOKEN_EXPIRATION=1h
+JWT_REFRESH_TOKEN_EXPIRATION=14d
+
+COOKIE_SECURE=false
+
+OPENAI_API_KEY=your-openai-api-key
+REDIS_HOST=localhost
+REDIS_PORT=6379
+CHAT_WEBSOCKET_ALLOWED_ORIGIN_PATTERNS=http://localhost:8080
+```
+
+### 2. MySQL 및 Redis 실행
+
+로컬 환경에서 MySQL과 Redis가 실행 중이어야 합니다.
+
+- MySQL: `DB_URL`에 지정한 데이터베이스 생성 필요
+- Redis: 기본값 `localhost:6379`
+
+### 3. 애플리케이션 실행
+
+```bash
+./gradlew bootRun
+```
+
+Windows PowerShell에서는 다음 명령을 사용할 수 있습니다.
+
+```powershell
+.\gradlew.bat bootRun
+```
+
+### 4. 테스트 실행
 
 ```bash
 ./gradlew test
 ```
 
-의존성 확인:
+Windows PowerShell에서는 다음 명령을 사용할 수 있습니다.
 
-```bash
-./gradlew dependencies --configuration runtimeClasspath
-./gradlew dependencies --configuration testRuntimeClasspath
+```powershell
+.\gradlew.bat test
 ```
 
-## Project Rules
+## 문서
 
-- 사용자가 명시적으로 요청하지 않으면 코드 수정, 삭제, 파일 생성, 설정 변경을 하지 않습니다.
-- 사용자가 명시적으로 요청하지 않으면 branch 변경, commit, push, merge, rebase, PR 생성을 하지 않습니다.
-- 문서는 필요한 범위만 좁혀서 읽습니다.
-- 긴 컨벤션 문서는 한 번에 모두 읽지 않고, 작업과 직접 관련된 `docs/conventions/*.md`만 읽습니다.
-- 리뷰 요청은 정답 제시보다 체크포인트와 검증 방법 중심으로 답변합니다.
+- [API 문서](docs/API.md)
+- [데이터베이스 인덱싱 설계 및 검증 가이드](docs/indexing_guide.md)
+- [주문 내역 동적 필터 검색 성능 및 부하 테스트 가이드](docs/order_search_perf_test.md)
+- [코드 컨벤션](docs/CODE-CONVENTION.md)
+- [Git 컨벤션](docs/GIT-CONVENTION.md)
 
-## Convention Documents
+## 개발 규칙
 
-컨벤션 인덱스:
-
-```text
-docs/CODE-CONVENTION.md
-```
-
-세부 컨벤션:
-
-```text
-docs/conventions/
-```
-
-주요 문서:
-
-- Package Structure
-- Naming
-- DTO
-- Entity
-- Controller
-- Service
-- Repository
-- Exception
-- API Response
-- Validation
-- Transaction
-- Security
-- Logging
-- Test Convention
-
-## Agent Setup
-
-프로젝트에서 사용하는 에이전트 지침 파일은 다음과 같습니다.
-
-```text
-AGENTS.md        # 공통 에이전트 지침
-CLAUDE.md        # Claude Code 전용 보조 지침
-```
-
-`CLAUDE.md`는 `AGENTS.md`를 참조하고, Claude Code에만 필요한 차이점만 별도로 둡니다.
-
-공용 skill 원본은 아래 경로입니다.
-
-```text
-.agents/skills/
-```
-
-현재 제공 skill:
-
-- `github-pr-write`: PR 제목/본문 초안 작성
-- `review`: 코드 리뷰, 백엔드 리뷰, 컨벤션 리뷰, 문서 정합성 리뷰
-- `test-guide`: 테스트 후보와 검증 방법 제안
-
-Claude Code는 네이티브 skill 자동 탐색을 위해 아래 복제본을 사용합니다.
-
-```text
-.claude/skills/
-```
-
-`.claude/skills`는 직접 수정하지 않습니다.
-
-## Skill Sync
-
-skill은 반드시 `.agents/skills`에서만 수정합니다.
-
-수정 후 프로젝트 루트에서 아래 명령을 순서대로 실행합니다.
-
-```bash
-scripts/sync-skills.sh
-scripts/check-skills.sh
-```
-
-성공하면 아래 메시지가 출력됩니다.
-
-```text
-Synced .agents/skills -> .claude/skills
-Agent skills are in sync.
-```
-
-실패하면 실행 위치가 프로젝트 루트인지 확인하고, 다시 동기화 후 검증합니다.
-
-```bash
-scripts/sync-skills.sh
-scripts/check-skills.sh
-```
-
-## Git Check
-
-작업 전후로 변경 상태를 확인합니다.
-
-```bash
-git status --short
-```
-
-줄바꿈 정책 확인이 필요하면 아래 명령을 사용할 수 있습니다.
-
-```bash
-git ls-files --eol
-```
+- 공통 응답은 `ApiResponse` 형식을 사용합니다.
+- 인증된 HTTP API에서는 `@Auth AuthMember`로 현재 사용자를 주입합니다.
+- 테스트 환경에서는 Redis 대신 `ConcurrentMapCacheManager`를 사용합니다.
+- 인덱스 추가는 실제 조회 조건과 정렬 조건이 확인된 경우에만 적용합니다.
+- 변경 후 `git status --short`와 `./gradlew test`로 변경 범위와 테스트 결과를 확인합니다.
