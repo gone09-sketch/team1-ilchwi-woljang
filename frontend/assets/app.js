@@ -2,6 +2,20 @@ const API_BASE_URL = localStorage.getItem("commerceApiBaseUrl") || "http://local
 const PAGE_SIZE = 20;
 const ORDER_PAGE_SIZE = 10;
 const ADMIN_ORDER_PAGE_SIZE = 10;
+const ADMIN_INQUIRY_PAGE_SIZE = 10;
+const POPULAR_KEYWORD_LIMIT = 10;
+const DEFAULT_POPULAR_KEYWORDS = [
+  "선크림",
+  "노트북",
+  "방울토마토",
+  "바디로션",
+  "우유",
+  "쿠션",
+  "틴트",
+  "에센스",
+  "크림",
+  "세제"
+];
 
 const state = {
   view: "list",
@@ -17,6 +31,11 @@ const state = {
   productPage: emptyPage(),
   products: [],
   productError: "",
+  popularKeywords: [],
+  popularKeywordError: "",
+  popularKeywordLoaded: false,
+  popularKeywordUpdatedAt: "",
+  popularKeywordPanelTarget: "",
   categoryError: "",
   selectedProduct: null,
   detailQuantity: 1,
@@ -44,9 +63,14 @@ const state = {
   },
   orderError: "",
   adminOrderError: "",
+  adminInquiries: emptyPage(ADMIN_INQUIRY_PAGE_SIZE),
+  adminInquiryError: "",
+  selectedAdminInquiryId: null,
   loadingProducts: false,
+  loadingPopularKeywords: false,
   loadingOrders: false,
-  loadingAdminOrders: false
+  loadingAdminOrders: false,
+  loadingAdminInquiries: false
 };
 
 const elements = {
@@ -75,8 +99,10 @@ const elements = {
   nextPage: document.getElementById("nextPage"),
   globalSearchForm: document.getElementById("globalSearchForm"),
   globalSearchInput: document.getElementById("globalSearchInput"),
+  globalPopularKeywords: document.getElementById("globalPopularKeywords"),
   inlineSearchForm: document.getElementById("inlineSearchForm"),
   inlineSearchInput: document.getElementById("inlineSearchInput"),
+  inlinePopularKeywords: document.getElementById("inlinePopularKeywords"),
   detailVisual: document.getElementById("detailVisual"),
   detailName: document.getElementById("detailName"),
   detailDescription: document.getElementById("detailDescription"),
@@ -101,6 +127,12 @@ const elements = {
   adminOrderCount: document.getElementById("adminOrderCount"),
   adminOrderList: document.getElementById("adminOrderList"),
   refreshAdminOrders: document.getElementById("refreshAdminOrders"),
+  adminInquiryCount: document.getElementById("adminInquiryCount"),
+  adminInquiryList: document.getElementById("adminInquiryList"),
+  refreshAdminInquiries: document.getElementById("refreshAdminInquiries"),
+  adminInquiryId: document.getElementById("adminInquiryId"),
+  adminInquirySelection: document.getElementById("adminInquirySelection"),
+  submitAdminInquiryAnswer: document.getElementById("submitAdminInquiryAnswer"),
   inquiryStatus: document.getElementById("inquiryStatus"),
   adminInquiryStatus: document.getElementById("adminInquiryStatus"),
   loginButton: document.getElementById("loginButton"),
@@ -219,7 +251,7 @@ async function initialize() {
   renderAuthState();
   showView("list");
   renderCart();
-  await Promise.allSettled([loadCategories(), loadProducts(), loadCart(false)]);
+  await Promise.allSettled([loadCategories(), loadProducts(), loadCart(false), loadPopularKeywords()]);
 }
 
 function bindEvents() {
@@ -227,6 +259,12 @@ function bindEvents() {
   document.addEventListener("submit", handleDocumentSubmit);
   elements.globalSearchForm.addEventListener("submit", handleSearchSubmit);
   elements.inlineSearchForm.addEventListener("submit", handleSearchSubmit);
+  elements.globalSearchInput.addEventListener("focus", handleSearchFocus);
+  elements.inlineSearchInput.addEventListener("focus", handleSearchFocus);
+  elements.globalSearchInput.addEventListener("input", handleSearchInput);
+  elements.inlineSearchInput.addEventListener("input", handleSearchInput);
+  elements.globalSearchInput.addEventListener("keydown", handleSearchKeydown);
+  elements.inlineSearchInput.addEventListener("keydown", handleSearchKeydown);
   elements.orderSearchForm.addEventListener("submit", handleOrderSearchSubmit);
   elements.adminOrderSearchForm.addEventListener("submit", handleAdminOrderSearchSubmit);
   elements.categoryToggle.addEventListener("click", () => setCategoryMenuOpen(!state.categoryMenuOpen));
@@ -243,6 +281,7 @@ function bindEvents() {
   elements.buyCart.addEventListener("click", () => startCartOrder());
   elements.refreshOrders.addEventListener("click", () => loadOrders(true));
   elements.refreshAdminOrders.addEventListener("click", () => loadAdminOrders(true));
+  elements.refreshAdminInquiries.addEventListener("click", () => loadAdminInquiries(true));
 }
 
 function handleDocumentClick(event) {
@@ -252,14 +291,36 @@ function handleDocumentClick(event) {
     return;
   }
 
+  const popularKeywordButton = event.target.closest("[data-popular-keyword]");
+  if (popularKeywordButton) {
+    searchProducts(popularKeywordButton.dataset.popularKeyword || "");
+    return;
+  }
+
+  if (!event.target.closest(".search-box")) {
+    hidePopularKeywordPanels();
+  }
+
   const actionButton = event.target.closest("[data-action]");
   if (actionButton) {
     handleAction(actionButton);
     return;
   }
 
+  const adminInquiryButton = event.target.closest("[data-admin-inquiry-id]");
+  if (adminInquiryButton) {
+    selectAdminInquiry(Number(adminInquiryButton.dataset.adminInquiryId));
+    return;
+  }
+
   const viewButton = event.target.closest("[data-view]");
   if (viewButton) {
+    if (viewButton.dataset.view === "list") {
+      resetListState();
+      loadProducts();
+      return;
+    }
+
     showView(viewButton.dataset.view);
     if (viewButton.dataset.view === "cart") {
       loadCart(true);
@@ -337,6 +398,9 @@ function handleAction(button) {
   } else if (action === "open-admin-orders") {
     showView("adminOrders");
     loadAdminOrders(true);
+  } else if (action === "open-admin-inquiries") {
+    showView("adminInquiry");
+    loadAdminInquiries(true);
   } else if (action === "open-product") {
     loadProductDetail(Number(button.dataset.productId));
   } else if (action === "add-cart") {
@@ -373,12 +437,45 @@ function handleSearchSubmit(event) {
   const input = form === elements.globalSearchForm
     ? elements.globalSearchInput
     : elements.inlineSearchInput;
-  state.query = input.value.trim();
+  searchProducts(input.value);
+}
+
+function handleSearchFocus(event) {
+  if (event.currentTarget.value.trim()) {
+    hidePopularKeywordPanels();
+    return;
+  }
+
+  state.popularKeywordPanelTarget = event.currentTarget === elements.globalSearchInput ? "global" : "inline";
+  renderPopularKeywords();
+  loadPopularKeywords();
+}
+
+function handleSearchInput(event) {
+  if (event.currentTarget.value.trim()) {
+    hidePopularKeywordPanels();
+    return;
+  }
+
+  state.popularKeywordPanelTarget = event.currentTarget === elements.globalSearchInput ? "global" : "inline";
+  renderPopularKeywords();
+}
+
+function handleSearchKeydown(event) {
+  if (event.key === "Escape") {
+    hidePopularKeywordPanels();
+  }
+}
+
+function searchProducts(keyword) {
+  state.query = String(keyword || "").trim();
   state.selectedRootId = null;
   state.selectedCategoryId = null;
   state.listMode = "products";
   state.page = 0;
   syncSearchInputs();
+  hidePopularKeywordPanels();
+  showView("list");
   renderCategories();
   loadProducts();
 }
@@ -468,8 +565,10 @@ async function loadProducts() {
   renderProductList();
 
   try {
-    const page = await requestApi(buildProductListPath());
-    state.productPage = normalizePage(page);
+    const response = await requestApi(buildProductListPath());
+    state.productPage = state.listMode === "best"
+      ? pageFromArray(response)
+      : normalizePage(response);
     state.products = state.productPage.content;
   } catch (error) {
     state.productError = error.message;
@@ -481,7 +580,36 @@ async function loadProducts() {
   }
 }
 
+async function loadPopularKeywords() {
+  if (state.loadingPopularKeywords || state.popularKeywordLoaded) {
+    return;
+  }
+
+  state.loadingPopularKeywords = true;
+  state.popularKeywordError = "";
+  renderPopularKeywords();
+
+  try {
+    const keywords = await requestApi(`/api/search/popular?limit=${POPULAR_KEYWORD_LIMIT}`);
+    state.popularKeywords = Array.isArray(keywords)
+      ? keywords.filter((item) => item?.keyword).slice(0, POPULAR_KEYWORD_LIMIT)
+      : [];
+    state.popularKeywordLoaded = true;
+    state.popularKeywordUpdatedAt = new Date().toISOString();
+  } catch (error) {
+    state.popularKeywordError = error.message;
+    state.popularKeywords = [];
+  } finally {
+    state.loadingPopularKeywords = false;
+    renderPopularKeywords();
+  }
+}
+
 function buildProductListPath() {
+  if (state.listMode === "best") {
+    return `/api/products/popular?limit=${PAGE_SIZE}`;
+  }
+
   if (state.query) {
     const params = new URLSearchParams({
       keyword: state.query,
@@ -503,6 +631,18 @@ function buildProductListPath() {
   }
 
   return `/api/products?${params.toString()}`;
+}
+
+function pageFromArray(items, fallbackSize = PAGE_SIZE) {
+  const content = Array.isArray(items) ? items : [];
+  return {
+    content,
+    page: 0,
+    size: fallbackSize,
+    totalElements: content.length,
+    totalPages: 1,
+    last: true
+  };
 }
 
 function mapSearchSort(sort) {
@@ -795,6 +935,53 @@ async function loadAdminOrders(showErrors) {
   }
 }
 
+async function loadAdminInquiries(showErrors) {
+  state.adminInquiryError = "";
+  if (!getAccessToken()) {
+    state.adminInquiries = emptyPage(ADMIN_INQUIRY_PAGE_SIZE);
+    state.selectedAdminInquiryId = null;
+    state.adminInquiryError = "관리자 로그인 후 고객문의 내역을 조회할 수 있습니다.";
+    renderAdminInquiries();
+    return;
+  }
+
+  if (!isAdmin()) {
+    state.adminInquiries = emptyPage(ADMIN_INQUIRY_PAGE_SIZE);
+    state.selectedAdminInquiryId = null;
+    state.adminInquiryError = "관리자 권한이 필요합니다.";
+    renderAdminInquiries();
+    if (showErrors) {
+      showToast(state.adminInquiryError);
+    }
+    return;
+  }
+
+  state.loadingAdminInquiries = true;
+  renderAdminInquiries();
+  try {
+    const params = new URLSearchParams({
+      page: "0",
+      size: String(ADMIN_INQUIRY_PAGE_SIZE),
+      sort: "createdAt,desc"
+    });
+    const page = await requestApi(`/api/admins/inquiry?${params.toString()}`, { auth: true });
+    state.adminInquiries = normalizePage(page, ADMIN_INQUIRY_PAGE_SIZE);
+    if (!state.adminInquiries.content.some((inquiry) => Number(inquiry.id) === state.selectedAdminInquiryId)) {
+      state.selectedAdminInquiryId = null;
+    }
+  } catch (error) {
+    state.adminInquiryError = error.message;
+    state.adminInquiries = emptyPage(ADMIN_INQUIRY_PAGE_SIZE);
+    state.selectedAdminInquiryId = null;
+    if (showErrors) {
+      showToast(error.message);
+    }
+  } finally {
+    state.loadingAdminInquiries = false;
+    renderAdminInquiries();
+  }
+}
+
 async function cancelOrder(orderId) {
   if (!requireAuth()) {
     return;
@@ -884,6 +1071,11 @@ async function submitAdminInquiry(form) {
   }
 
   const body = formToObject(form);
+  if (!body.inquiryId) {
+    setFormStatus(elements.adminInquiryStatus, "답변할 문의를 선택하세요.", true);
+    return;
+  }
+
   setFormStatus(elements.adminInquiryStatus, "답변 등록 중입니다.");
   try {
     await requestApi("/api/admins/inquiry", {
@@ -895,9 +1087,11 @@ async function submitAdminInquiry(form) {
       }
     });
     form.reset();
+    state.selectedAdminInquiryId = null;
     updateTextCounter("adminAnswer", "adminAnswerCount");
     setFormStatus(elements.adminInquiryStatus, "");
     showToast("관리자 답변이 등록되었습니다.");
+    await loadAdminInquiries(false);
   } catch (error) {
     setFormStatus(elements.adminInquiryStatus, error.message, true);
   }
@@ -919,9 +1113,13 @@ function logout() {
   state.orders = emptyPage(ORDER_PAGE_SIZE);
   state.adminOrders = emptyPage(ADMIN_ORDER_PAGE_SIZE);
   state.adminOrderError = "";
+  state.adminInquiries = emptyPage(ADMIN_INQUIRY_PAGE_SIZE);
+  state.adminInquiryError = "";
+  state.selectedAdminInquiryId = null;
   renderCart();
   renderOrders();
   renderAdminOrders();
+  renderAdminInquiries();
   showToast("로그아웃되었습니다.");
 }
 
@@ -985,6 +1183,86 @@ function renderAuthState() {
   elements.signupButton.dataset.action = loggedIn ? "open-orders" : "open-signup";
   elements.adminMenuButton.hidden = !admin;
   elements.adminMenuDivider.hidden = !admin;
+}
+
+function renderPopularKeywords() {
+  const panels = [
+    { target: "global", element: elements.globalPopularKeywords },
+    { target: "inline", element: elements.inlinePopularKeywords }
+  ];
+
+  panels.forEach(({ target, element }) => {
+    if (!element) {
+      return;
+    }
+
+    const active = state.popularKeywordPanelTarget === target;
+    const hasContent = state.loadingPopularKeywords
+      || state.popularKeywordError
+      || state.popularKeywordLoaded
+      || state.popularKeywords.length;
+    element.hidden = !active || !hasContent;
+
+    if (!hasContent) {
+      element.innerHTML = "";
+      return;
+    }
+
+    element.innerHTML = popularKeywordPanelTemplate();
+  });
+}
+
+function popularKeywordPanelTemplate() {
+  if (state.loadingPopularKeywords) {
+    return `<div class="popular-keywords-empty">인기 검색어를 불러오는 중입니다.</div>`;
+  }
+
+  if (state.popularKeywordError) {
+    return `<div class="popular-keywords-empty error">${escapeHtml(state.popularKeywordError)}</div>`;
+  }
+
+  const updatedAt = formatPopularKeywordTime(state.popularKeywordUpdatedAt);
+  const keywords = buildPopularKeywordItems();
+  return `
+    <div class="popular-keywords-heading">
+      <strong>인기검색어</strong>
+      <span>${updatedAt ? `${escapeHtml(updatedAt)} 기준` : ""}</span>
+    </div>
+    <ol class="popular-keywords-list">
+      ${keywords.map(popularKeywordItemTemplate).join("")}
+    </ol>
+  `;
+}
+
+function buildPopularKeywordItems() {
+  const seen = new Set();
+  const keywords = [];
+  [...state.popularKeywords.map((item) => item.keyword), ...DEFAULT_POPULAR_KEYWORDS].forEach((keyword) => {
+    const value = String(keyword || "").trim();
+    if (!value || seen.has(value)) {
+      return;
+    }
+    seen.add(value);
+    keywords.push({ keyword: value });
+  });
+  return keywords.slice(0, POPULAR_KEYWORD_LIMIT);
+}
+
+function popularKeywordItemTemplate(item, index) {
+  const keyword = String(item.keyword || "").trim();
+  return `
+    <li>
+      <button class="popular-keyword-button" type="button" data-popular-keyword="${escapeHtml(keyword)}">
+        <span class="popular-keyword-rank">${index + 1}</span>
+        <span class="popular-keyword-text">${escapeHtml(keyword)}</span>
+      </button>
+    </li>
+  `;
+}
+
+function hidePopularKeywordPanels() {
+  state.popularKeywordPanelTarget = "";
+  renderPopularKeywords();
 }
 
 function renderCategories() {
@@ -1160,13 +1438,19 @@ function renderPager() {
 function productCardTemplate(product) {
   const productId = product.productId;
   const orderable = isOrderable(product);
+  const popularBadge = state.listMode === "best"
+    ? `<span class="product-popular-badge">인기상품</span>`
+    : "";
   return `
     <article class="product-card">
       <button class="product-thumb" type="button" data-action="open-product" data-product-id="${productId}" aria-label="상세 보기">
-        ${productIcon(product)}
+        ${productVisual(product)}
       </button>
       <div class="product-body">
-        <span class="product-status">${escapeHtml(statusLabel(product))}</span>
+        <div class="product-badges">
+          <span class="product-status">${escapeHtml(statusLabel(product))}</span>
+          ${popularBadge}
+        </div>
         <h2>${escapeHtml(product.name || "이름 없는 상품")}</h2>
         <p class="product-description">${escapeHtml(product.description || "상품 설명이 없습니다.")}</p>
         <strong class="product-price">${formatMoney(product.price)}</strong>
@@ -1194,7 +1478,7 @@ function renderProductDetail() {
     return;
   }
 
-  elements.detailVisual.innerHTML = productIcon(product);
+  elements.detailVisual.innerHTML = productVisual(product);
   elements.detailName.textContent = product.name || "이름 없는 상품";
   elements.detailDescription.textContent = product.description || "상품 설명이 없습니다.";
   elements.detailPrice.textContent = formatMoney(product.price);
@@ -1358,6 +1642,93 @@ function renderAdminOrders() {
       </div>
     </article>
   `).join("");
+}
+
+function renderAdminInquiries() {
+  elements.adminInquiryCount.textContent = formatNumber(state.adminInquiries.totalElements);
+
+  if (state.loadingAdminInquiries) {
+    elements.adminInquiryList.innerHTML = `<div class="empty">고객문의 내역을 불러오는 중입니다.</div>`;
+    renderAdminInquiryForm();
+    return;
+  }
+
+  if (state.adminInquiryError) {
+    elements.adminInquiryList.innerHTML = `<div class="empty error">${escapeHtml(state.adminInquiryError)}</div>`;
+    renderAdminInquiryForm();
+    return;
+  }
+
+  if (!state.adminInquiries.content.length) {
+    elements.adminInquiryList.innerHTML = `<div class="empty">접수된 고객문의가 없습니다.</div>`;
+    renderAdminInquiryForm();
+    return;
+  }
+
+  elements.adminInquiryList.innerHTML = state.adminInquiries.content.map(adminInquiryCardTemplate).join("");
+  renderAdminInquiryForm();
+}
+
+function adminInquiryCardTemplate(inquiry) {
+  const inquiryId = Number(inquiry.id);
+  const answered = inquiry.status === "ANSWERED";
+  const selected = state.selectedAdminInquiryId === inquiryId;
+
+  return `
+    <article class="admin-inquiry-card${selected ? " active" : ""}">
+      <div class="admin-inquiry-card-header">
+        <div>
+          <strong>${escapeHtml(inquiry.title || "제목 없는 문의")}</strong>
+          <span>문의 ID ${escapeHtml(String(inquiry.id || "-"))} · 회원 ID ${escapeHtml(String(inquiry.memberId || "-"))}</span>
+        </div>
+        <span class="order-status-badge ${answered ? "paid" : "pending"}">${escapeHtml(inquiryStatusLabel(inquiry.status))}</span>
+      </div>
+      <p class="admin-inquiry-content">${escapeHtml(inquiry.content || "")}</p>
+      <div class="admin-inquiry-meta">
+        <span>등록일 ${formatDate(inquiry.createdAt)}</span>
+        ${answered ? `<span>답변일 ${formatDate(inquiry.answeredAt)}</span>` : ""}
+      </div>
+      ${answered ? `
+        <div class="admin-inquiry-answer">
+          <span>답변</span>
+          <p>${escapeHtml(inquiry.answer || "")}</p>
+        </div>
+      ` : `
+        <button class="secondary-button compact" type="button" data-admin-inquiry-id="${inquiryId}">답변하기</button>
+      `}
+    </article>
+  `;
+}
+
+function renderAdminInquiryForm() {
+  const selected = state.adminInquiries.content.find((inquiry) => Number(inquiry.id) === state.selectedAdminInquiryId);
+  const answerTextarea = document.getElementById("adminAnswer");
+  const canAnswer = Boolean(selected && selected.status !== "ANSWERED");
+
+  elements.adminInquiryId.value = canAnswer ? selected.id : "";
+  elements.adminInquirySelection.textContent = canAnswer
+    ? `문의 ID ${selected.id} · ${selected.title || "제목 없는 문의"}`
+    : "답변할 문의를 선택하세요.";
+  if (answerTextarea) {
+    answerTextarea.disabled = !canAnswer;
+    if (!canAnswer) {
+      answerTextarea.value = "";
+      updateTextCounter("adminAnswer", "adminAnswerCount");
+    }
+  }
+  elements.submitAdminInquiryAnswer.disabled = !canAnswer;
+}
+
+function selectAdminInquiry(inquiryId) {
+  const inquiry = state.adminInquiries.content.find((item) => Number(item.id) === inquiryId);
+  if (!inquiry || inquiry.status === "ANSWERED") {
+    return;
+  }
+
+  state.selectedAdminInquiryId = inquiryId;
+  setFormStatus(elements.adminInquiryStatus, "");
+  renderAdminInquiries();
+  document.getElementById("adminAnswer")?.focus();
 }
 
 function openLoginModal(message = "") {
@@ -1533,6 +1904,19 @@ function statusLabel(product) {
   return product.status || "상태 미확인";
 }
 
+function getImageUrl(imageUrl) {
+  const path = imageUrl || "/images/default-product.png";
+  if (path.startsWith("http")) {
+    return path;
+  }
+  return `${API_BASE_URL}${path}`;
+}
+
+function productVisual(product) {
+  const alt = product?.name || "상품 이미지";
+  return `<img class="product-image" src="${escapeHtml(getImageUrl(product?.imageUrl))}" alt="${escapeHtml(alt)}" loading="lazy">`;
+}
+
 function productIcon(product) {
   const icons = [
     '<rect x="78" y="58" width="64" height="112" rx="16"></rect><path d="M96 58V36h28v22"></path><path d="M88 102h44"></path>',
@@ -1566,6 +1950,21 @@ function formatNumber(value) {
   return new Intl.NumberFormat("ko-KR").format(Number(value || 0));
 }
 
+function formatPopularKeywordTime(value) {
+  if (!value) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).format(new Date(value));
+}
+
 function formatDate(value) {
   if (!value) {
     return "-";
@@ -1595,6 +1994,14 @@ function orderStatusLabel(status) {
     PENDING: "주문대기",
     PAID: "주문완료",
     CANCELLED: "주문취소"
+  };
+  return labels[status] || status || "상태 미확인";
+}
+
+function inquiryStatusLabel(status) {
+  const labels = {
+    WAITING: "답변대기",
+    ANSWERED: "답변완료"
   };
   return labels[status] || status || "상태 미확인";
 }

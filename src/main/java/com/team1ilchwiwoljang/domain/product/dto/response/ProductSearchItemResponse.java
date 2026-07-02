@@ -9,7 +9,8 @@ public record ProductSearchItemResponse(
         int price,
         int stock,
         ProductStatus status,
-        boolean orderable
+        boolean orderable,
+        String imageUrl
 ) {
 
     public static ProductSearchItemResponse from(Product product) {
@@ -19,7 +20,8 @@ public record ProductSearchItemResponse(
                 product.getPrice(),
                 product.getStock(),
                 product.getStatus(),
-                product.isOnSale()
+                product.isOnSale(),
+                product.getImageUrl()
         );
     }
 }

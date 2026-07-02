@@ -111,7 +111,10 @@ public class SecurityConfig {
             "/api/categories/**",
             "/api/products",
             "/api/products/**",
-            "/api/search/popular"
+            "/api/search/popular",
+
+            // 상품 이미지 등 정적 리소스는 로그인 없이 볼 수 있게 허용
+            "/images/**"
     };
 
     private static final String[] ADMIN_ENDPOINTS = {

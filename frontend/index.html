@@ -24,15 +24,18 @@
         일취<span>월장</span>
       </button>
 
-      <form class="search-form" id="globalSearchForm">
-        <input id="globalSearchInput" type="search" placeholder="어떤 상품을 찾으세요?" autocomplete="off">
-        <button type="submit" aria-label="검색">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="11" cy="11" r="7"></circle>
-            <path d="m16.5 16.5 4 4"></path>
-          </svg>
-        </button>
-      </form>
+      <div class="search-box header-search">
+        <form class="search-form" id="globalSearchForm">
+          <input id="globalSearchInput" type="search" placeholder="어떤 상품을 찾으세요?" autocomplete="off" aria-controls="globalPopularKeywords">
+          <button type="submit" aria-label="검색">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="m16.5 16.5 4 4"></path>
+            </svg>
+          </button>
+        </form>
+        <div class="popular-keywords-panel" id="globalPopularKeywords" aria-label="인기 검색어" hidden></div>
+      </div>
 
       <div class="header-icons">
         <button class="icon-button" type="button" data-view="orders" aria-label="마이페이지">
@@ -80,15 +83,18 @@
           <h1 id="listTitle">상품</h1>
         </div>
 
-        <form class="inline-search" id="inlineSearchForm">
-          <input id="inlineSearchInput" type="search" placeholder="상품 검색" autocomplete="off">
-          <button type="submit" aria-label="검색">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="11" cy="11" r="7"></circle>
-              <path d="m16.5 16.5 4 4"></path>
-            </svg>
-          </button>
-        </form>
+        <div class="search-box inline-search-box">
+          <form class="inline-search" id="inlineSearchForm">
+            <input id="inlineSearchInput" type="search" placeholder="상품 검색" autocomplete="off" aria-controls="inlinePopularKeywords">
+            <button type="submit" aria-label="검색">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="m16.5 16.5 4 4"></path>
+              </svg>
+            </button>
+          </form>
+          <div class="popular-keywords-panel" id="inlinePopularKeywords" aria-label="인기 검색어" hidden></div>
+        </div>
       </div>
 
       <div class="list-tabs" id="listTabs"></div>
@@ -243,7 +249,10 @@
 
         <div class="order-result-heading">
           <strong>전체 <span id="adminOrderCount">0</span>건</strong>
-          <button class="text-button" type="button" id="refreshAdminOrders">최신 주문순</button>
+          <div class="admin-result-actions">
+            <button class="text-button" type="button" data-action="open-admin-inquiries">문의 관리</button>
+            <button class="text-button" type="button" id="refreshAdminOrders">최신 주문순</button>
+          </div>
         </div>
 
         <div class="admin-order-list" id="adminOrderList">
@@ -288,56 +297,43 @@
 
     <section class="view" id="adminInquiryView">
       <article class="screen-panel admin-inquiry-panel">
-        <h1>관리자 문의 답변</h1>
-
-        <dl class="admin-meta-grid">
-          <div>
-            <dt>문의 ID</dt>
-            <dd>1</dd>
-          </div>
-          <div>
-            <dt>회원 ID</dt>
-            <dd>1</dd>
-          </div>
-          <div>
-            <dt>상태</dt>
-            <dd>답변대기</dd>
-          </div>
-          <div>
-            <dt>등록일</dt>
-            <dd>2026-06-24 12:00</dd>
-          </div>
-        </dl>
-
-        <div class="section-title-row compact">
-          <h2>접수된 문의</h2>
+        <div class="screen-heading">
+          <p>Back Office · 고객문의 관리</p>
+          <h1>관리자 고객문의 내역</h1>
+          <span>접수된 고객문의 내역을 확인하고 미답변 문의에 답변을 등록합니다.</span>
         </div>
 
-        <div class="readonly-form">
-          <span>문의 제목</span>
-          <p>로그인이 작동하지 않습니다.</p>
-          <span>문의 내용</span>
-          <p>오늘 아침부터 로그인 시도를 하면 500 에러가 납니다. 확인해주세요.</p>
+        <div class="order-result-heading">
+          <strong>전체 <span id="adminInquiryCount">0</span>건</strong>
+          <div class="admin-result-actions">
+            <button class="text-button" type="button" data-action="open-admin-orders">주문 관리</button>
+            <button class="text-button" type="button" id="refreshAdminInquiries">최신 문의순</button>
+          </div>
         </div>
 
-        <div class="section-title-row compact">
-          <h2>답변 작성</h2>
-          <p>답변 등록 후 문의 상태가 ANSWERED로 변경됩니다.</p>
-        </div>
+        <div class="admin-inquiry-layout">
+          <div class="admin-inquiry-list" id="adminInquiryList">
+            <div class="empty">관리자로 로그인하면 고객문의 내역을 조회할 수 있습니다.</div>
+          </div>
 
-        <form class="inquiry-form admin-answer-form" id="adminInquiryForm">
-          <input type="hidden" name="inquiryId" value="1">
-          <label for="adminAnswer">답변내용 <span>*</span></label>
-          <div class="textarea-wrap">
-            <textarea id="adminAnswer" name="answer" required maxlength="1000" rows="5" placeholder="답변 내용을 입력하세요. (1000자 이내)"></textarea>
-            <small id="adminAnswerCount">0 / 1000</small>
-          </div>
-          <p class="form-status" id="adminInquiryStatus"></p>
-          <div class="form-actions">
-            <button class="secondary-button" type="button" data-action="open-inquiry">목록으로</button>
-            <button class="primary-button" type="submit">답변 등록</button>
-          </div>
-        </form>
+          <form class="inquiry-form admin-answer-form" id="adminInquiryForm">
+            <input type="hidden" name="inquiryId" id="adminInquiryId">
+            <div class="admin-answer-heading">
+              <h2>답변 작성</h2>
+              <p id="adminInquirySelection">답변할 문의를 선택하세요.</p>
+            </div>
+            <label for="adminAnswer">답변내용 <span>*</span></label>
+            <div class="textarea-wrap">
+              <textarea id="adminAnswer" name="answer" required maxlength="1000" rows="7" placeholder="답변 내용을 입력하세요. (1000자 이내)" disabled></textarea>
+              <small id="adminAnswerCount">0 / 1000</small>
+            </div>
+            <p class="form-status" id="adminInquiryStatus"></p>
+            <div class="form-actions">
+              <button class="secondary-button" type="button" data-action="open-admin-orders">주문 관리</button>
+              <button class="primary-button" type="submit" id="submitAdminInquiryAnswer" disabled>답변 등록</button>
+            </div>
+          </form>
+        </div>
       </article>
     </section>
 

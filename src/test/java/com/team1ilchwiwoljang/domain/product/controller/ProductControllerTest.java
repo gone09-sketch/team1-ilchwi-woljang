@@ -67,7 +67,8 @@ class ProductControllerTest {
                         29_000,
                         10,
                         ProductStatus.ON_SALE,
-                        true
+                        true,
+                        "/images/products/bag-01.png"
                 )),
                 0,
                 20,
@@ -99,8 +100,8 @@ class ProductControllerTest {
     @DisplayName("상품 목록을 조회하면 200 OK와 페이지네이션 응답을 반환한다.")
     void given_validParams_whenGetProducts_thenStatus200() throws Exception {
         List<ProductResponse> products = List.of(
-                new ProductResponse(1L, "티셔츠", 10000, 100, ProductStatus.ON_SALE, "편안한 티셔츠"),
-                new ProductResponse(2L, "맨투맨", 20000, 50, ProductStatus.ON_SALE, "따뜻한 맨투맨")
+                new ProductResponse(1L, "티셔츠", 10000, 100, ProductStatus.ON_SALE, "편안한 티셔츠", "/images/products/bag-01.png"),
+                new ProductResponse(2L, "맨투맨", 20000, 50, ProductStatus.ON_SALE, "따뜻한 맨투맨", "/images/products/bag-02.png")
         );
 
         given(productService.getProducts(anyString(), anyInt(), anyInt()))
@@ -136,7 +137,8 @@ class ProductControllerTest {
                 100,
                 ProductStatus.ON_SALE,
                 1L,
-                "상의"
+                "상의",
+                "/images/products/bag-01.png"
         );
 
         given(productService.getProductDetail(productId))
@@ -172,8 +174,8 @@ class ProductControllerTest {
     void given_validLimit_whenGetPopularProducts_thenStatus200() throws Exception {
         int limit = 2;
         List<PopularProductResponse> response = List.of(
-                new PopularProductResponse(1L, "티셔츠", 10000, 100, ProductStatus.ON_SALE, 50),
-                new PopularProductResponse(2L, "맨투맨", 20000, 50, ProductStatus.ON_SALE, 30)
+                new PopularProductResponse(1L, "티셔츠", 10000, 100, ProductStatus.ON_SALE, 50, "/images/products/bag-01.png"),
+                new PopularProductResponse(2L, "맨투맨", 20000, 50, ProductStatus.ON_SALE, 30, "/images/products/bag-02.png")
         );
 
         given(productService.getPopularProducts(limit)).willReturn(response);

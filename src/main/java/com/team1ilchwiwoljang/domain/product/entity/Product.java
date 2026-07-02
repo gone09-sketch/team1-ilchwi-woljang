@@ -49,6 +49,9 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     private String description;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     private Product(String name, int price, int stock, ProductStatus status, String description, Category category) {
         this.name = name;
         this.price = price;

@@ -9,7 +9,8 @@ public record PopularProductResponse(
         int price,
         int stock,
         ProductStatus status,
-        int salesCount
+        int salesCount,
+        String imageUrl
 ) {
     public static PopularProductResponse from(Product product) {
         return new PopularProductResponse(
@@ -18,7 +19,8 @@ public record PopularProductResponse(
                 product.getPrice(),
                 product.getStock(),
                 product.getStatus(),
-                product.getSalesCount()
+                product.getSalesCount(),
+                product.getImageUrl()
         );
     }
 }

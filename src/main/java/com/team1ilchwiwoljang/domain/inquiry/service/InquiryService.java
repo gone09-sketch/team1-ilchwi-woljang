@@ -2,8 +2,10 @@ package com.team1ilchwiwoljang.domain.inquiry.service;
 
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
+import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryAnswerRequest;
 import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryCreateRequest;
+import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryAdminResponse;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryAnswerResponse;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryCreateResponse;
 import com.team1ilchwiwoljang.domain.inquiry.entity.Inquiry;
@@ -15,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +28,14 @@ public class InquiryService {
     private final InquiryRepository inquiryRepository;
     private final MemberService memberService;
     private final Clock clock;
+
+    @Transactional(readOnly = true)
+    public PageResponse<InquiryAdminResponse> getAdminInquiries(Pageable pageable) {
+        return PageResponse.from(
+                inquiryRepository.findAllByOrderByCreatedAtDesc(pageable)
+                        .map(InquiryAdminResponse::from)
+        );
+    }
 
     @Transactional
     public InquiryCreateResponse createInquiry(Long memberId, InquiryCreateRequest request) {

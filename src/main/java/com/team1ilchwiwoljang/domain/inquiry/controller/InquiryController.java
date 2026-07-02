@@ -1,15 +1,18 @@
 package com.team1ilchwiwoljang.domain.inquiry.controller;
 
 import com.team1ilchwiwoljang.common.response.ApiResponse;
+import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.common.security.annotation.Auth;
 import com.team1ilchwiwoljang.common.security.auth.AuthMember;
 import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryAnswerRequest;
 import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryCreateRequest;
+import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryAdminResponse;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryAnswerResponse;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryCreateResponse;
 import com.team1ilchwiwoljang.domain.inquiry.service.InquiryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +22,12 @@ import org.springframework.web.bind.annotation.*;
 public class InquiryController {
 
     private final InquiryService inquiryService;
+
+    @GetMapping("/api/admins/inquiry")
+    public ResponseEntity<ApiResponse<PageResponse<InquiryAdminResponse>>> getAdminInquiries(Pageable pageable) {
+        PageResponse<InquiryAdminResponse> response = inquiryService.getAdminInquiries(pageable);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
 
     @PostMapping("/api/members/inquiry")
     public ResponseEntity<ApiResponse<InquiryCreateResponse>> createInquiry(

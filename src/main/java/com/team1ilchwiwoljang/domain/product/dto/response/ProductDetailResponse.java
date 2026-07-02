@@ -11,7 +11,8 @@ public record ProductDetailResponse(
         int stock,
         ProductStatus status,
         Long categoryId,
-        String categoryName
+        String categoryName,
+        String imageUrl
 ) {
 
     public static ProductDetailResponse from(Product product) {
@@ -23,7 +24,8 @@ public record ProductDetailResponse(
                 product.getStock(),
                 product.getStatus(),
                 product.getCategory() != null ? product.getCategory().getId() : null,
-                product.getCategory() != null ? product.getCategory().getName() : null
+                product.getCategory() != null ? product.getCategory().getName() : null,
+                product.getImageUrl()
         );
     }
 }
