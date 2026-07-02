@@ -2,6 +2,7 @@ package com.team1ilchwiwoljang.common.config;
 
 import com.team1ilchwiwoljang.domain.chat.interceptor.ChatStompChannelInterceptor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -11,12 +12,12 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 
 /**
  * STOMP 기반 WebSocket 설정입니다.
- * 기존 순수 WebSocket은 Handler가 직접 세션을 관리하고 메시지를 브로드캐스트했지만,
  * STOMP에서는 Spring MessageBroker가 destination 기준으로 구독자에게 메시지를 전달합니다.
+ *
  * 현재 destination 설계:
- * 1. 클라이언트 연결 endpoint: /ws/stomp
- * 2. 클라이언트가 서버로 메시지 발행: /app/chat/rooms/{chatRoomId}/messages
- * 3. 클라이언트가 채팅방 메시지 구독: /topic/chat/rooms/{chatRoomId}
+ * 1. 클라이언트 연결 endpoint: /ws/chat
+ * 2. 클라이언트가 서버로 메시지 발행: /pub/chat/rooms/{chatRoomId}/messages
+ * 3. 클라이언트가 채팅방 메시지 구독: /sub/chat/rooms/{chatRoomId}
  */
 @Configuration
 @EnableWebSocketMessageBroker
@@ -25,11 +26,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final ChatStompChannelInterceptor chatStompChannelInterceptor;
 
+    @Value("${chat.websocket.allowed-origin-patterns}")
+    private String[] allowedOriginPatterns;
+
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // STOMP WebSocket 연결 endpoint입니다.
         registry.addEndpoint("/ws/chat")
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns(allowedOriginPatterns);
     }
 
     @Override

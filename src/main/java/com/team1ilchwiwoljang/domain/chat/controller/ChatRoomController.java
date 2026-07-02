@@ -21,8 +21,8 @@ import java.util.List;
 
 /**
  * 채팅방 생성과 조회를 담당하는 Controller입니다.
- * 순수 WebSocket 연결 자체는 /ws/chat에서 처리하지만,
- * WebSocket 연결 전에 회원에게 할당된 chatRoomId를 알아야 하므로
+ * STOMP WebSocket 연결 자체는 /ws/chat에서 처리하지만,
+ * STOMP 구독 전에 회원에게 할당된 chatRoomId를 알아야 하므로
  * HTTP API로 채팅방을 먼저 생성하거나 조회합니다.
  */
 @RestController
