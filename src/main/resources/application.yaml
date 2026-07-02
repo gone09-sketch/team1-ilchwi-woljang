@@ -48,3 +48,7 @@ jwt:
 
 cookie:
   secure: ${COOKIE_SECURE:false}
+
+chat:
+  websocket:
+    allowed-origin-patterns: ${CHAT_WEBSOCKET_ALLOWED_ORIGIN_PATTERNS:http://localhost:8080,http://127.0.0.1:8080}
