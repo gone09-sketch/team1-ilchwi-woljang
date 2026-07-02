@@ -50,7 +50,10 @@ public class ChatStompChannelInterceptor implements ChannelInterceptor {
      */
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
-        StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
+        StompHeaderAccessor accessor = org.springframework.messaging.support.MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
+        if (accessor == null) {
+            accessor = StompHeaderAccessor.wrap(message);
+        }
 
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
             authenticateConnect(accessor);

@@ -57,6 +57,9 @@ dependencies {
     // MySQL
     runtimeOnly 'com.mysql:mysql-connector-j'
 
+    // Netty MacOS DNS resolver for Apple Silicon Mac
+    runtimeOnly 'io.netty:netty-resolver-dns-native-macos:4.2.15.Final:osx-aarch_64'
+
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'

@@ -70,7 +70,24 @@ const state = {
   loadingPopularKeywords: false,
   loadingOrders: false,
   loadingAdminOrders: false,
-  loadingAdminInquiries: false
+  loadingAdminInquiries: false,
+  chatWidget: {
+    open: false,
+    mode: "bot",
+    messages: [],
+    socket: null,
+    chatRoomId: null,
+    conversationId: null,
+    lastReceivedMessageId: 0
+  },
+  adminChat: {
+    rooms: [],
+    activeRoomId: null,
+    messages: [],
+    socket: null,
+    subscribed: false,
+    lastReceivedMessageId: 0
+  }
 };
 
 const elements = {
@@ -94,9 +111,7 @@ const elements = {
   listTitle: document.getElementById("listTitle"),
   productCount: document.getElementById("productCount"),
   productGrid: document.getElementById("productGrid"),
-  pageInfo: document.getElementById("pageInfo"),
-  prevPage: document.getElementById("prevPage"),
-  nextPage: document.getElementById("nextPage"),
+  productPager: document.getElementById("productPager"),
   globalSearchForm: document.getElementById("globalSearchForm"),
   globalSearchInput: document.getElementById("globalSearchInput"),
   globalPopularKeywords: document.getElementById("globalPopularKeywords"),
@@ -135,20 +150,33 @@ const elements = {
   submitAdminInquiryAnswer: document.getElementById("submitAdminInquiryAnswer"),
   inquiryStatus: document.getElementById("inquiryStatus"),
   adminInquiryStatus: document.getElementById("adminInquiryStatus"),
+  inquiryButton: document.getElementById("inquiryButton"),
+  inquiryDivider: document.getElementById("inquiryDivider"),
   loginButton: document.getElementById("loginButton"),
   signupButton: document.getElementById("signupButton"),
-  adminMenuButton: document.querySelector(".admin-menu-button"),
+  adminMenuButton: document.querySelectorAll(".admin-only"),
   chatWidgetToggle: document.getElementById("chatWidgetToggle"),
   chatWidgetClose: document.getElementById("chatWidgetClose"),
   chatWidgetForm: document.getElementById("chatWidgetForm"),
   chatWidgetConnectButton: document.getElementById("chatWidgetConnectButton"),
+  chatWidgetEndButton: document.getElementById("chatWidgetEndButton"),
   chatWidgetPanel: document.getElementById("chatWidgetPanel"),
   chatWidgetMessages: document.getElementById("chatWidgetMessages"),
   chatWidgetModeLabel: document.getElementById("chatWidgetModeLabel"),
   chatWidgetInput: document.getElementById("chatWidgetInput"),
-  adminMenuDivider: document.querySelector(".admin-menu-divider"),
+  adminMenuDivider: document.querySelectorAll(".admin-only"),
   modalRoot: document.getElementById("modalRoot"),
-  toast: document.getElementById("toast")
+  toast: document.getElementById("toast"),
+  mainNav: document.getElementById("mainNav"),
+  adminChatView: document.getElementById("adminChatView"),
+  adminChatRoomList: document.getElementById("adminChatRoomList"),
+  refreshAdminChats: document.getElementById("refreshAdminChats"),
+  adminChatRoomTitle: document.getElementById("adminChatRoomTitle"),
+  adminChatMessages: document.getElementById("adminChatMessages"),
+  adminChatForm: document.getElementById("adminChatForm"),
+  adminChatInput: document.getElementById("adminChatInput"),
+  adminChatSendBtn: document.getElementById("adminChatSendBtn"),
+  adminChatCompleteBtn: document.getElementById("adminChatCompleteBtn")
 };
 
 let toastTimer = null;
@@ -265,35 +293,61 @@ async function initialize() {
 function bindEvents() {
   document.addEventListener("click", handleDocumentClick);
   document.addEventListener("submit", handleDocumentSubmit);
-  elements.globalSearchForm.addEventListener("submit", handleSearchSubmit);
-  elements.inlineSearchForm.addEventListener("submit", handleSearchSubmit);
-  elements.globalSearchInput.addEventListener("focus", handleSearchFocus);
-  elements.inlineSearchInput.addEventListener("focus", handleSearchFocus);
-  elements.globalSearchInput.addEventListener("input", handleSearchInput);
-  elements.inlineSearchInput.addEventListener("input", handleSearchInput);
-  elements.globalSearchInput.addEventListener("keydown", handleSearchKeydown);
-  elements.inlineSearchInput.addEventListener("keydown", handleSearchKeydown);
-  elements.orderSearchForm.addEventListener("submit", handleOrderSearchSubmit);
-  elements.adminOrderSearchForm.addEventListener("submit", handleAdminOrderSearchSubmit);
-  elements.categoryToggle.addEventListener("click", () => setCategoryMenuOpen(!state.categoryMenuOpen));
+  elements.globalSearchForm?.addEventListener("submit", handleSearchSubmit);
+  elements.inlineSearchForm?.addEventListener("submit", handleSearchSubmit);
+  elements.globalSearchInput?.addEventListener("focus", handleSearchFocus);
+  elements.inlineSearchInput?.addEventListener("focus", handleSearchFocus);
+  elements.globalSearchInput?.addEventListener("input", handleSearchInput);
+  elements.inlineSearchInput?.addEventListener("input", handleSearchInput);
+  elements.globalSearchInput?.addEventListener("keydown", handleSearchKeydown);
+  elements.inlineSearchInput?.addEventListener("keydown", handleSearchKeydown);
+  elements.orderSearchForm?.addEventListener("submit", handleOrderSearchSubmit);
+  elements.adminOrderSearchForm?.addEventListener("submit", handleAdminOrderSearchSubmit);
+  elements.categoryToggle?.addEventListener("click", () => setCategoryMenuOpen(!state.categoryMenuOpen));
   window.addEventListener("scroll", handleWindowScroll, { passive: true });
-  elements.prevPage.addEventListener("click", () => changePage(state.page - 1));
-  elements.nextPage.addEventListener("click", () => changePage(state.page + 1));
-  elements.addDetailCart.addEventListener("click", () => {
+  elements.productPager?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-page]");
+    if (btn && !btn.disabled) {
+      changePage(Number(btn.dataset.page));
+    }
+  });
+  elements.addDetailCart?.addEventListener("click", () => {
     if (state.selectedProduct) {
       addToCart(state.selectedProduct.productId, state.detailQuantity);
     }
   });
-  elements.buyDetail.addEventListener("click", () => startDirectOrder());
-  elements.refreshCart.addEventListener("click", () => loadCart(true));
-  elements.buyCart.addEventListener("click", () => startCartOrder());
-  elements.refreshOrders.addEventListener("click", () => loadOrders(true));
-  elements.refreshAdminOrders.addEventListener("click", () => loadAdminOrders(true));
-  elements.refreshAdminInquiries.addEventListener("click", () => loadAdminInquiries(true));
-  elements.chatWidgetToggle.addEventListener("click", () => toggleChatWidget(!state.chatWidget.open));
-  elements.chatWidgetClose.addEventListener("click", () => toggleChatWidget(false));
-  elements.chatWidgetForm.addEventListener("submit", handleChatWidgetSubmit);
-  elements.chatWidgetConnectButton.addEventListener("click", connectToAgent);
+  elements.buyDetail?.addEventListener("click", () => startDirectOrder());
+  elements.refreshCart?.addEventListener("click", () => loadCart(true));
+  elements.buyCart?.addEventListener("click", () => startCartOrder());
+  elements.refreshOrders?.addEventListener("click", () => loadOrders(true));
+  elements.refreshAdminOrders?.addEventListener("click", () => loadAdminOrders(true));
+  elements.refreshAdminInquiries?.addEventListener("click", () => loadAdminInquiries(true));
+  elements.chatWidgetToggle?.addEventListener("click", () => toggleChatWidget(!state.chatWidget.open));
+  elements.chatWidgetClose?.addEventListener("click", () => toggleChatWidget(false));
+  elements.chatWidgetForm?.addEventListener("submit", handleChatWidgetSubmit);
+  elements.chatWidgetConnectButton?.addEventListener("click", connectToAgent);
+  elements.chatWidgetEndButton?.addEventListener("click", endAgentChat);
+  
+  elements.chatWidgetInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      elements.chatWidgetForm?.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+    }
+  });
+  
+  elements.refreshAdminChats?.addEventListener("click", () => loadAdminChatRooms());
+  
+  elements.adminChatRoomList?.addEventListener("click", (e) => {
+    const item = e.target.closest(".admin-chat-room-item");
+    if (item) {
+      const roomId = Number(item.dataset.roomId);
+      const status = item.dataset.status;
+      openAdminChatRoom(roomId, status);
+    }
+  });
+  
+  elements.adminChatForm?.addEventListener("submit", handleAdminChatSubmit);
+  elements.adminChatCompleteBtn?.addEventListener("click", completeAdminChat);
 }
 
 function handleDocumentClick(event) {
@@ -410,6 +464,9 @@ function handleAction(button) {
   } else if (action === "open-admin-orders") {
     showView("adminOrders");
     loadAdminOrders(true);
+  } else if (action === "open-admin-chats") {
+    showView("adminChatView");
+    loadAdminChatRooms();
   } else if (action === "open-admin-inquiries") {
     showView("adminInquiry");
     loadAdminInquiries(true);
@@ -690,8 +747,7 @@ async function loadProductDetail(productId) {
   renderDetailLoading();
 
   try {
-    const product = await requestApi(`/api/products/${productId}`);
-    state.selectedProduct = product;
+    state.selectedProduct = await requestApi(`/api/products/${productId}`);
     renderProductDetail();
   } catch (error) {
     showToast(error.message);
@@ -1148,6 +1204,7 @@ function showView(view) {
   elements.adminOrdersView.classList.toggle("active", view === "adminOrders");
   elements.customerCenterView.classList.toggle("active", view === "customer");
   elements.adminInquiryView.classList.toggle("active", view === "adminInquiry");
+  if (elements.adminChatView) elements.adminChatView.classList.toggle("active", view === "adminChatView");
   elements.infoView.classList.toggle("active", view === "info");
   renderNavState();
 }
@@ -1193,8 +1250,10 @@ function renderAuthState() {
   elements.loginButton.dataset.action = loggedIn ? "logout" : "open-login";
   elements.signupButton.textContent = loggedIn ? "주문내역" : "회원가입";
   elements.signupButton.dataset.action = loggedIn ? "open-orders" : "open-signup";
-  elements.adminMenuButton.hidden = !admin;
-  elements.adminMenuDivider.hidden = !admin;
+  if (elements.inquiryButton) elements.inquiryButton.hidden = admin;
+  if (elements.inquiryDivider) elements.inquiryDivider.hidden = admin;
+  if (elements.mainNav) elements.mainNav.hidden = admin;
+  elements.adminMenuButton.forEach(el => el.hidden = !admin);
 }
 
 function renderPopularKeywords() {
@@ -1440,11 +1499,40 @@ function renderSortButtons() {
 }
 
 function renderPager() {
-  const current = state.productPage.page + 1;
+  if (!elements.productPager) return;
+  const current = state.productPage.page;
   const total = state.productPage.totalPages;
-  elements.pageInfo.textContent = `${current} / ${total}`;
-  elements.prevPage.disabled = state.page <= 0 || state.loadingProducts;
-  elements.nextPage.disabled = state.productPage.last || state.loadingProducts || current >= total;
+
+  if (total <= 1 && !state.loadingProducts && state.products.length === 0) {
+    elements.productPager.innerHTML = "";
+    return;
+  }
+
+  const windowSize = 5;
+  let start = Math.max(0, current - Math.floor(windowSize / 2));
+  let end = Math.min(total - 1, start + windowSize - 1);
+
+  if (end - start + 1 < windowSize) {
+    start = Math.max(0, end - windowSize + 1);
+  }
+
+  let html = "";
+  const prevDisabled = current <= 0 || state.loadingProducts;
+  html += `<button type="button" class="pager-nav" data-page="${current - 1}" ${prevDisabled ? 'disabled' : ''} aria-label="이전 페이지">
+    <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>`;
+
+  for (let i = start; i <= end; i++) {
+    const active = i === current;
+    html += `<button type="button" class="pager-number ${active ? 'active' : ''}" data-page="${i}" ${state.loadingProducts ? 'disabled' : ''}>${i + 1}</button>`;
+  }
+
+  const nextDisabled = current >= total - 1 || state.loadingProducts;
+  html += `<button type="button" class="pager-nav" data-page="${current + 1}" ${nextDisabled ? 'disabled' : ''} aria-label="다음 페이지">
+    <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+  </button>`;
+
+  elements.productPager.innerHTML = html;
 }
 
 function productCardTemplate(product) {
@@ -1925,8 +2013,11 @@ function getImageUrl(imageUrl) {
 }
 
 function productVisual(product) {
-  const alt = product?.name || "상품 이미지";
-  return `<img class="product-image" src="${escapeHtml(getImageUrl(product?.imageUrl))}" alt="${escapeHtml(alt)}" loading="lazy">`;
+  if (product?.imageUrl) {
+    const alt = product.name || "상품 이미지";
+    return `<img class="product-image" src="${escapeHtml(getImageUrl(product.imageUrl))}" alt="${escapeHtml(alt)}" loading="lazy">`;
+  }
+  return productIcon(product);
 }
 
 function productIcon(product) {
@@ -2134,7 +2225,9 @@ async function initChatBotMode() {
   state.chatWidget.conversationId = Date.now().toString();
   elements.chatWidgetModeLabel.textContent = "AI 챗봇";
   elements.chatWidgetConnectButton.hidden = false;
-  
+  if (elements.chatWidgetEndButton) elements.chatWidgetEndButton.hidden = true;
+  elements.chatWidgetInput.disabled = false;
+
   addChatWidgetMessage("AI 챗봇과 연결 중입니다...", "chat-widget-message system");
   
   try {
@@ -2172,6 +2265,7 @@ async function handleChatWidgetSubmit(event) {
     if (state.chatWidget.socket && state.chatWidget.socket.connected) {
       state.chatWidget.socket.publish({
         destination: `/pub/chat/rooms/${state.chatWidget.chatRoomId}/messages`,
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ content: text })
       });
     } else {
@@ -2187,6 +2281,7 @@ async function connectToAgent() {
   }
   
   elements.chatWidgetConnectButton.hidden = true;
+  if (elements.chatWidgetEndButton) elements.chatWidgetEndButton.hidden = false;
   state.chatWidget.mode = "agent";
   elements.chatWidgetModeLabel.textContent = "상담원 연결";
   
@@ -2212,11 +2307,7 @@ async function connectToAgent() {
   
   state.chatWidget.chatRoomId = chatRoomId;
   
-  if (roomStatus === "COMPLETED") {
-    elements.chatWidgetInput.disabled = true;
-  } else {
-    elements.chatWidgetInput.disabled = false;
-  }
+  elements.chatWidgetInput.disabled = roomStatus === "COMPLETED";
   
   try {
     const messages = await requestApi(`/api/chat/rooms/${chatRoomId}/messages`, { auth: true });
@@ -2225,7 +2316,7 @@ async function connectToAgent() {
     let lastId = 0;
     messages.forEach(msg => {
       const type = msg.senderRole === "ADMIN" ? "chat-widget-message from-other" : "chat-widget-message from-user";
-      state.chatWidget.messages.push({ text: msg.message, type });
+      state.chatWidget.messages.push({ text: msg.content, type });
       if (msg.messageId > lastId) lastId = msg.messageId;
     });
     
@@ -2241,6 +2332,18 @@ async function connectToAgent() {
   } catch (error) {
     addChatWidgetMessage("채팅 이력을 불러오는데 실패했습니다.", "chat-widget-message system");
   }
+}
+
+function endAgentChat() {
+  if (state.chatWidget.socket) {
+    state.chatWidget.socket.deactivate();
+    state.chatWidget.socket = null;
+  }
+  state.chatWidget.chatRoomId = null;
+  state.chatWidget.subscribed = false;
+  state.chatWidget.messages = [];
+
+  initChatBotMode();
 }
 
 function connectStompClient(chatRoomId) {
@@ -2266,7 +2369,7 @@ function connectStompClient(chatRoomId) {
           const type = msg.senderRole === "ADMIN" ? "chat-widget-message from-other" : "chat-widget-message from-user";
           if (msg.messageId > state.chatWidget.lastReceivedMessageId) {
             state.chatWidget.lastReceivedMessageId = msg.messageId;
-            addChatWidgetMessage(msg.message, type);
+            addChatWidgetMessage(msg.content, type);
           }
         });
       } catch (e) {
@@ -2278,7 +2381,7 @@ function connectStompClient(chatRoomId) {
         const type = data.senderRole === "ADMIN" ? "chat-widget-message from-other" : "chat-widget-message from-user";
         if (data.messageId > state.chatWidget.lastReceivedMessageId) {
           state.chatWidget.lastReceivedMessageId = data.messageId;
-          addChatWidgetMessage(data.message, type);
+          addChatWidgetMessage(data.content, type);
         }
       });
       state.chatWidget.subscribed = true;
@@ -2289,7 +2392,8 @@ function connectStompClient(chatRoomId) {
         addChatWidgetMessage("상담이 종료되어 메시지를 보낼 수 없습니다.", "chat-widget-message system");
         elements.chatWidgetInput.disabled = true;
       } else {
-        addChatWidgetMessage("메시지 전송에 실패했습니다.", "chat-widget-message system");
+        const details = frame.body ? frame.body : '내용 없음';
+        addChatWidgetMessage(`메시지 전송에 실패했습니다. (사유: ${code || '알 수 없음'} - ${details})`, "chat-widget-message system");
       }
     }
   });
@@ -2298,4 +2402,163 @@ function connectStompClient(chatRoomId) {
   state.chatWidget.socket = client;
 }
 
+// ====== Admin Chat ======
 
+async function loadAdminChatRooms() {
+  if (!isAdmin()) return;
+  try {
+    const rooms = await requestApi("/api/chat/rooms", { auth: true });
+    state.adminChat.rooms = rooms || [];
+    renderAdminChatRooms();
+  } catch (error) {
+    showToast("채팅방 목록을 불러오는데 실패했습니다.");
+  }
+}
+
+function renderAdminChatRooms() {
+  if (!elements.adminChatRoomList) return;
+  if (state.adminChat.rooms.length === 0) {
+    elements.adminChatRoomList.innerHTML = `<div class="empty">진행중인 채팅이 없습니다.</div>`;
+    return;
+  }
+  
+  elements.adminChatRoomList.innerHTML = state.adminChat.rooms.map(room => {
+    const isActive = room.chatRoomId === state.adminChat.activeRoomId;
+    const isCompleted = room.status === "COMPLETED";
+    return `
+      <div class="admin-chat-room-item ${isActive ? "active" : ""}" data-room-id="${room.chatRoomId}" data-status="${room.status}">
+        <div class="room-id">
+          방 #${room.chatRoomId}
+          <span class="room-status ${isCompleted ? "" : "active"}">${isCompleted ? "종료됨" : "상담중"}</span>
+        </div>
+        <div class="room-status">회원 ID: ${room.memberId}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function openAdminChatRoom(chatRoomId, status) {
+  state.adminChat.activeRoomId = chatRoomId;
+  state.adminChat.lastReceivedMessageId = 0;
+  state.adminChat.messages = [];
+  
+  renderAdminChatRooms();
+  
+  elements.adminChatRoomTitle.textContent = `채팅방 #${chatRoomId}`;
+  
+  if (status === "COMPLETED") {
+    if (elements.adminChatCompleteBtn) elements.adminChatCompleteBtn.hidden = true;
+    if (elements.adminChatInput) elements.adminChatInput.disabled = true;
+    if (elements.adminChatSendBtn) elements.adminChatSendBtn.disabled = true;
+  } else {
+    if (elements.adminChatCompleteBtn) elements.adminChatCompleteBtn.hidden = false;
+    if (elements.adminChatInput) elements.adminChatInput.disabled = false;
+    if (elements.adminChatSendBtn) elements.adminChatSendBtn.disabled = false;
+  }
+  
+  try {
+    const messages = await requestApi(`/api/chat/rooms/${chatRoomId}/messages`, { auth: true });
+    let lastId = 0;
+    messages.forEach(msg => {
+      const type = msg.senderRole === "ADMIN" ? "chat-widget-message from-user" : "chat-widget-message from-other";
+      state.adminChat.messages.push({ text: msg.content, type });
+      if (msg.messageId > lastId) lastId = msg.messageId;
+    });
+    
+    state.adminChat.lastReceivedMessageId = lastId;
+    renderAdminChatMessages();
+    connectAdminStompClient(chatRoomId);
+  } catch (error) {
+    if (elements.adminChatMessages) {
+      elements.adminChatMessages.innerHTML = `<div class="empty">메시지를 불러오는데 실패했습니다.</div>`;
+    }
+  }
+}
+
+function renderAdminChatMessages() {
+  if (!elements.adminChatMessages) return;
+  if (state.adminChat.messages.length === 0) {
+    elements.adminChatMessages.innerHTML = `<div class="empty">메시지가 없습니다.</div>`;
+    return;
+  }
+  
+  elements.adminChatMessages.innerHTML = state.adminChat.messages.map(msg => `
+    <div class="${msg.type}">${escapeHtml(msg.text)}</div>
+  `).join("");
+  
+  elements.adminChatMessages.scrollTop = elements.adminChatMessages.scrollHeight;
+}
+
+function addAdminChatMessage(text, type) {
+  state.adminChat.messages.push({ text, type });
+  renderAdminChatMessages();
+}
+
+function connectAdminStompClient(chatRoomId) {
+  if (state.adminChat.socket) {
+    state.adminChat.socket.deactivate();
+  }
+  
+  const brokerURL = API_BASE_URL.replace(/^http/, 'ws') + '/ws/chat';
+  
+  const client = new window.StompJs.Client({
+    brokerURL: brokerURL,
+    connectHeaders: { Authorization: `Bearer ${getAccessToken()}` },
+    reconnectDelay: 5000,
+    onConnect: async () => {
+      client.subscribe(`/sub/chat/rooms/${chatRoomId}`, (message) => {
+        if (state.adminChat.activeRoomId !== chatRoomId) return;
+        const data = JSON.parse(message.body);
+        const type = data.senderRole === "ADMIN" ? "chat-widget-message from-user" : "chat-widget-message from-other";
+        if (data.messageId > state.adminChat.lastReceivedMessageId) {
+          state.adminChat.lastReceivedMessageId = data.messageId;
+          addAdminChatMessage(data.content, type);
+        }
+      });
+      state.adminChat.subscribed = true;
+    }
+  });
+
+  client.activate();
+  state.adminChat.socket = client;
+}
+
+async function handleAdminChatSubmit(event) {
+  event.preventDefault();
+  if (!state.adminChat.activeRoomId) return;
+  
+  const text = elements.adminChatInput.value.trim();
+  if (!text) return;
+  
+  elements.adminChatInput.value = "";
+  
+  if (state.adminChat.socket && state.adminChat.socket.connected) {
+    state.adminChat.socket.publish({
+      destination: `/pub/chat/rooms/${state.adminChat.activeRoomId}/messages`,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content: text })
+    });
+  } else {
+    showToast("연결이 끊어졌습니다. 잠시 후 다시 시도해주세요.");
+  }
+}
+
+async function completeAdminChat() {
+  if (!state.adminChat.activeRoomId) return;
+  
+  try {
+    await requestApi(`/api/chat/rooms/${state.adminChat.activeRoomId}/status`, {
+      method: "PATCH",
+      auth: true,
+      body: { status: "COMPLETED" }
+    });
+    showToast("상담이 종료되었습니다.");
+    loadAdminChatRooms();
+    
+    if (elements.adminChatCompleteBtn) elements.adminChatCompleteBtn.hidden = true;
+    if (elements.adminChatInput) elements.adminChatInput.disabled = true;
+    if (elements.adminChatSendBtn) elements.adminChatSendBtn.disabled = true;
+  } catch (error) {
+    showToast("상담 종료에 실패했습니다.");
+  }
+}

@@ -47,9 +47,7 @@ public class ChatRoomService {
     public ChatRoomResponse createMyChatRoom(Long memberId) {
         Member member = memberService.findById(memberId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
-        if (member.getRole() != MemberRole.MEMBER) {
-            throw new BusinessException(ErrorCode.FORBIDDEN);
-        }
+
         if (chatRoomRepository.existsByMember_Id(memberId)) {
             throw new BusinessException(ErrorCode.CHAT_ROOM_ALREADY_EXISTS);
         }
