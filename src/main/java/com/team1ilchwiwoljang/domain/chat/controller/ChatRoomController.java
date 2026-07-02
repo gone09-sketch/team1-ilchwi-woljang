@@ -40,11 +40,11 @@ public class ChatRoomController {
     public ResponseEntity<ApiResponse<ChatRoomResponse>> createMyChatRoom(
             @Auth AuthMember authMember
     ) {
-        ChatRoom chatRoom = chatRoomService.createMyChatRoom(authMember.memberId());
+        ChatRoomResponse chatRoom = chatRoomService.createMyChatRoom(authMember.memberId());
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success(ChatRoomResponse.from(chatRoom)));
+                .body(ApiResponse.success(chatRoom));
     }
 
     /**
@@ -54,9 +54,9 @@ public class ChatRoomController {
     public ResponseEntity<ApiResponse<ChatRoomResponse>> getMyChatRoom(
             @Auth AuthMember authMember
     ) {
-        ChatRoom chatRoom = chatRoomService.getMyChatRoom(authMember.memberId());
+        ChatRoomResponse chatRoom = chatRoomService.getMyChatRoom(authMember.memberId());
 
-        return ResponseEntity.ok(ApiResponse.success(ChatRoomResponse.from(chatRoom)));
+        return ResponseEntity.ok(ApiResponse.success(chatRoom));
     }
 
     /**
@@ -113,12 +113,12 @@ public class ChatRoomController {
             @PathVariable Long chatRoomId,
             @Valid @RequestBody ChatRoomUpdateStatusRequest request
     ) {
-        ChatRoom chatRoom = chatRoomService.changeChatRoomStatus(
+        ChatRoomResponse chatRoom = chatRoomService.changeChatRoomStatus(
                 authMember.role(),
                 chatRoomId,
                 request.status()
         );
 
-        return ResponseEntity.ok(ApiResponse.success(ChatRoomResponse.from(chatRoom)));
+        return ResponseEntity.ok(ApiResponse.success(chatRoom));
     }
 }

@@ -3,6 +3,7 @@ package com.team1ilchwiwoljang.domain.chat.service;
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.domain.chat.dto.response.ChatRoomListResponse;
+import com.team1ilchwiwoljang.domain.chat.dto.response.ChatRoomResponse;
 import com.team1ilchwiwoljang.domain.chat.entity.ChatRoom;
 import com.team1ilchwiwoljang.domain.chat.entity.ChatRoomStatus;
 import com.team1ilchwiwoljang.domain.chat.repository.ChatRoomRepository;
@@ -24,7 +25,6 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class ChatRoomService {
 
     private final ChatRoomRepository chatRoomRepository;
@@ -33,9 +33,10 @@ public class ChatRoomService {
     /**
      * 회원 본인에게 할당된 채팅방을 조회합니다.
      */
-    public ChatRoom getMyChatRoom(Long memberId) {
-        return chatRoomRepository.findByMember_Id(memberId)
+    public ChatRoomResponse getMyChatRoom(Long memberId) {
+        ChatRoom chatRoom = chatRoomRepository.findByMember_Id(memberId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND));
+        return ChatRoomResponse.from(chatRoom);
     }
 
     /**
@@ -43,25 +44,18 @@ public class ChatRoomService {
      * 현재 프로젝트의 일반 회원 권한은 MemberRole.MEMBER입니다.
      */
     @Transactional
-    public ChatRoom createMyChatRoom(Long memberId) {
+    public ChatRoomResponse createMyChatRoom(Long memberId) {
         Member member = memberService.findById(memberId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
-
         if (member.getRole() != MemberRole.MEMBER) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
-
         if (chatRoomRepository.existsByMember_Id(memberId)) {
             throw new BusinessException(ErrorCode.CHAT_ROOM_ALREADY_EXISTS);
         }
-
         try {
-            /*
-             * existsByMember_Id 검사는 사용자에게 빠르게 중복을 알려주기 위한 1차 방어입니다.
-             * 동시에 같은 회원이 생성 요청을 보내면 둘 다 exists 검사를 통과할 수 있으므로,
-             * DB unique 제약 위반도 CHAT_ROOM_ALREADY_EXISTS로 변환합니다.
-             */
-            return chatRoomRepository.saveAndFlush(ChatRoom.create(member));
+            ChatRoom chatRoom = chatRoomRepository.saveAndFlush(ChatRoom.create(member));
+            return ChatRoomResponse.from(chatRoom);
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(ErrorCode.CHAT_ROOM_ALREADY_EXISTS);
         }
@@ -74,6 +68,7 @@ public class ChatRoomService {
      * 2. MEMBER는 본인에게 할당된 채팅방에만 접속할 수 있습니다.
      * 3. 위 조건을 만족하지 않으면 접근을 거부합니다.
      */
+    @Transactional(readOnly = true)
     public ChatRoom getAccessibleChatRoom(Long memberId, MemberRole role, Long chatRoomId) {
         ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND));
@@ -96,6 +91,7 @@ public class ChatRoomService {
      * 일반 회원은 다른 고객의 채팅방 목록을 볼 수 없으므로
      * ADMIN이 아니면 FORBIDDEN 예외를 던집니다.
      */
+    @Transactional(readOnly = true)
     public List<ChatRoomListResponse> getChatRooms(MemberRole role, ChatRoomStatus status) {
         if (role != MemberRole.ADMIN) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
@@ -128,7 +124,7 @@ public class ChatRoomService {
      * 실제 상태 전이 검증은 ChatRoom.changeStatus()에서 처리합니다.
      */
     @Transactional
-    public ChatRoom changeChatRoomStatus(MemberRole role, Long chatRoomId, ChatRoomStatus nextStatus) {
+    public ChatRoomResponse  changeChatRoomStatus(MemberRole role, Long chatRoomId, ChatRoomStatus nextStatus) {
         if (role != MemberRole.ADMIN) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
@@ -138,6 +134,6 @@ public class ChatRoomService {
 
         chatRoom.changeStatus(nextStatus);
 
-        return chatRoom;
+        return ChatRoomResponse.from(chatRoom);
     }
 }

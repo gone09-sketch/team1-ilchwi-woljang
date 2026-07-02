@@ -47,6 +47,7 @@ public class ChatStompSubscribeEventListener {
      *
      * 그래서 SUBSCRIBE 시점에 sessionId + subscriptionId 기준으로 구독 정보를 저장해두고,
      * 이후 UNSUBSCRIBE 또는 DISCONNECT 시점에 꺼내서 퇴장 시스템 메시지를 발행합니다.
+     * 또한, 시스템 메시지가 DB 미저장이므로 누락 자체가 데이터 유실은 아닙니다.
      */
     private final Map<String, ChatSubscription> subscriptions = new ConcurrentHashMap<>();
 
