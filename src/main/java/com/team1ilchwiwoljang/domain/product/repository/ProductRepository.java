@@ -22,6 +22,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Page<Product> findByCategoryIdAndStatus(Long categoryId, ProductStatus status, Pageable pageable);
 
+    Page<Product> findByStatusAndPriceBetween(
+            ProductStatus status,
+            int minPrice,
+            int maxPrice,
+            Pageable pageable);
+
     Page<Product> findByCategoryIdInAndStatus(List<Long> categoryIds, ProductStatus status, Pageable pageable);
 
     // Spring Data 파생 쿼리로 간단히 유지합니다.
@@ -29,6 +35,19 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Page<Product> findByNameContainingIgnoreCaseAndStatusNot(
             String keyword,
             ProductStatus excludedStatus,
+            Pageable pageable
+    );
+
+    @Query(
+            value = "SELECT * FROM products WHERE MATCH(name) AGAINST (:keyword IN NATURAL LANGUAGE MODE) AND status <> :excludedStatus ORDER BY MATCH(name) AGAINST (:keyword IN NATURAL LANGUAGE MODE) DESC",
+            countQuery = "SELECT count(*) FROM products WHERE MATCH(name) AGAINST (:keyword IN NATURAL LANGUAGE MODE) AND status <> :excludedStatus",
+            nativeQuery = true
+    )
+    // excludedStatus는 nativeQuery라 ProductStatus enum을 직접 바인딩할 수 없어 String으로 받습니다.
+    // 호출부에서 ProductStatus.STOPPED.name()으로 넘겨야 하며, enum 이름이 바뀌면 여기도 같이 확인이 필요합니다.
+    Page<Product> searchByNameFullText(
+            @Param("keyword") String keyword,
+            @Param("excludedStatus") String excludedStatus,
             Pageable pageable
     );
 

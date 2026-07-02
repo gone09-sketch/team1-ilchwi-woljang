@@ -129,6 +129,40 @@ public class ProductService {
     }
 
     /**
+     * 가격 범위로 판매 중인 상품 목록 조회
+     */
+    public Page<ProductResponse> getProductsByPriceRange(int minPrice, int maxPrice, int page, int size) {
+        if (minPrice > maxPrice) {
+            throw new BusinessException(ErrorCode.INVALID_PRICE_RANGE);
+        }
+        Pageable pageable = PageRequest.of(page, size, Sort.by("price").ascending());
+        return productRepository.findByStatusAndPriceBetween(ProductStatus.ON_SALE, minPrice, maxPrice, pageable).map(ProductResponse::from);
+    }
+
+    /**
+     * 상품명 기반 검색 (FULLTEXT, ngram)
+     * 판매 중지 상품은 검색 결과에서 제외합니다.
+     */
+    public PageResponse<ProductSearchItemResponse> searchProductsFullText(String keyword, int page, int size) {
+        String normalizedKeyword = keyword == null
+                ? ""
+                : keyword.trim();
+
+        if (normalizedKeyword.isBlank()) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+
+        Pageable pageable = PageRequest.of(page, size);
+        return PageResponse.from(
+                productRepository.searchByNameFullText(
+                        normalizedKeyword,
+                        ProductStatus.STOPPED.name(),
+                        pageable
+                ).map(ProductSearchItemResponse::from)
+        );
+    }
+
+    /**
      * 상품 목록 정렬 조건 변환
      */
     private Sort resolveSort(String sort) {
