@@ -116,6 +116,9 @@ public class ProductService {
      * 가격 범위로 판매 중인 상품 목록 조회
      */
     public Page<ProductResponse> getProductsByPriceRange(int minPrice, int maxPrice, int page, int size) {
+        if (minPrice > maxPrice) {
+            throw new BusinessException(ErrorCode.INVALID_PRICE_RANGE);
+        }
         Pageable pageable = PageRequest.of(page, size, Sort.by("price").ascending());
         return productRepository.findByStatusAndPriceBetween(ProductStatus.ON_SALE, minPrice, maxPrice, pageable).map(ProductResponse::from);
     }

@@ -60,8 +60,8 @@ public class ProductController {
 
     @GetMapping("/price-range")
     public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> getProductsByPriceRange(
-            @RequestParam int minPrice,
-            @RequestParam int maxPrice,
+            @Min(0) @RequestParam int minPrice,
+            @Min(0) @RequestParam int maxPrice,
             @Min(0) @RequestParam(defaultValue = "0") int page,
             @Min(1) @RequestParam(defaultValue = "20") int size
     ) {
