@@ -1,7 +1,5 @@
 package com.team1ilchwiwoljang.domain.search.service;
 
-import com.team1ilchwiwoljang.domain.search.entity.SearchKeyword;
-import com.team1ilchwiwoljang.domain.search.repository.SearchKeywordRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,12 +8,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -27,53 +22,55 @@ class SearchKeywordServiceTest {
     private SearchKeywordService searchKeywordService;
 
     @Mock
-    private SearchKeywordRepository searchKeywordRepository;
+    private SearchKeywordTransactionHelper searchKeywordTransactionHelper;
+
+    @Mock
+    private PopularKeywordCacheService popularKeywordCacheService;
 
     @Test
-    @DisplayName("신규 검색어를 처음 검색하면 SearchKeyword 엔티티를 생성하여 저장한다.")
+    @DisplayName("신규 검색어를 처음 검색하면 원자적 업데이트가 0을 반환하고, 새 SearchKeyword 엔티티를 생성하여 저장한다.")
     void givenNewKeyword_whenIncrementSearchCount_thenSaveNewEntity() {
         // given
-        given(searchKeywordRepository.findByKeyword("셔츠")).willReturn(Optional.empty());
+        given(searchKeywordTransactionHelper.incrementCount("셔츠")).willReturn(0);
 
         // when
         searchKeywordService.incrementSearchCount("셔츠");
 
         // then
-        verify(searchKeywordRepository, times(1)).save(any(SearchKeyword.class));
+        verify(searchKeywordTransactionHelper, times(1)).incrementCount("셔츠");
+        verify(searchKeywordTransactionHelper, times(1)).saveNewKeyword("셔츠");
     }
 
     @Test
-    @DisplayName("이미 존재하는 검색어를 다시 검색하면 카운트를 1 증가시킨다.")
+    @DisplayName("이미 존재하는 검색어를 다시 검색하면 원자적 업데이트가 1을 반환하며 엔티티를 별도로 저장하지 않는다.")
     void givenExistingKeyword_whenIncrementSearchCount_thenIncrementCount() {
         // given
-        SearchKeyword existing = SearchKeyword.create("셔츠"); // searchCount = 1
-        given(searchKeywordRepository.findByKeyword("셔츠")).willReturn(Optional.of(existing));
+        given(searchKeywordTransactionHelper.incrementCount("셔츠")).willReturn(1);
 
         // when
         searchKeywordService.incrementSearchCount("셔츠");
 
         // then
-        assertThat(existing.getSearchCount()).isEqualTo(2L);
-        verify(searchKeywordRepository, never()).save(any());
+        verify(searchKeywordTransactionHelper, times(1)).incrementCount("셔츠");
+        verify(searchKeywordTransactionHelper, never()).saveNewKeyword(anyString());
     }
 
     @Test
-    @DisplayName("unique 제약 충돌 발생 시 재조회하여 카운트를 증가시킨다.")
+    @DisplayName("신규 검색어 저장 도중 unique 제약 충돌 발생 시, 다시 원자적 업데이트를 호출한다.")
     void givenUniqueConstraintViolation_whenIncrementSearchCount_thenRetryAndIncrement() {
-        // given: 첫 조회에서는 없음, save 시 unique 충돌, 재조회에서는 존재
-        SearchKeyword existing = SearchKeyword.create("셔츠");
-        given(searchKeywordRepository.findByKeyword("셔츠"))
-                .willReturn(Optional.empty())         // 첫 번째 조회: 없음
-                .willReturn(Optional.of(existing));   // 재조회: 존재
+        // given: 첫 원자적 업데이트 0 반환 -> save 호출 시 unique 충돌 -> 재시도에서 incrementSearchCount 재호출
+        given(searchKeywordTransactionHelper.incrementCount("셔츠"))
+                .willReturn(0) // 첫 번째 시도
+                .willReturn(1); // 재시도
 
-        given(searchKeywordRepository.save(any(SearchKeyword.class)))
-                .willThrow(new DataIntegrityViolationException("unique constraint violation"));
+        doThrow(new DataIntegrityViolationException("unique constraint violation"))
+                .when(searchKeywordTransactionHelper).saveNewKeyword("셔츠");
 
         // when
         searchKeywordService.incrementSearchCount("셔츠");
 
-        // then: 재조회 후 카운트 증가
-        assertThat(existing.getSearchCount()).isEqualTo(2L);
-        verify(searchKeywordRepository, times(2)).findByKeyword(anyString());
+        // then: 업데이트는 2번 호출, save는 1번 호출됨
+        verify(searchKeywordTransactionHelper, times(2)).incrementCount("셔츠");
+        verify(searchKeywordTransactionHelper, times(1)).saveNewKeyword("셔츠");
     }
 }

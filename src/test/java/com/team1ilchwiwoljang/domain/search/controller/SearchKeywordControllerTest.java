@@ -6,7 +6,7 @@ import com.team1ilchwiwoljang.common.security.JwtAuthenticationFilter;
 import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
 import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
-import com.team1ilchwiwoljang.domain.search.dto.response.PopularKeywordResponse;
+import com.team1ilchwiwoljang.domain.search.dto.response.SearchKeywordPopularResponse;
 import com.team1ilchwiwoljang.domain.search.service.SearchKeywordService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,10 +48,10 @@ class SearchKeywordControllerTest {
     @Test
     @DisplayName("인기 검색어 조회 시 200 OK와 검색어 목록을 반환한다.")
     void given_validLimit_whenGetPopularKeywords_thenStatus200() throws Exception {
-        List<PopularKeywordResponse> response = List.of(
-                new PopularKeywordResponse("셔츠", 100L),
-                new PopularKeywordResponse("청바지", 80L),
-                new PopularKeywordResponse("원피스", 60L)
+        List<SearchKeywordPopularResponse> response = List.of(
+                new SearchKeywordPopularResponse("셔츠", 100L),
+                new SearchKeywordPopularResponse("청바지", 80L),
+                new SearchKeywordPopularResponse("원피스", 60L)
         );
 
         given(searchKeywordService.getPopularKeywords(anyInt())).willReturn(response);

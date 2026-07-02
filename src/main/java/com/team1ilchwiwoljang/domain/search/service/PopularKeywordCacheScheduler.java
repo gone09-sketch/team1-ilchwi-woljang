@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 @Profile("!test")
 public class PopularKeywordCacheScheduler {
 
-    private final SearchKeywordService searchKeywordService;
+    private final PopularKeywordCacheService popularKeywordCacheService;
 
     /**
      * 9분 30초 주기로 @CachePut 웜업 메서드를 호출하여 Redis 캐시 TTL을 강제 리셋합니다.
@@ -22,9 +22,8 @@ public class PopularKeywordCacheScheduler {
     public void warmUpPopularKeywords() {
         log.info("인기 검색어 캐시 웜업(Cache Warm-up) 백그라운드 스케줄러 작동 시작...");
 
-        int limit = 10;
-        searchKeywordService.warmUpPopularKeywordsCache(limit);
+        popularKeywordCacheService.warmUpPopularKeywordsCache();
 
-        log.info("인기 검색어 캐시 웜업 완료. (Key: {})", limit);
+        log.info("인기 검색어 캐시 웜업 완료. (Key: all)");
     }
 }

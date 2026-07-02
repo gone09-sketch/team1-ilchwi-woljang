@@ -18,23 +18,6 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ErrorResponse> handleConstraintViolationException(ConstraintViolationException e) {
-        List<ErrorResponse.FieldError> fieldErrors = e.getConstraintViolations().stream()
-                .map(cv -> {
-                    String propertyPath = cv.getPropertyPath().toString();
-                    String field = propertyPath.contains(".")
-                            ? propertyPath.substring(propertyPath.lastIndexOf('.') + 1)
-                            : propertyPath;
-                    return new ErrorResponse.FieldError(field, cv.getMessage());
-                })
-                .toList();
-
-        ErrorCode errorCode = ErrorCode.VALIDATION_FAILED;
-        ErrorResponse response = ErrorResponse.of(errorCode.name(), errorCode.getMessage(), fieldErrors);
-        return ResponseEntity.status(errorCode.getStatus()).body(response);
-    }
-
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
         ErrorCode errorCode = e.getErrorCode();
@@ -74,6 +57,24 @@ public class GlobalExceptionHandler {
                     String field = path.substring(path.lastIndexOf('.') + 1);
                     return new ErrorResponse.FieldError(field, violation.getMessage());
                 })
+                .toList();
+
+        ErrorCode errorCode = ErrorCode.VALIDATION_FAILED;
+        ErrorResponse response = ErrorResponse.of(errorCode.name(), errorCode.getMessage(), fieldErrors);
+        return ResponseEntity.status(errorCode.getStatus()).body(response);
+    }
+
+    @ExceptionHandler(org.springframework.web.method.annotation.HandlerMethodValidationException.class)
+    public ResponseEntity<ErrorResponse> handleHandlerMethodValidationException(
+            org.springframework.web.method.annotation.HandlerMethodValidationException e
+    ) {
+        List<ErrorResponse.FieldError> fieldErrors = e.getParameterValidationResults().stream()
+                .flatMap(result -> result.getResolvableErrors().stream()
+                        .map(error -> {
+                            String field = result.getMethodParameter().getParameterName();
+                            return new ErrorResponse.FieldError(field, error.getDefaultMessage());
+                        })
+                )
                 .toList();
 
         ErrorCode errorCode = ErrorCode.VALIDATION_FAILED;

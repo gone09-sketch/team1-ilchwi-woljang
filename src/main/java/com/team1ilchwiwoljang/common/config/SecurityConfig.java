@@ -94,7 +94,7 @@ public class SecurityConfig {
                                 .requestMatchers(
                                         // 인기 검색어 조회는 로그인 없이 볼 수 있게 허용
                                         HttpMethod.GET,
-                                        "/api/search/**"
+                                        "/api/search/popular"
                                 ).permitAll()
 
                         .requestMatchers("/api/admins/**").hasRole("ADMIN")

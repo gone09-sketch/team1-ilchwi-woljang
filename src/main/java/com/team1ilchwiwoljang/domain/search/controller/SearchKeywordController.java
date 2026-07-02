@@ -1,7 +1,7 @@
 package com.team1ilchwiwoljang.domain.search.controller;
 
 import com.team1ilchwiwoljang.common.response.ApiResponse;
-import com.team1ilchwiwoljang.domain.search.dto.response.PopularKeywordResponse;
+import com.team1ilchwiwoljang.domain.search.dto.response.SearchKeywordPopularResponse;
 import com.team1ilchwiwoljang.domain.search.service.SearchKeywordService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -24,10 +24,10 @@ public class SearchKeywordController {
     private final SearchKeywordService searchKeywordService;
 
     @GetMapping("/popular")
-    public ResponseEntity<ApiResponse<List<PopularKeywordResponse>>> getPopularKeywords(
+    public ResponseEntity<ApiResponse<List<SearchKeywordPopularResponse>>> getPopularKeywords(
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int limit
     ) {
-        List<PopularKeywordResponse> response = searchKeywordService.getPopularKeywords(limit);
+        List<SearchKeywordPopularResponse> response = searchKeywordService.getPopularKeywords(limit);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

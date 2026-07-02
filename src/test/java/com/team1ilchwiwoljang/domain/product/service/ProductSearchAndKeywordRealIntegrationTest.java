@@ -8,6 +8,7 @@ import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
 import com.team1ilchwiwoljang.domain.search.entity.SearchKeyword;
 import com.team1ilchwiwoljang.domain.search.repository.SearchKeywordRepository;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +37,9 @@ class ProductSearchAndKeywordRealIntegrationTest {
     @Autowired
     private SearchKeywordRepository searchKeywordRepository;
 
+    @Autowired
+    private EntityManager entityManager;
+
     @Test
     @DisplayName("상품 검색 API를 정상적으로 호출하면 검색어가 수집되고 카운트가 증가한다.")
     void givenKeyword_whenSearchProductsReal_thenKeywordCountIncrements() {
@@ -46,6 +50,7 @@ class ProductSearchAndKeywordRealIntegrationTest {
 
         // when: 첫 번째 검색
         productService.searchProducts("셔츠", PageRequest.of(0, 10));
+        entityManager.clear(); // 영속성 컨텍스트를 클리어하여 DB 최신값을 온전히 읽어오도록 캐시 차단
 
         // then: DB에 검색어가 등록되고 카운트가 1이 됨
         SearchKeyword keyword1 = searchKeywordRepository.findByKeyword("셔츠").orElseThrow();
@@ -53,6 +58,7 @@ class ProductSearchAndKeywordRealIntegrationTest {
 
         // when: 두 번째 검색
         productService.searchProducts("셔츠", PageRequest.of(0, 10));
+        entityManager.clear(); // 영속성 컨텍스트를 클리어하여 DB 최신값을 온전히 읽어오도록 캐시 차단
 
         // then: 카운트가 2가 됨
         SearchKeyword keyword2 = searchKeywordRepository.findByKeyword("셔츠").orElseThrow();

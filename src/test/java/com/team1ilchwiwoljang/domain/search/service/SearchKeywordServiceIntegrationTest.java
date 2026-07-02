@@ -1,6 +1,6 @@
 package com.team1ilchwiwoljang.domain.search.service;
 
-import com.team1ilchwiwoljang.domain.search.dto.response.PopularKeywordResponse;
+import com.team1ilchwiwoljang.domain.search.dto.response.SearchKeywordPopularResponse;
 import com.team1ilchwiwoljang.domain.search.entity.SearchKeyword;
 import com.team1ilchwiwoljang.domain.search.repository.SearchKeywordRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,14 +12,15 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-@Transactional
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 class SearchKeywordServiceIntegrationTest {
@@ -35,6 +36,7 @@ class SearchKeywordServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        searchKeywordRepository.deleteAll();
         Cache cache = cacheManager.getCache("popularKeywords");
         if (cache != null) {
             cache.clear();
@@ -67,13 +69,13 @@ class SearchKeywordServiceIntegrationTest {
 
         Cache cache = cacheManager.getCache("popularKeywords");
         assertThat(cache).isNotNull();
-        assertThat(cache.get(10)).isNull(); // 캐시 비어있음 확인
+        assertThat(cache.get("all")).isNull(); // 캐시 비어있음 확인
 
         // when: 첫 번째 호출 (DB 조회)
-        List<PopularKeywordResponse> firstCall = searchKeywordService.getPopularKeywords(10);
+        List<SearchKeywordPopularResponse> firstCall = searchKeywordService.getPopularKeywords(10);
 
         // then: 캐시에 저장됨
-        assertThat(cache.get(10)).isNotNull();
+        assertThat(cache.get("all")).isNotNull();
         assertThat(firstCall).hasSize(2);
         assertThat(firstCall.get(0).keyword()).isEqualTo("셔츠");   // 카운트 높은 순
         assertThat(firstCall.get(0).searchCount()).isEqualTo(2L);
@@ -85,7 +87,7 @@ class SearchKeywordServiceIntegrationTest {
         searchKeywordService.incrementSearchCount("원피스");
 
         // then: 두 번째 호출 시 캐시 데이터 반환 (원피스 미포함)
-        List<PopularKeywordResponse> secondCall = searchKeywordService.getPopularKeywords(10);
+        List<SearchKeywordPopularResponse> secondCall = searchKeywordService.getPopularKeywords(10);
         assertThat(secondCall).isEqualTo(firstCall);
     }
 
@@ -101,12 +103,55 @@ class SearchKeywordServiceIntegrationTest {
         searchKeywordService.incrementSearchCount("원피스");
 
         // when
-        List<PopularKeywordResponse> result = searchKeywordService.getPopularKeywords(10);
+        List<SearchKeywordPopularResponse> result = searchKeywordService.getPopularKeywords(10);
 
         // then: 원피스(3) > 셔츠(2) > 청바지(1) 순
         assertThat(result).hasSize(3);
         assertThat(result.get(0).keyword()).isEqualTo("원피스");
         assertThat(result.get(1).keyword()).isEqualTo("셔츠");
         assertThat(result.get(2).keyword()).isEqualTo("청바지");
+    }
+
+    @Test
+    @DisplayName("동일한 키워드로 여러 쓰레드에서 동시에 검색 요청을 보내도 카운트가 유실되지 않고 정확하게 누적된다.")
+    void givenConcurrentRequests_whenIncrementSearchCount_thenCountIsAccurate() throws InterruptedException {
+        // given
+        String keyword = "동시성테스트";
+        int threadCount = 10;
+        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch latch = new CountDownLatch(threadCount);
+
+        // when
+        for (int i = 0; i < threadCount; i++) {
+            executorService.execute(() -> {
+                try {
+                    searchKeywordService.incrementSearchCount(keyword);
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+        latch.await();
+        executorService.shutdown();
+
+        // then
+        SearchKeyword result = searchKeywordRepository.findByKeyword(keyword).orElseThrow();
+        assertThat(result.getSearchCount()).isEqualTo((long) threadCount);
+    }
+
+    @Test
+    @DisplayName("100자를 초과하는 검색어가 들어오면 100자로 잘라서 저장 및 카운트 누적을 정상적으로 수행한다.")
+    void givenLongKeyword_whenIncrementSearchCount_thenTruncateAndSave() {
+        // given
+        String longKeyword = "a".repeat(110);
+        String expectedKeyword = "a".repeat(100);
+
+        // when
+        searchKeywordService.incrementSearchCount(longKeyword);
+
+        // then
+        assertThat(searchKeywordRepository.findByKeyword(longKeyword)).isEmpty();
+        SearchKeyword result = searchKeywordRepository.findByKeyword(expectedKeyword).orElseThrow();
+        assertThat(result.getSearchCount()).isEqualTo(1L);
     }
 }
