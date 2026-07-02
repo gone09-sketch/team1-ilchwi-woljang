@@ -14,6 +14,7 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 
 import java.security.Principal;
@@ -59,7 +60,11 @@ public class ChatStompChannelInterceptor implements ChannelInterceptor {
             validateSubscribe(accessor);
         }
 
-        return message;
+        /*
+         * CONNECT에서 설정한 Principal이 이후 STOMP session에 남아야 하므로
+         * 변경된 accessor headers를 담은 Message를 반환합니다.
+         */
+        return MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders());
     }
 
     /**
