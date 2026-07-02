@@ -5,6 +5,7 @@ import com.team1ilchwiwoljang.domain.category.entity.Category;
 import com.team1ilchwiwoljang.domain.category.repository.CategoryRepository;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
+import com.team1ilchwiwoljang.common.config.QueryDslConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -16,6 +17,7 @@ import org.springframework.test.context.ActiveProfiles;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
+@Import(QueryDslConfig.class)
 @ActiveProfiles("test")
 @Import(QueryDslConfig.class)
 class ProductRepositoryTest {

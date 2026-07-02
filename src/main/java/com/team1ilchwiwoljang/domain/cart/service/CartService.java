@@ -62,6 +62,7 @@ public class CartService {
         return CartAddResponse.from(cart);
     }
 
+    // 동시요청시 일어날 수 있는 예외로 DB 예외로 보내지않고, 서비스 예외로 바꿔주는 역할을함
     @Recover
     public CartAddResponse recoverAddCartItem(
             DataIntegrityViolationException e, Long memberId, CartCreateRequest request) {
@@ -78,6 +79,25 @@ public class CartService {
                 .sum();
 
         return new CartResponse(items, cartTotalPrice);
+    }
+
+    @Transactional
+    public CartItemResponse updateCartItemQuantity(Long memberId, Long cartItemId, int quantity) {
+        Cart cart = getMemberCartItem(memberId, cartItemId);
+        Product product = cart.getProduct();
+
+        if (quantity > product.getStock()) {
+            throw new BusinessException(ErrorCode.CART_ITEM_QUANTITY_EXCEEDED);
+        }
+
+        cart.changeQuantity(quantity);
+        return toItemResponse(cart);
+    }
+
+    @Transactional
+    public void deleteCartItem(Long memberId, Long cartItemId) {
+        Cart cart = getMemberCartItem(memberId, cartItemId);
+        cartRepository.delete(cart);
     }
 
     /**
@@ -99,6 +119,34 @@ public class CartService {
                 .toList();
 
         return getSelectedCartItems(memberId, selectedCartIds);
+    }
+
+    /**
+     * 주문 생성 시 비관적 락 우회 방지를 위한 Cart 조회.
+     * Product를 fetch하지 않아 JPA 1차 캐시에 락 없는 Product가 올라오지 않습니다.
+     * Product는 호출측(OrderService)에서 비관적 락으로 별도 조회해야 합니다.
+     */
+    @Transactional(readOnly = true)
+    public List<Cart> getOrderCartItemsWithoutProduct(Long memberId, List<Long> cartIds) {
+        if (cartIds == null || cartIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.EMPTY_CART_ORDER);
+        }
+
+        if (cartIds.stream().anyMatch(Objects::isNull)) {
+            throw new BusinessException(ErrorCode.INVALID_CART_ITEM_ID);
+        }
+
+        List<Long> selectedCartIds = cartIds.stream()
+                .distinct()
+                .toList();
+
+        List<Cart> cartItems = cartRepository.findAllByMemberIdAndIdInWithoutProduct(memberId, selectedCartIds);
+
+        if (cartItems.size() != selectedCartIds.size()) {
+            throw new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND);
+        }
+
+        return cartItems;
     }
 
     /**
@@ -139,6 +187,11 @@ public class CartService {
         }
 
         return cartItems;
+    }
+
+    private Cart getMemberCartItem(Long memberId, Long cartItemId) {
+        return cartRepository.findByIdAndMemberIdWithProduct(cartItemId, memberId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND));
     }
 
     private CartItemResponse toItemResponse(Cart cart) {

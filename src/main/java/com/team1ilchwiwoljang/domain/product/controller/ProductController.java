@@ -5,8 +5,11 @@ import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.product.dto.ProductResponse;
 import com.team1ilchwiwoljang.domain.product.dto.response.ProductDetailResponse;
 import com.team1ilchwiwoljang.domain.product.dto.response.ProductSearchItemResponse;
+import com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -52,6 +55,14 @@ public class ProductController {
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         PageResponse<ProductSearchItemResponse> response = productService.searchProducts(keyword, pageable);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/popular")
+    public ResponseEntity<ApiResponse<List<PopularProductResponse>>> getPopularProducts(
+            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int limit
+    ) {
+        List<PopularProductResponse> response = productService.getPopularProducts(limit);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
