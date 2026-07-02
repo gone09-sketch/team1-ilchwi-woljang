@@ -4,6 +4,8 @@ import com.team1ilchwiwoljang.domain.chat.entity.ChatRoom;
 
 import java.util.List;
 import java.util.Optional;
+
+import com.team1ilchwiwoljang.domain.chat.entity.ChatRoomStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
@@ -16,4 +18,7 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 
     // 관리자가 전체 회원 채팅방 목록을 조회할 때 사용합니다.
     List<ChatRoom> findAllByOrderByCreatedAtDesc();
+
+    // 관리자가 상담 상태별로 고객 채팅방 목록을 조회할 때 사용합니다.
+    List<ChatRoom> findAllByStatusOrderByCreatedAtDesc(ChatRoomStatus status);
 }
