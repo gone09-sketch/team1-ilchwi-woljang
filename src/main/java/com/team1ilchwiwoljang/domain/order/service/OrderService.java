@@ -107,6 +107,7 @@ public class OrderService {
         orderItemRepository.save(orderItem);
 
         product.decreaseStock(request.quantity());
+        product.increaseSalesCount(request.quantity());
 
         List<OrderItemResponse> orderItems = List.of(OrderItemResponse.from(orderItem));
         return OrderResponse.from(order, orderItems);
@@ -116,7 +117,10 @@ public class OrderService {
     public OrderResponse createCartOrder(Long memberId, CartOrderRequest request) {
         Member member = memberService.getMember(memberId);
 
-        List<Cart> cartItems = cartService.getOrderCartItems(memberId, request.cartIds());
+        // Product를 fetch하지 않는 쿼리로 Cart 조회.
+        // 이렇게 하면 1차 캐시에 락 없는 Product가 미리 올라오지 않아
+        // 이후 비관적 락 조회가 정상 작동합니다.
+        List<Cart> cartItems = cartService.getOrderCartItemsWithoutProduct(memberId, request.cartIds());
 
         List<Cart> sortedCartItems = cartItems.stream()
                 .sorted(Comparator.comparing(cart -> cart.getProduct().getId()))
@@ -149,6 +153,7 @@ public class OrderService {
             orderItems.add(orderItem);
 
             product.decreaseStock(cart.getQuantity());
+            product.increaseSalesCount(cart.getQuantity());
         }
 
         orderItemRepository.saveAll(orderItems);
