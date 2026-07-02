@@ -10,6 +10,9 @@ import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.order.dto.request.CartOrderRequest;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderPreviewRequest;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
+import com.team1ilchwiwoljang.domain.order.dto.request.AdminOrderSearchCondition;
+import com.team1ilchwiwoljang.domain.order.dto.response.AdminOrderDetailResponse;
+import com.team1ilchwiwoljang.domain.order.dto.response.AdminOrderSearchResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.DirectOrderPreviewResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.DirectOrderPreviewResponse.DirectOrderPreviewItemResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderItemResponse;
@@ -67,6 +70,42 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
+    public PageResponse<AdminOrderSearchResponse> getAdminOrders(AdminOrderSearchCondition condition, Pageable pageable) {
+        validateAdminOrderSearchCondition(condition);
+        Page<Order> orderPage = orderRepository.findAdminOrders(condition, pageable);
+        return PageResponse.from(orderPage.map(AdminOrderSearchResponse::from));
+    }
+
+    private void validateAdminOrderSearchCondition(AdminOrderSearchCondition condition) {
+        if (condition.startDate() != null && condition.endDate() != null
+                && condition.startDate().isAfter(condition.endDate())) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+        if (condition.minTotalAmount() != null && condition.minTotalAmount() < 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+        if (condition.maxTotalAmount() != null && condition.maxTotalAmount() < 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+        if (condition.minTotalAmount() != null && condition.maxTotalAmount() != null
+                && condition.minTotalAmount() > condition.maxTotalAmount()) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public AdminOrderDetailResponse getAdminOrderDetail(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+        List<OrderItemResponse> orderItems = orderItemRepository.findByOrderIdIn(List.of(orderId)).stream()
+                .map(OrderItemResponse::from)
+                .toList();
+
+        return AdminOrderDetailResponse.from(order, orderItems);
+    }
+
+    @Transactional(readOnly = true)
     public DirectOrderPreviewResponse previewDirectOrder(DirectOrderPreviewRequest request) {
         Product product = productService.getProduct(request.productId());
 
@@ -107,6 +146,7 @@ public class OrderService {
         orderItemRepository.save(orderItem);
 
         product.decreaseStock(request.quantity());
+        product.increaseSalesCount(request.quantity());
 
         List<OrderItemResponse> orderItems = List.of(OrderItemResponse.from(orderItem));
         return OrderResponse.from(order, orderItems);
@@ -116,7 +156,10 @@ public class OrderService {
     public OrderResponse createCartOrder(Long memberId, CartOrderRequest request) {
         Member member = memberService.getMember(memberId);
 
-        List<Cart> cartItems = cartService.getOrderCartItems(memberId, request.cartIds());
+        // Product를 fetch하지 않는 쿼리로 Cart 조회.
+        // 이렇게 하면 1차 캐시에 락 없는 Product가 미리 올라오지 않아
+        // 이후 비관적 락 조회가 정상 작동합니다.
+        List<Cart> cartItems = cartService.getOrderCartItemsWithoutProduct(memberId, request.cartIds());
 
         List<Cart> sortedCartItems = cartItems.stream()
                 .sorted(Comparator.comparing(cart -> cart.getProduct().getId()))
@@ -149,6 +192,7 @@ public class OrderService {
             orderItems.add(orderItem);
 
             product.decreaseStock(cart.getQuantity());
+            product.increaseSalesCount(cart.getQuantity());
         }
 
         orderItemRepository.saveAll(orderItems);

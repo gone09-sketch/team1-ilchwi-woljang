@@ -22,6 +22,7 @@ public enum ErrorCode {
 
     // product
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
+    INVALID_PRICE_RANGE(HttpStatus.BAD_REQUEST, "최소 가격이 최대 가격보다 클 수 없습니다."),
 
     // cart
     INVALID_QUANTITY(HttpStatus.BAD_REQUEST, "수량은 1개 이상이어야 합니다."),
@@ -43,7 +44,14 @@ public enum ErrorCode {
     EMPTY_ORDER_PREVIEW(HttpStatus.BAD_REQUEST, "주문할 상품이 없습니다."),
     NOT_ORDERABLE_PRODUCT(HttpStatus.BAD_REQUEST, "주문할 수 없는 상품이 포함되어 있습니다."),
     OUT_OF_STOCK(HttpStatus.BAD_REQUEST, "재고가 부족합니다."),
-    ORDER_CONFLICT(HttpStatus.CONFLICT, "주문 요청이 중복되었습니다. 잠시 후 다시 시도해주세요.");
+    ORDER_CONFLICT(HttpStatus.CONFLICT, "주문 요청이 중복되었습니다. 잠시 후 다시 시도해주세요."),
+
+    // chat
+    CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "채팅방을 찾을 수 없습니다."),
+    CHAT_ROOM_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 채팅방이 존재합니다."),
+    CHAT_MESSAGE_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "채팅 메시지 전송에 실패했습니다."),
+    COMPLETED_CHAT_ROOM_MESSAGE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "완료된 채팅방에는 메시지를 보낼 수 없습니다."),
+    INVALID_CHAT_ROOM_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "변경할 수 없는 채팅방 상태입니다.");
 
     private final HttpStatus status;
     private final String message;

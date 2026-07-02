@@ -18,6 +18,7 @@ import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import com.team1ilchwiwoljang.domain.product.service.ProductService;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -109,6 +110,52 @@ class CartServiceTest {
 
         assertThat(response.items()).isEmpty();
         assertThat(response.cartTotalPrice()).isZero();
+    }
+
+    @Test
+    @DisplayName("장바구니 상품 수량을 변경하면 변경된 상품 응답을 반환한다")
+    void updateCartItemQuantityReturnsUpdatedItem() {
+        Long memberId = 1L;
+        Long cartItemId = 10L;
+        Product product = createProduct("keyboard", 1_000, 10, ProductStatus.ON_SALE);
+        Cart cart = Cart.create(createMember(), product, 1);
+        given(cartRepository.findByIdAndMemberIdWithProduct(cartItemId, memberId))
+                .willReturn(Optional.of(cart));
+
+        CartItemResponse response = cartService.updateCartItemQuantity(memberId, cartItemId, 4);
+
+        assertThat(response.quantity()).isEqualTo(4);
+        assertThat(response.itemTotalPrice()).isEqualTo(4_000L);
+        assertThat(response.orderable()).isTrue();
+    }
+
+    @Test
+    @DisplayName("변경할 장바구니 수량이 재고보다 많으면 예외가 발생한다")
+    void updateCartItemQuantityThrowsWhenQuantityExceedsStock() {
+        Long memberId = 1L;
+        Long cartItemId = 10L;
+        Product product = createProduct("keyboard", 1_000, 2, ProductStatus.ON_SALE);
+        Cart cart = Cart.create(createMember(), product, 1);
+        given(cartRepository.findByIdAndMemberIdWithProduct(cartItemId, memberId))
+                .willReturn(Optional.of(cart));
+
+        assertThatThrownBy(() -> cartService.updateCartItemQuantity(memberId, cartItemId, 3))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CART_ITEM_QUANTITY_EXCEEDED);
+    }
+
+    @Test
+    @DisplayName("회원의 장바구니 상품을 삭제한다")
+    void deleteCartItemDeletesMemberCartItem() {
+        Long memberId = 1L;
+        Long cartItemId = 10L;
+        Cart cart = Cart.create(createMember(), createProduct("keyboard", 1_000, 10, ProductStatus.ON_SALE), 1);
+        given(cartRepository.findByIdAndMemberIdWithProduct(cartItemId, memberId))
+                .willReturn(Optional.of(cart));
+
+        cartService.deleteCartItem(memberId, cartItemId);
+
+        verify(cartRepository).delete(cart);
     }
 
     @Test

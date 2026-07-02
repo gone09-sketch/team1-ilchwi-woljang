@@ -10,7 +10,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "products")
+@Table(
+        name = "products",
+        indexes = {
+                @Index(name = "idx_product_status_created_at", columnList = "status, created_at"),
+                @Index(name = "idx_product_category_status_created_at", columnList = "category_id, status, created_at"),
+                @Index(name = "idx_product_status_price", columnList = "status, price")
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Product extends BaseEntity {
@@ -32,6 +39,9 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     private int stock;
 
+    @Column(nullable = false)
+    private int salesCount;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private ProductStatus status;
@@ -43,6 +53,7 @@ public class Product extends BaseEntity {
         this.name = name;
         this.price = price;
         this.stock = stock;
+        this.salesCount = 0; // 초기값 0 세팅
         this.status = status;
         this.description = description;
         this.category = category;
@@ -61,5 +72,12 @@ public class Product extends BaseEntity {
             throw new BusinessException(ErrorCode.OUT_OF_STOCK);
         }
         this.stock -= quantity;
+    }
+
+    public void increaseSalesCount(int quantity) {
+        if (quantity < 0) {
+            throw new IllegalArgumentException("판매량 증가는 음수일 수 없습니다.");
+        }
+        this.salesCount += quantity;
     }
 }

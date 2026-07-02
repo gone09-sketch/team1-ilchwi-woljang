@@ -10,6 +10,7 @@ import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.product.dto.ProductResponse;
 import com.team1ilchwiwoljang.domain.product.dto.response.ProductDetailResponse;
+import com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse;
 import com.team1ilchwiwoljang.domain.product.dto.response.ProductSearchItemResponse;
 import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
@@ -164,5 +165,73 @@ class ProductControllerTest {
 
         mockMvc.perform(get("/api/products/{productId}", productId))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("인기 상품 목록을 조회하면 200 OK와 인기 상품 목록을 반환한다.")
+    void given_validLimit_whenGetPopularProducts_thenStatus200() throws Exception {
+        int limit = 2;
+        List<PopularProductResponse> response = List.of(
+                new PopularProductResponse(1L, "티셔츠", 10000, 100, ProductStatus.ON_SALE, 50),
+                new PopularProductResponse(2L, "맨투맨", 20000, 50, ProductStatus.ON_SALE, 30)
+        );
+
+        given(productService.getPopularProducts(limit)).willReturn(response);
+
+        mockMvc.perform(get("/api/products/popular").param("limit", String.valueOf(limit)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].productId").value(1))
+                .andExpect(jsonPath("$.data[0].name").value("티셔츠"))
+                .andExpect(jsonPath("$.data[0].salesCount").value(50))
+                .andExpect(jsonPath("$.data[1].productId").value(2))
+                .andExpect(jsonPath("$.data[1].name").value("맨투맨"))
+                .andExpect(jsonPath("$.data[1].salesCount").value(30));
+    }
+
+    @Test
+    @DisplayName("인기 상품 조회 시 limit이 100을 초과하면 400 Bad Request를 반환한다.")
+    void given_limitExceedingMax_whenGetPopularProducts_thenStatus400() throws Exception {
+        mockMvc.perform(get("/api/products/popular").param("limit", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("limit"));
+    }
+
+    @Test
+    @DisplayName("인기 상품 조회 시 limit이 1 미만이면 400 Bad Request를 반환한다.")
+    void given_limitUnderMin_whenGetPopularProducts_thenStatus400() throws Exception {
+        mockMvc.perform(get("/api/products/popular").param("limit", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("limit"));
+    }
+
+    @Test
+    @DisplayName("가격 범위 조회 시 minPrice가 음수면 400 Bad Request를 반환한다.")
+    void given_negativeMinPrice_whenGetProductsByPriceRange_thenStatus400() throws Exception {
+        mockMvc.perform(get("/api/products/price-range")
+                        .param("minPrice", "-1")
+                        .param("maxPrice", "10000"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("minPrice"));
+    }
+
+    @Test
+    @DisplayName("가격 범위 조회 시 minPrice가 maxPrice보다 크면 400 Bad Request를 반환한다.")
+    void given_minPriceGreaterThanMaxPrice_whenGetProductsByPriceRange_thenStatus400() throws Exception {
+        given(productService.getProductsByPriceRange(20000, 10000, 0, 20))
+                .willThrow(new BusinessException(ErrorCode.INVALID_PRICE_RANGE));
+
+        mockMvc.perform(get("/api/products/price-range")
+                        .param("minPrice", "20000")
+                        .param("maxPrice", "10000"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("INVALID_PRICE_RANGE"));
     }
 }

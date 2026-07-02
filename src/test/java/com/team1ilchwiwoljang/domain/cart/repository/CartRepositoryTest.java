@@ -2,6 +2,7 @@ package com.team1ilchwiwoljang.domain.cart.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.team1ilchwiwoljang.common.config.QueryDslConfig;
 import com.team1ilchwiwoljang.domain.cart.entity.Cart;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
@@ -13,9 +14,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
 @DataJpaTest
+@Import(QueryDslConfig.class)
 @ActiveProfiles("test")
 class CartRepositoryTest {
 

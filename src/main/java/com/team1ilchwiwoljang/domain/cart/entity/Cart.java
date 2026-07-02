@@ -55,6 +55,11 @@ public class Cart extends BaseEntity {
         this.quantity += quantity;
     }
 
+    public void changeQuantity(int quantity) {
+        validateQuantity(quantity);
+        this.quantity = quantity;
+    }
+
     private void validateQuantity(int quantity) {
         if (quantity < 1) {
             throw new BusinessException(ErrorCode.INVALID_QUANTITY);

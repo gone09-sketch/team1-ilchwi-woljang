@@ -2,6 +2,7 @@ package com.team1ilchwiwoljang.domain.product.service;
 
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
+import com.team1ilchwiwoljang.domain.category.entity.Category;
 import com.team1ilchwiwoljang.domain.category.repository.CategoryRepository;
 import com.team1ilchwiwoljang.domain.product.dto.ProductResponse;
 import com.team1ilchwiwoljang.domain.product.dto.response.ProductDetailResponse;
@@ -9,8 +10,14 @@ import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.product.dto.response.ProductSearchItemResponse;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
+import com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse;
+import com.team1ilchwiwoljang.domain.product.dto.response.PopularProductsCacheDto;
 import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
+import java.util.ArrayList;
+import com.team1ilchwiwoljang.domain.search.service.SearchKeywordService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +25,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -25,6 +33,8 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final SearchKeywordService searchKeywordService;
+    private final PopularProductCacheService popularProductCacheService;
 
     /**
      * 상품 엔티티 조회
@@ -73,14 +83,16 @@ public class ProductService {
             int page,
             int size
     ) {
-        if (!categoryRepository.existsById(categoryId)) {
-            throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
-        }
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
 
         Pageable pageable = PageRequest.of(page, size, resolveSort(sort));
+        List<Long> categoryIds = new ArrayList<>();
+        categoryIds.add(category.getId());
+        category.getChildren().forEach(child -> categoryIds.add(child.getId()));
 
-        return productRepository.findByCategoryIdAndStatus(
-                        categoryId,
+        return productRepository.findByCategoryIdInAndStatus(
+                        categoryIds,
                         ProductStatus.ON_SALE,
                         pageable
                 )
@@ -100,10 +112,51 @@ public class ProductService {
             throw new BusinessException(ErrorCode.VALIDATION_FAILED);
         }
 
+        try {
+            searchKeywordService.incrementSearchCount(normalizedKeyword);
+        } catch (Exception e) {
+            log.warn("인기 검색어 카운트 증가 실패. 검색 결과 반환은 계속 진행합니다. keyword={}, error={}",
+                    normalizedKeyword, e.getMessage());
+        }
+
         return PageResponse.from(
                 productRepository.findByNameContainingIgnoreCaseAndStatusNot(
                         normalizedKeyword,
                         ProductStatus.STOPPED,
+                        pageable
+                ).map(ProductSearchItemResponse::from)
+        );
+    }
+
+    /**
+     * 가격 범위로 판매 중인 상품 목록 조회
+     */
+    public Page<ProductResponse> getProductsByPriceRange(int minPrice, int maxPrice, int page, int size) {
+        if (minPrice > maxPrice) {
+            throw new BusinessException(ErrorCode.INVALID_PRICE_RANGE);
+        }
+        Pageable pageable = PageRequest.of(page, size, Sort.by("price").ascending());
+        return productRepository.findByStatusAndPriceBetween(ProductStatus.ON_SALE, minPrice, maxPrice, pageable).map(ProductResponse::from);
+    }
+
+    /**
+     * 상품명 기반 검색 (FULLTEXT, ngram)
+     * 판매 중지 상품은 검색 결과에서 제외합니다.
+     */
+    public PageResponse<ProductSearchItemResponse> searchProductsFullText(String keyword, int page, int size) {
+        String normalizedKeyword = keyword == null
+                ? ""
+                : keyword.trim();
+
+        if (normalizedKeyword.isBlank()) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+
+        Pageable pageable = PageRequest.of(page, size);
+        return PageResponse.from(
+                productRepository.searchByNameFullText(
+                        normalizedKeyword,
+                        ProductStatus.STOPPED.name(),
                         pageable
                 ).map(ProductSearchItemResponse::from)
         );
@@ -125,4 +178,14 @@ public class ProductService {
         };
     }
 
+    /**
+     * 누적 판매량 기준 인기 상품 목록 조회 (캐싱 적용)
+     * 캐시에서 최대 100개의 인기 상품을 단일 키로 가져온 후, 요청된 limit 만큼 메모리에서 잘라서 반환하여 100% 캐시 히트를 보장합니다.
+     */
+    public List<PopularProductResponse> getPopularProducts(int limit) {
+        PopularProductsCacheDto cachedDto = popularProductCacheService.getCachedPopularProducts();
+        return cachedDto.products().stream()
+                .limit(limit)
+                .toList();
+    }
 }

@@ -11,11 +11,17 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -47,6 +53,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
 
@@ -66,12 +73,7 @@ public class SecurityConfig {
                 )
 
                 // 인가 설정
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
-                        .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
-                        .requestMatchers(ADMIN_ENDPOINTS).hasRole("ADMIN")
-                        .anyRequest().authenticated()
-                )
+                .authorizeHttpRequests(this::configureAuthorization)
 
                 // Controller에 도착하기 전에 JWT를 먼저 검증합니다.
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -83,6 +85,20 @@ public class SecurityConfig {
             "/api/auth/signup",
             "/api/auth/login",
             "/api/auth/refresh",
+
+            /*
+             * STOMP WebSocket handshake endpoint입니다.
+             * HTTP Security에서는 통과시키고,
+             * 실제 JWT 인증은 ChatStompChannelInterceptor가 STOMP CONNECT frame에서 처리합니다.
+             */
+            "/ws/chat",
+
+            /*
+             * 채팅 테스트 화면은 local 프로파일에서만 Controller가 제공합니다.
+             * 실제 STOMP 인증은 /ws/chat 연결 이후 CONNECT 프레임에서 처리합니다.
+             */
+            "/chat-test.html",
+
             "/error",
             "/error/**",
             "/api/ai/chatbot",
@@ -94,10 +110,39 @@ public class SecurityConfig {
             "/api/categories",
             "/api/categories/**",
             "/api/products",
-            "/api/products/**"
+            "/api/products/**",
+            "/api/search/popular"
     };
 
     private static final String[] ADMIN_ENDPOINTS = {
             "/api/admins/**"
     };
+
+    private void configureAuthorization(
+            AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth
+    ) {
+        auth
+                .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
+                .requestMatchers(ADMIN_ENDPOINTS).hasRole("ADMIN")
+                .anyRequest().authenticated();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "null"
+        ));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", configuration);
+        return source;
+    }
 }
