@@ -150,21 +150,24 @@ const elements = {
   submitAdminInquiryAnswer: document.getElementById("submitAdminInquiryAnswer"),
   inquiryStatus: document.getElementById("inquiryStatus"),
   adminInquiryStatus: document.getElementById("adminInquiryStatus"),
+  inquiryButton: document.getElementById("inquiryButton"),
+  inquiryDivider: document.getElementById("inquiryDivider"),
   loginButton: document.getElementById("loginButton"),
   signupButton: document.getElementById("signupButton"),
-  adminMenuButton: document.querySelector(".admin-menu-button"),
+  adminMenuButton: document.querySelectorAll(".admin-only"),
   chatWidgetToggle: document.getElementById("chatWidgetToggle"),
   chatWidgetClose: document.getElementById("chatWidgetClose"),
   chatWidgetForm: document.getElementById("chatWidgetForm"),
   chatWidgetConnectButton: document.getElementById("chatWidgetConnectButton"),
+  chatWidgetEndButton: document.getElementById("chatWidgetEndButton"),
   chatWidgetPanel: document.getElementById("chatWidgetPanel"),
   chatWidgetMessages: document.getElementById("chatWidgetMessages"),
   chatWidgetModeLabel: document.getElementById("chatWidgetModeLabel"),
   chatWidgetInput: document.getElementById("chatWidgetInput"),
   adminMenuDivider: document.querySelectorAll(".admin-only"),
-  adminMenuButton: document.querySelectorAll(".admin-only"),
   modalRoot: document.getElementById("modalRoot"),
   toast: document.getElementById("toast"),
+  mainNav: document.getElementById("mainNav"),
   adminChatView: document.getElementById("adminChatView"),
   adminChatRoomList: document.getElementById("adminChatRoomList"),
   refreshAdminChats: document.getElementById("refreshAdminChats"),
@@ -323,14 +326,13 @@ function bindEvents() {
   elements.chatWidgetClose?.addEventListener("click", () => toggleChatWidget(false));
   elements.chatWidgetForm?.addEventListener("submit", handleChatWidgetSubmit);
   elements.chatWidgetConnectButton?.addEventListener("click", connectToAgent);
-
-  document.querySelectorAll("[data-action='open-admin-chats']").forEach(btn => {
-    btn.addEventListener("click", () => {
-      if (isAdmin()) {
-        switchView("adminChatView");
-        loadAdminChatRooms();
-      }
-    });
+  elements.chatWidgetEndButton?.addEventListener("click", endAgentChat);
+  
+  elements.chatWidgetInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      elements.chatWidgetForm?.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+    }
   });
   
   elements.refreshAdminChats?.addEventListener("click", () => loadAdminChatRooms());
@@ -462,6 +464,9 @@ function handleAction(button) {
   } else if (action === "open-admin-orders") {
     showView("adminOrders");
     loadAdminOrders(true);
+  } else if (action === "open-admin-chats") {
+    showView("adminChatView");
+    loadAdminChatRooms();
   } else if (action === "open-admin-inquiries") {
     showView("adminInquiry");
     loadAdminInquiries(true);
@@ -742,8 +747,7 @@ async function loadProductDetail(productId) {
   renderDetailLoading();
 
   try {
-    const product = await requestApi(`/api/products/${productId}`);
-    state.selectedProduct = product;
+    state.selectedProduct = await requestApi(`/api/products/${productId}`);
     renderProductDetail();
   } catch (error) {
     showToast(error.message);
@@ -1200,6 +1204,7 @@ function showView(view) {
   elements.adminOrdersView.classList.toggle("active", view === "adminOrders");
   elements.customerCenterView.classList.toggle("active", view === "customer");
   elements.adminInquiryView.classList.toggle("active", view === "adminInquiry");
+  if (elements.adminChatView) elements.adminChatView.classList.toggle("active", view === "adminChatView");
   elements.infoView.classList.toggle("active", view === "info");
   renderNavState();
 }
@@ -1245,6 +1250,9 @@ function renderAuthState() {
   elements.loginButton.dataset.action = loggedIn ? "logout" : "open-login";
   elements.signupButton.textContent = loggedIn ? "주문내역" : "회원가입";
   elements.signupButton.dataset.action = loggedIn ? "open-orders" : "open-signup";
+  if (elements.inquiryButton) elements.inquiryButton.hidden = admin;
+  if (elements.inquiryDivider) elements.inquiryDivider.hidden = admin;
+  if (elements.mainNav) elements.mainNav.hidden = admin;
   elements.adminMenuButton.forEach(el => el.hidden = !admin);
 }
 
@@ -2217,7 +2225,9 @@ async function initChatBotMode() {
   state.chatWidget.conversationId = Date.now().toString();
   elements.chatWidgetModeLabel.textContent = "AI 챗봇";
   elements.chatWidgetConnectButton.hidden = false;
-  
+  if (elements.chatWidgetEndButton) elements.chatWidgetEndButton.hidden = true;
+  elements.chatWidgetInput.disabled = false;
+
   addChatWidgetMessage("AI 챗봇과 연결 중입니다...", "chat-widget-message system");
   
   try {
@@ -2255,6 +2265,7 @@ async function handleChatWidgetSubmit(event) {
     if (state.chatWidget.socket && state.chatWidget.socket.connected) {
       state.chatWidget.socket.publish({
         destination: `/pub/chat/rooms/${state.chatWidget.chatRoomId}/messages`,
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ content: text })
       });
     } else {
@@ -2270,6 +2281,7 @@ async function connectToAgent() {
   }
   
   elements.chatWidgetConnectButton.hidden = true;
+  if (elements.chatWidgetEndButton) elements.chatWidgetEndButton.hidden = false;
   state.chatWidget.mode = "agent";
   elements.chatWidgetModeLabel.textContent = "상담원 연결";
   
@@ -2295,11 +2307,7 @@ async function connectToAgent() {
   
   state.chatWidget.chatRoomId = chatRoomId;
   
-  if (roomStatus === "COMPLETED") {
-    elements.chatWidgetInput.disabled = true;
-  } else {
-    elements.chatWidgetInput.disabled = false;
-  }
+  elements.chatWidgetInput.disabled = roomStatus === "COMPLETED";
   
   try {
     const messages = await requestApi(`/api/chat/rooms/${chatRoomId}/messages`, { auth: true });
@@ -2308,7 +2316,7 @@ async function connectToAgent() {
     let lastId = 0;
     messages.forEach(msg => {
       const type = msg.senderRole === "ADMIN" ? "chat-widget-message from-other" : "chat-widget-message from-user";
-      state.chatWidget.messages.push({ text: msg.message, type });
+      state.chatWidget.messages.push({ text: msg.content, type });
       if (msg.messageId > lastId) lastId = msg.messageId;
     });
     
@@ -2324,6 +2332,18 @@ async function connectToAgent() {
   } catch (error) {
     addChatWidgetMessage("채팅 이력을 불러오는데 실패했습니다.", "chat-widget-message system");
   }
+}
+
+function endAgentChat() {
+  if (state.chatWidget.socket) {
+    state.chatWidget.socket.deactivate();
+    state.chatWidget.socket = null;
+  }
+  state.chatWidget.chatRoomId = null;
+  state.chatWidget.subscribed = false;
+  state.chatWidget.messages = [];
+
+  initChatBotMode();
 }
 
 function connectStompClient(chatRoomId) {
@@ -2349,7 +2369,7 @@ function connectStompClient(chatRoomId) {
           const type = msg.senderRole === "ADMIN" ? "chat-widget-message from-other" : "chat-widget-message from-user";
           if (msg.messageId > state.chatWidget.lastReceivedMessageId) {
             state.chatWidget.lastReceivedMessageId = msg.messageId;
-            addChatWidgetMessage(msg.message, type);
+            addChatWidgetMessage(msg.content, type);
           }
         });
       } catch (e) {
@@ -2361,7 +2381,7 @@ function connectStompClient(chatRoomId) {
         const type = data.senderRole === "ADMIN" ? "chat-widget-message from-other" : "chat-widget-message from-user";
         if (data.messageId > state.chatWidget.lastReceivedMessageId) {
           state.chatWidget.lastReceivedMessageId = data.messageId;
-          addChatWidgetMessage(data.message, type);
+          addChatWidgetMessage(data.content, type);
         }
       });
       state.chatWidget.subscribed = true;
@@ -2372,7 +2392,8 @@ function connectStompClient(chatRoomId) {
         addChatWidgetMessage("상담이 종료되어 메시지를 보낼 수 없습니다.", "chat-widget-message system");
         elements.chatWidgetInput.disabled = true;
       } else {
-        addChatWidgetMessage("메시지 전송에 실패했습니다.", "chat-widget-message system");
+        const details = frame.body ? frame.body : '내용 없음';
+        addChatWidgetMessage(`메시지 전송에 실패했습니다. (사유: ${code || '알 수 없음'} - ${details})`, "chat-widget-message system");
       }
     }
   });
@@ -2440,7 +2461,7 @@ async function openAdminChatRoom(chatRoomId, status) {
     let lastId = 0;
     messages.forEach(msg => {
       const type = msg.senderRole === "ADMIN" ? "chat-widget-message from-user" : "chat-widget-message from-other";
-      state.adminChat.messages.push({ text: msg.message, type });
+      state.adminChat.messages.push({ text: msg.content, type });
       if (msg.messageId > lastId) lastId = msg.messageId;
     });
     
@@ -2491,7 +2512,7 @@ function connectAdminStompClient(chatRoomId) {
         const type = data.senderRole === "ADMIN" ? "chat-widget-message from-user" : "chat-widget-message from-other";
         if (data.messageId > state.adminChat.lastReceivedMessageId) {
           state.adminChat.lastReceivedMessageId = data.messageId;
-          addAdminChatMessage(data.message, type);
+          addAdminChatMessage(data.content, type);
         }
       });
       state.adminChat.subscribed = true;
@@ -2514,6 +2535,7 @@ async function handleAdminChatSubmit(event) {
   if (state.adminChat.socket && state.adminChat.socket.connected) {
     state.adminChat.socket.publish({
       destination: `/pub/chat/rooms/${state.adminChat.activeRoomId}/messages`,
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({ content: text })
     });
   } else {

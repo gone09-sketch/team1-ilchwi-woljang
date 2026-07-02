@@ -14,10 +14,10 @@
       <button type="button" id="loginButton" data-action="open-login">로그인</button>
       <span>|</span>
       <button type="button" id="signupButton" data-action="open-signup">회원가입</button>
-      <span>|</span>
-      <button type="button" data-action="open-inquiry">고객문의</button>
+      <span id="inquiryDivider">|</span>
+      <button type="button" id="inquiryButton" data-action="open-inquiry">고객문의</button>
       <span class="admin-only" hidden>|</span>
-      <button class="admin-only" type="button" data-action="open-admin-orders" hidden>주문/문의 관리</button>
+      <button class="admin-only" type="button" data-action="open-admin-orders" hidden>주문 관리</button>
       <span class="admin-only" hidden>|</span>
       <button class="admin-only" type="button" data-action="open-admin-chats" hidden>고객 채팅 관리</button>
     </div>
@@ -58,7 +58,7 @@
       </div>
     </div>
 
-    <nav class="main-nav" aria-label="주요 메뉴">
+    <nav id="mainNav" class="main-nav" aria-label="주요 메뉴">
       <button class="category-toggle" id="categoryToggle" type="button" aria-label="카테고리 열기" aria-expanded="false">
         <span></span>
         <span></span>
@@ -369,7 +369,11 @@
           </div>
           <form class="admin-chat-form" id="adminChatForm">
             <input type="text" id="adminChatInput" placeholder="메시지를 입력하세요" autocomplete="off" disabled>
-            <button class="primary-button" type="submit" id="adminChatSendBtn" disabled>전송</button>
+            <button class="primary-button icon-send-btn" type="submit" id="adminChatSendBtn" disabled aria-label="전송">
+              <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+              </svg>
+            </button>
           </form>
         </div>
       </article>
@@ -402,13 +406,18 @@
         </div>
         <div class="chat-widget-header-actions">
           <button type="button" class="text-button" id="chatWidgetConnectButton">상담원 연결</button>
+          <button type="button" class="text-button" id="chatWidgetEndButton" hidden>상담 종료</button>
           <button type="button" data-modal-close-widget aria-label="닫기" id="chatWidgetClose">×</button>
         </div>
       </header>
       <div class="chat-widget-messages" id="chatWidgetMessages"></div>
       <form class="chat-widget-form" id="chatWidgetForm">
         <textarea id="chatWidgetInput" placeholder="메시지를 입력하세요." rows="1" maxlength="2000"></textarea>
-        <button class="primary-button" type="submit">전송</button>
+        <button class="primary-button icon-send-btn" type="submit" aria-label="전송">
+          <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+          </svg>
+        </button>
       </form>
     </section>
   </div>
