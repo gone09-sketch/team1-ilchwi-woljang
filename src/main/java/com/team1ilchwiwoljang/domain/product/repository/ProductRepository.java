@@ -15,6 +15,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Page<Product> findByCategoryIdAndStatus(Long categoryId, ProductStatus status, Pageable pageable);
 
+    Page<Product> findByCategoryIdInAndStatus(List<Long> categoryIds, ProductStatus status, Pageable pageable);
+
     // Spring Data 파생 쿼리로 간단히 유지합니다.
     // 검색 조건이 더 늘어나면 @Query 또는 Querydsl로 옮깁니다.
     Page<Product> findByNameContainingIgnoreCaseAndStatusNot(
