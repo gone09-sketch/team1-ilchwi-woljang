@@ -39,7 +39,7 @@ public class ChatMessageService {
          */
         ChatRoom chatRoom = chatRoomService.getAccessibleChatRoom(memberId, role, chatRoomId);
 
-        return chatMessageRepository.findAllByChatRoomIdOrderByCreatedAtAsc(chatRoom.getId())
+        return chatMessageRepository.findAllWithSenderByChatRoomId(chatRoom.getId())
                 .stream()
                 .map(ChatMessageResponse::from)
                 .toList();
