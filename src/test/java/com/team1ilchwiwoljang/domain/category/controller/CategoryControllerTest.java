@@ -45,8 +45,8 @@ class CategoryControllerTest {
         // given
         Long categoryId = 1L;
         List<ProductResponse> responses = List.of(
-                new ProductResponse(1L, "티셔츠", 10000, 100, ProductStatus.ON_SALE, "편안한 티셔츠"),
-                new ProductResponse(2L, "맨투맨", 20000, 50, ProductStatus.ON_SALE, "따뜻한 맨투맨")
+                new ProductResponse(1L, "티셔츠", 10000, 100, ProductStatus.ON_SALE, "편안한 티셔츠", "/images/products/bag-01.png"),
+                new ProductResponse(2L, "맨투맨", 20000, 50, ProductStatus.ON_SALE, "따뜻한 맨투맨", "/images/products/bag-02.png")
         );
 
         given(productService.getProductsByCategory(eq(categoryId), anyString(), anyInt(), anyInt())).willReturn(new org.springframework.data.domain.PageImpl<>(responses));

@@ -39,7 +39,7 @@ class CacheSerializationTest {
         assertThat(deserializedKeywords.get(0).searchCount()).isEqualTo(100L);
 
         List<PopularProductResponse> productList = new ArrayList<>();
-        productList.add(new PopularProductResponse(1L, "베이직 셔츠", 10000, 50, ProductStatus.ON_SALE, 10));
+        productList.add(new PopularProductResponse(1L, "베이직 셔츠", 10000, 50, ProductStatus.ON_SALE, 10, "/images/products/bag-01.png"));
 
         byte[] serializedProducts = serializer.serialize(productList);
         assertThat(serializedProducts).isNotEmpty();

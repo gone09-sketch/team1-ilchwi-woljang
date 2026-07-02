@@ -1,6 +1,7 @@
 package com.team1ilchwiwoljang.domain.inquiry.controller;
 
 import com.team1ilchwiwoljang.common.config.SecurityConfig;
+import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.common.security.JwtAuthenticationFilter;
 import com.team1ilchwiwoljang.common.security.JwtTokenPayload;
 import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
@@ -9,6 +10,7 @@ import org.springframework.http.HttpHeaders;
 import tools.jackson.databind.ObjectMapper;
 import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryAnswerRequest;
 import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryCreateRequest;
+import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryAdminResponse;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryAnswerResponse;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryCreateResponse;
 import com.team1ilchwiwoljang.domain.inquiry.entity.InquiryStatus;
@@ -25,11 +27,13 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -59,6 +63,44 @@ class InquiryControllerTest {
 
     @MockitoBean
     private MemberService memberService;
+
+    @Test
+    @DisplayName("관리자가 문의 목록을 요청하면 200 OK와 함께 페이징된 문의 목록을 반환한다")
+    void given_admin_whenGetAdminInquiries_thenStatus200() throws Exception {
+        // given
+        LocalDateTime createdAt = LocalDateTime.of(2026, 6, 25, 14, 30);
+        InquiryAdminResponse inquiry = new InquiryAdminResponse(
+                1L,
+                MEMBER_ID,
+                "배송 문의",
+                "언제 배송되나요?",
+                null,
+                null,
+                InquiryStatus.WAITING,
+                createdAt,
+                null
+        );
+        PageResponse<InquiryAdminResponse> pageResponse =
+                new PageResponse<>(List.of(inquiry), 0, 20, 1L, 1, true);
+
+        givenValidAdminAccessToken();
+        given(inquiryService.getAdminInquiries(any()))
+                .willReturn(pageResponse);
+
+        // when & then
+        mockMvc.perform(get("/api/admins/inquiry")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN)
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].id").value(1L))
+                .andExpect(jsonPath("$.data.content[0].memberId").value(MEMBER_ID))
+                .andExpect(jsonPath("$.data.content[0].title").value("배송 문의"))
+                .andExpect(jsonPath("$.data.content[0].content").value("언제 배송되나요?"))
+                .andExpect(jsonPath("$.data.content[0].status").value("WAITING"))
+                .andExpect(jsonPath("$.data.totalElements").value(1L));
+    }
 
     @Test
     @DisplayName("인증된 사용자가 올바른 요청을 보내면 201 Created와 함께 문의 응답을 반환한다")

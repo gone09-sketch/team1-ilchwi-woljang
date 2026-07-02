@@ -2,8 +2,10 @@ package com.team1ilchwiwoljang.domain.inquiry.service;
 
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
+import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryAnswerRequest;
 import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryCreateRequest;
+import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryAdminResponse;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryAnswerResponse;
 import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryCreateResponse;
 import com.team1ilchwiwoljang.domain.inquiry.entity.Inquiry;
@@ -18,12 +20,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,6 +53,34 @@ class InquiryServiceTest {
 
     @Mock
     private Clock clock;
+
+    @Test
+    @DisplayName("관리자 문의 목록 조회 시 최신순 페이지를 응답 DTO로 변환한다")
+    void given_pageable_whenGetAdminInquiries_thenReturnPageResponse() {
+        // given
+        Long memberId = 1L;
+        Member member = Member.create("test@example.com", "password", "홍길동", "010-1234-5678");
+        ReflectionTestUtils.setField(member, "id", memberId);
+
+        Inquiry inquiry = Inquiry.create(member, "배송 문의", "언제 배송되나요?");
+        ReflectionTestUtils.setField(inquiry, "id", 10L);
+        ReflectionTestUtils.setField(inquiry, "createdAt", LocalDateTime.of(2026, 6, 25, 14, 30));
+
+        Pageable pageable = PageRequest.of(0, 20);
+        given(inquiryRepository.findAllByOrderByCreatedAtDesc(pageable))
+                .willReturn(new PageImpl<>(List.of(inquiry), pageable, 1));
+
+        // when
+        PageResponse<InquiryAdminResponse> response = inquiryService.getAdminInquiries(pageable);
+
+        // then
+        assertThat(response.totalElements()).isEqualTo(1L);
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content().get(0).id()).isEqualTo(10L);
+        assertThat(response.content().get(0).memberId()).isEqualTo(memberId);
+        assertThat(response.content().get(0).title()).isEqualTo("배송 문의");
+        assertThat(response.content().get(0).status()).isEqualTo(InquiryStatus.WAITING);
+    }
 
     @Test
     @DisplayName("회원 ID와 올바른 요청이 주어지면 문의 생성에 성공한다")
