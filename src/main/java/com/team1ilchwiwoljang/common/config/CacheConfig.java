@@ -52,14 +52,19 @@ public class CacheConfig implements CachingConfigurer {
 
     @Bean
     @Profile("!test")
-    @SuppressWarnings("removal")
-    public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
-        // record 역직렬화를 완벽하게 지원하고 사람이 읽을 수 있는 JSON으로 캐시를 관리하도록 직렬화기 지정
-        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(objectMapper);
+    public GenericJackson2JsonRedisSerializer redisCacheValueSerializer() {
+        return new GenericJackson2JsonRedisSerializer(objectMapper);
+    }
 
+    @Bean
+    @Profile("!test")
+    public CacheManager cacheManager(
+            RedisConnectionFactory connectionFactory,
+            GenericJackson2JsonRedisSerializer redisCacheValueSerializer
+    ) {
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(redisCacheValueSerializer))
                 .entryTtl(Duration.ofMinutes(30));
 
         Map<String, RedisCacheConfiguration> customConfigs = new HashMap<>();

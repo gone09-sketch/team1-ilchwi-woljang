@@ -17,6 +17,9 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -114,25 +117,33 @@ class SearchKeywordServiceIntegrationTest {
 
     @Test
     @DisplayName("동일한 키워드로 여러 쓰레드에서 동시에 검색 요청을 보내도 카운트가 유실되지 않고 정확하게 누적된다.")
-    void givenConcurrentRequests_whenIncrementSearchCount_thenCountIsAccurate() throws InterruptedException {
+    void givenConcurrentRequests_whenIncrementSearchCount_thenCountIsAccurate() throws Exception {
         // given
         String keyword = "동시성테스트";
-        int threadCount = 10;
+        int threadCount = 20;
         ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
-        CountDownLatch latch = new CountDownLatch(threadCount);
+        CountDownLatch readyLatch = new CountDownLatch(threadCount);
+        CountDownLatch startLatch = new CountDownLatch(1);
+
+        List<Future<?>> futures = IntStream.range(0, threadCount)
+                .mapToObj(i -> executorService.submit(() -> {
+                    readyLatch.countDown();
+                    startLatch.await();
+                    searchKeywordService.incrementSearchCount(keyword);
+                    return null;
+                }))
+                .toList();
 
         // when
-        for (int i = 0; i < threadCount; i++) {
-            executorService.execute(() -> {
-                try {
-                    searchKeywordService.incrementSearchCount(keyword);
-                } finally {
-                    latch.countDown();
-                }
-            });
+        assertThat(readyLatch.await(5, TimeUnit.SECONDS)).isTrue();
+        startLatch.countDown();
+
+        for (Future<?> future : futures) {
+            future.get(5, TimeUnit.SECONDS);
         }
-        latch.await();
+
         executorService.shutdown();
+        assertThat(executorService.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
 
         // then
         SearchKeyword result = searchKeywordRepository.findByKeyword(keyword).orElseThrow();
