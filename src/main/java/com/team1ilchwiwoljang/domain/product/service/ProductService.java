@@ -10,7 +10,9 @@ import com.team1ilchwiwoljang.domain.product.dto.response.ProductSearchItemRespo
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
+import com.team1ilchwiwoljang.domain.search.service.SearchKeywordService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +20,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -25,6 +28,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final SearchKeywordService searchKeywordService;
 
     /**
      * 상품 엔티티 조회
@@ -98,6 +102,13 @@ public class ProductService {
 
         if (normalizedKeyword.isBlank()) {
             throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+
+        try {
+            searchKeywordService.incrementSearchCount(normalizedKeyword);
+        } catch (Exception e) {
+            log.warn("인기 검색어 카운트 증가 실패. 검색 결과 반환은 계속 진행합니다. keyword={}, error={}",
+                    normalizedKeyword, e.getMessage());
         }
 
         return PageResponse.from(

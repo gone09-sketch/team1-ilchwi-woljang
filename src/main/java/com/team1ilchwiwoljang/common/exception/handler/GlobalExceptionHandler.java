@@ -12,10 +12,28 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolationException(ConstraintViolationException e) {
+        List<ErrorResponse.FieldError> fieldErrors = e.getConstraintViolations().stream()
+                .map(cv -> {
+                    String propertyPath = cv.getPropertyPath().toString();
+                    String field = propertyPath.contains(".")
+                            ? propertyPath.substring(propertyPath.lastIndexOf('.') + 1)
+                            : propertyPath;
+                    return new ErrorResponse.FieldError(field, cv.getMessage());
+                })
+                .toList();
+
+        ErrorCode errorCode = ErrorCode.VALIDATION_FAILED;
+        ErrorResponse response = ErrorResponse.of(errorCode.name(), errorCode.getMessage(), fieldErrors);
+        return ResponseEntity.status(errorCode.getStatus()).body(response);
+    }
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
