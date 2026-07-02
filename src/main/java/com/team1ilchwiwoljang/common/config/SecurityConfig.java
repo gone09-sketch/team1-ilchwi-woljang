@@ -11,6 +11,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -72,60 +73,60 @@ public class SecurityConfig {
                 )
 
                 // 인가 설정
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/auth/signup",
-                                "/api/auth/login",
-                                "/api/auth/refresh",
-
-                                /*
-                                 * /chat-test.html은 ChatTestPageController가 local 프로파일에서만 제공합니다.
-                                 * /ws/chat은 HTTP 필터에서 JWT를 읽을 수 없는 WebSocket handshake 경로라 permitAll로 열고,
-                                 * 실제 인증/인가는 ChatHandshakeInterceptor에서 처리합니다.
-                                 */
-                                "/chat-test.html",
-                                "/ws/chat",
-
-                                // Spring 내부 에러 경로
-                                "/error",
-                                "/error/**"
-                        ).permitAll()
-
-                        .requestMatchers(
-                                // 카테고리 목록 조회는 로그인 없이 볼 수 있게 허용
-                                HttpMethod.GET,
-                                "/api/categories",
-                                "/api/categories/**"
-                        ).permitAll()
-
-                                .requestMatchers(
-                                        // 상품 목록 조회와 상품 상세 조회는 로그인 없이 볼 수 있게 허용
-                                        HttpMethod.GET,
-                                        "/api/products",
-                                        "/api/products/**"
-                                ).permitAll()
-
-                                .requestMatchers(
-                                        // 인기 검색어 조회는 로그인 없이 볼 수 있게 허용
-                                        HttpMethod.GET,
-                                        "/api/search/popular"
-                                ).permitAll()
-
-                                .requestMatchers(
-                                        // 상품 이미지 등 정적 리소스는 로그인 없이 볼 수 있게 허용
-                                        HttpMethod.GET,
-                                        "/images/**"
-                                ).permitAll()
-
-                        .requestMatchers("/api/admins/**").hasRole("ADMIN")
-                        .anyRequest().authenticated()
-                )
+                .authorizeHttpRequests(this::configureAuthorization)
 
                 // Controller에 도착하기 전에 JWT를 먼저 검증합니다.
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-
         return http.build();
+    }
+
+    private static final String[] PUBLIC_ENDPOINTS = {
+            "/api/auth/signup",
+            "/api/auth/login",
+            "/api/auth/refresh",
+
+            /*
+             * STOMP WebSocket handshake endpoint입니다.
+             * HTTP Security에서는 통과시키고,
+             * 실제 JWT 인증은 ChatStompChannelInterceptor가 STOMP CONNECT frame에서 처리합니다.
+             */
+            "/ws/chat",
+
+            /*
+             * 채팅 테스트 화면은 local 프로파일에서만 Controller가 제공합니다.
+             * 실제 STOMP 인증은 /ws/chat 연결 이후 CONNECT 프레임에서 처리합니다.
+             */
+            "/chat-test.html",
+
+            // Spring 내부 에러 경로
+            "/error",
+            "/error/**"
+    };
+
+    private static final String[] PUBLIC_GET_ENDPOINTS = {
+            "/api/categories",
+            "/api/categories/**",
+            "/api/products",
+            "/api/products/**",
+            "/api/search/popular",
+
+            // 상품 이미지 등 정적 리소스는 로그인 없이 볼 수 있게 허용
+            "/images/**"
+    };
+
+    private static final String[] ADMIN_ENDPOINTS = {
+            "/api/admins/**"
+    };
+
+    private void configureAuthorization(
+            AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth
+    ) {
+        auth
+                .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
+                .requestMatchers(ADMIN_ENDPOINTS).hasRole("ADMIN")
+                .anyRequest().authenticated();
     }
 
     @Bean

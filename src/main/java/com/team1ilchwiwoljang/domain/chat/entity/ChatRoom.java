@@ -1,6 +1,8 @@
 package com.team1ilchwiwoljang.domain.chat.entity;
 
 import com.team1ilchwiwoljang.common.entity.BaseEntity;
+import com.team1ilchwiwoljang.common.exception.BusinessException;
+import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -33,12 +35,17 @@ public class ChatRoom extends BaseEntity {
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
-    private ChatRoom(Member member) {
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ChatRoomStatus status;
+
+    private ChatRoom(Member member, ChatRoomStatus status) {
         this.member = member;
+        this.status = status;
     }
 
     public static ChatRoom create(Member member) {
-        return new ChatRoom(member);
+        return new ChatRoom(member, ChatRoomStatus.WAITING);
     }
 
     /**
@@ -47,5 +54,20 @@ public class ChatRoom extends BaseEntity {
      */
     public boolean isOwner(Long memberId) {
         return this.member.getId().equals(memberId);
+    }
+
+    public void changeStatus(ChatRoomStatus nextStatus) {
+        if (!this.status.canChangeTo(nextStatus)) {
+            throw new BusinessException(ErrorCode.INVALID_CHAT_ROOM_STATUS_TRANSITION);
+        }
+
+        this.status = nextStatus;
+    }
+
+    /**
+     * 채팅방 상담이 완료 상태인지 확인합니다.
+     */
+    public boolean isCompleted() {
+        return this.status == ChatRoomStatus.COMPLETED;
     }
 }

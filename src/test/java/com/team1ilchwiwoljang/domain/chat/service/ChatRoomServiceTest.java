@@ -7,9 +7,9 @@ import static org.mockito.BDDMockito.given;
 
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
-import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.chat.dto.response.ChatRoomListResponse;
 import com.team1ilchwiwoljang.domain.chat.entity.ChatRoom;
+import com.team1ilchwiwoljang.domain.chat.entity.ChatRoomStatus;
 import com.team1ilchwiwoljang.domain.chat.repository.ChatRoomRepository;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
@@ -23,8 +23,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -56,31 +54,50 @@ class ChatRoomServiceTest {
     }
 
     @Test
-    @DisplayName("관리자 채팅방 목록은 페이지 응답으로 반환한다")
-    void getAllChatRoomsReturnsPageResponse() {
+    @DisplayName("관리자 채팅방 목록은 전체 목록으로 조회한다")
+    void getChatRoomsReturnsAllChatRoomsWhenStatusIsNull() {
         Member member = createMember(1L, MemberRole.MEMBER);
-        ChatRoom chatRoom = ChatRoom.create(member);
-        ReflectionTestUtils.setField(chatRoom, "id", 10L);
+        ChatRoom chatRoom = createChatRoom(10L, member);
 
-        given(chatRoomRepository.findAllByOrderByCreatedAtDesc(any(Pageable.class)))
-                .willReturn(new PageImpl<>(List.of(chatRoom)));
+        given(chatRoomRepository.findAllWithMemberOrderByUpdatedAtDesc())
+                .willReturn(List.of(chatRoom));
 
-        PageResponse<ChatRoomListResponse> response =
-                chatRoomService.getAllChatRooms(MemberRole.ADMIN, 0, 20);
+        List<ChatRoomListResponse> response =
+                chatRoomService.getChatRooms(MemberRole.ADMIN, null);
 
-        assertThat(response.content()).hasSize(1);
-        assertThat(response.content().get(0).chatRoomId()).isEqualTo(10L);
-        assertThat(response.content().get(0).memberId()).isEqualTo(1L);
-        assertThat(response.page()).isZero();
-        assertThat(response.size()).isEqualTo(1);
+        assertThat(response).hasSize(1);
+        assertThat(response.get(0).chatRoomId()).isEqualTo(10L);
+        assertThat(response.get(0).memberId()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("관리자 채팅방 목록은 상태별로 조회할 수 있다")
+    void getChatRoomsReturnsFilteredChatRoomsWhenStatusExists() {
+        Member member = createMember(1L, MemberRole.MEMBER);
+        ChatRoom chatRoom = createChatRoom(10L, member);
+
+        given(chatRoomRepository.findAllWithMemberByStatusOrderByUpdatedAtDesc(ChatRoomStatus.WAITING))
+                .willReturn(List.of(chatRoom));
+
+        List<ChatRoomListResponse> response =
+                chatRoomService.getChatRooms(MemberRole.ADMIN, ChatRoomStatus.WAITING);
+
+        assertThat(response).hasSize(1);
+        assertThat(response.get(0).status()).isEqualTo(ChatRoomStatus.WAITING);
     }
 
     @Test
     @DisplayName("회원은 전체 채팅방 목록을 조회할 수 없다")
-    void getAllChatRoomsThrowsForbiddenForMember() {
-        assertThatThrownBy(() -> chatRoomService.getAllChatRooms(MemberRole.MEMBER, 0, 20))
+    void getChatRoomsThrowsForbiddenForMember() {
+        assertThatThrownBy(() -> chatRoomService.getChatRooms(MemberRole.MEMBER, null))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.FORBIDDEN);
+    }
+
+    private ChatRoom createChatRoom(Long id, Member member) {
+        ChatRoom chatRoom = ChatRoom.create(member);
+        ReflectionTestUtils.setField(chatRoom, "id", id);
+        return chatRoom;
     }
 
     private Member createMember(Long id, MemberRole role) {
