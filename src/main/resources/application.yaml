@@ -7,6 +7,9 @@ spring:
   application:
     name: team1-ilchwi-woljang
 
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
   mvc:
     servlet:
       load-on-startup: 1
@@ -15,9 +18,9 @@ spring:
     import: "optional:file:.env[.properties]"
 
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/team1_db?serverTimezone=UTC}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:1234}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       minimum-idle: 10

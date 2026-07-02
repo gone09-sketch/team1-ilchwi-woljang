@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 @Profile("!test")
 public class PopularProductCacheScheduler {
 
-    private final ProductService productService;
+    private final PopularProductCacheService popularProductCacheService;
 
     /**
      * 9분 30초 주기로 @CachePut 웜업 메서드를 호출하여 Redis 캐시 TTL을 강제 리셋합니다.
@@ -22,10 +22,9 @@ public class PopularProductCacheScheduler {
     public void warmUpPopularProducts() {
         log.info("인기 상품 캐시 웜업(Cache Warm-up) 백그라운드 스케줄러 작동 시작...");
         
-        int limit = 10;
-        // @CachePut이 붙은 웜업 전용 메서드를 호출 → 캐시 유무 관계없이 항상 TTL 리셋
-        productService.warmUpPopularProductsCache(limit);
+        // @CachePut이 붙은 웜업 전용 메서드를 호출 → 캐시 유무 관계없이 항상 'all' 키에 100개 웜업 및 TTL 리셋
+        popularProductCacheService.warmUpPopularProductsCache();
         
-        log.info("인기 상품 캐시 웜업 완료. (Key: {})", limit);
+        log.info("인기 상품 캐시 웜업 완료. (Key: all)");
     }
 }

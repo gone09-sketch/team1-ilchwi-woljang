@@ -79,16 +79,16 @@ class ProductServiceIntegrationTest {
         // 1. 캐시가 비어있는 상태인지 먼저 확인합니다.
         Cache cache = cacheManager.getCache("popularProducts");
         assertThat(cache).isNotNull();
-        assertThat(cache.get(10)).isNull(); // key가 limit=10인 캐시 데이터 없음 확인
+        assertThat(cache.get("all")).isNull(); // key가 'all'인 캐시 데이터 없음 확인
 
         // 2. 첫 번째 호출 (DB 조회 발생)
         List<PopularProductResponse> firstCall = productService.getPopularProducts(10);
         assertThat(firstCall).hasSize(2);
 
         // 3. 호출 후 캐시에 데이터가 정상적으로 탑재되었는지 확인
-        assertThat(cache.get(10)).isNotNull();
+        assertThat(cache.get("all")).isNotNull();
         @SuppressWarnings("unchecked")
-        List<PopularProductResponse> cachedValue = (List<PopularProductResponse>) cache.get(10).get();
+        List<PopularProductResponse> cachedValue = (List<PopularProductResponse>) cache.get("all").get();
         assertThat(cachedValue).isEqualTo(firstCall);
 
         // 4. 상품의 판매량을 임의로 변경합니다. (하지만 캐시로 인해 결과는 바뀌지 않아야 함)

@@ -2,7 +2,8 @@ package com.team1ilchwiwoljang.common.config;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -29,12 +30,19 @@ public class CacheConfig {
     private final ObjectMapper objectMapper;
 
     public CacheConfig() {
+        // 다형성 역직렬화 대상을 프로젝트 패키지 및 기본 Collection 계열로 제한하여 보안 취약점을 방어합니다.
+        PolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
+                .allowIfSubType("com.team1ilchwiwoljang")
+                .allowIfSubType("java.util")
+                .allowIfSubType("java.lang")
+                .build();
+
         // 직접 인스턴스를 생성하고 레코드/날짜 지원 모듈을 등록합니다.
         this.objectMapper = new ObjectMapper()
                 .registerModule(new com.fasterxml.jackson.module.paramnames.ParameterNamesModule())
                 .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
                 .activateDefaultTyping(
-                        LaissezFaireSubTypeValidator.instance,
+                        ptv,
                         ObjectMapper.DefaultTyping.NON_FINAL,
                         JsonTypeInfo.As.PROPERTY
                 );
@@ -51,9 +59,12 @@ public class CacheConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))
                 .entryTtl(Duration.ofMinutes(30));
 
-        // 인기 상품 캐시 개별 설정: 실무 사양에 맞게 TTL을 10분으로 지정
+        // 인기 상품 캐시 개별 설정: Enum 값에 따라 TTL 설정
         Map<String, RedisCacheConfiguration> customConfigs = new HashMap<>();
-        customConfigs.put("popularProducts", defaultConfig.entryTtl(Duration.ofMinutes(10)));
+        customConfigs.put(
+                CacheType.POPULAR_PRODUCTS.getCacheName(),
+                defaultConfig.entryTtl(Duration.ofMinutes(CacheType.POPULAR_PRODUCTS.getExpiredAfterWriteMin()))
+        );
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
@@ -65,6 +76,6 @@ public class CacheConfig {
     @Profile("test")
     public CacheManager testCacheManager() {
         // 테스트 환경에서는 Redis 의존성 없이 가볍게 ConcurrentMapCacheManager를 사용합니다.
-        return new ConcurrentMapCacheManager("popularProducts");
+        return new ConcurrentMapCacheManager(CacheType.POPULAR_PRODUCTS.getCacheName());
     }
 }
