@@ -1,0 +1,39 @@
+name: Check Commit Message Convention
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-commits:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const commits = await github.rest.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+            });
+
+            const pattern = /^(feat|fix|refactor|docs|test|chore|merge)(\([a-z0-9가-힣-]+\))?: .+/;
+            const mergePattern = /^merge/i;
+
+            const violations = [];
+            for (const { commit } of commits.data) {
+              const firstLine = commit.message.split('\n')[0];
+              if (!mergePattern.test(firstLine) && !pattern.test(firstLine)) {
+                violations.push(firstLine);
+              }
+            }
+
+            if (violations.length > 0) {
+              core.setFailed(
+                `커밋 메시지 컨벤션을 따르지 않는 커밋이 있습니다:\n\n` +
+                violations.map(m => `- "${m}"`).join('\n') +
+                `\n\n형식: type: 내용  또는  type(scope): 내용\n` +
+                `허용 타입: feat, fix, refactor, docs, test, chore, merge\n\n` +
+                `예시: feat: 로그인 API 구현 / fix(auth): 토큰 만료 처리 수정 / merge: dev 브랜치 병합`
+              );
+            }

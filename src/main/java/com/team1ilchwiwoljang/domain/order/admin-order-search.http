@@ -1,0 +1,44 @@
+### 로그인
+POST http://127.0.0.1:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin01@test.com",
+  "password": "Test1234!"
+}
+
+> {%
+    client.global.set("accessToken", response.body.data.accessToken);
+%}
+
+
+### 관리자 주문 검색 - 상품명 SQL 확인용
+GET http://127.0.0.1:8080/api/admins/orders?orderStatus=PAID&startDate=2026-01-01&endDate=2026-06-30&minTotalAmount=10000&maxTotalAmount=50000&productName=target&page=0&size=10
+Authorization: Bearer {{accessToken}}
+
+
+### 관리자 주문 검색 - 상품명 SQL 확인용
+GET http://127.0.0.1:8080/api/admins/orders?orderStatus=PAID&startDate=2026-01-01&endDate=2026-06-30&minTotalAmount=10000&maxTotalAmount=50000&productName=target&page=0&size=10
+Authorization: Bearer {{accessToken}}
+
+### 관리자 주문 검색 - 주문 상태 + 기간 + 금액 범위
+GET http://localhost:8080/api/admins/orders?orderStatus=PAID&startDate=2026-01-01&endDate=2026-06-30&minTotalAmount=10000&maxTotalAmount=50000&page=0&size=10
+
+### 관리자 주문 검색 - 주문 상태 + 기간 + 금액 범위 + 상품명
+GET http://localhost:8080/api/admins/orders?orderStatus=PAID&startDate=2026-01-01&endDate=2026-06-30&minTotalAmount=10000&maxTotalAmount=50000&productName=target&page=0&size=10
+
+### 관리자 주문 검색 - 주문 상태 + 기간 + 정확한 주문번호
+GET http://localhost:8080/api/admins/orders?orderStatus=PAID&startDate=2026-01-01&endDate=2026-06-30&orderNumber=target-order-000002&page=0&size=10
+
+### 관리자 주문 검색 - 기간 + 금액 범위 + 상품명
+GET http://localhost:8080/api/admins/orders?startDate=2026-01-01&endDate=2026-06-30&minTotalAmount=10000&maxTotalAmount=50000&productName=target&page=0&size=10
+
+### 관리자 주문 검색 - 주문 상태 + 금액 범위 + 상품명
+GET http://localhost:8080/api/admins/orders?orderStatus=PAID&minTotalAmount=10000&maxTotalAmount=50000&productName=target&page=0&size=10
+
+### 관리자 주문 검색 - 취소 주문 상태 + 기간 + 금액 범위
+GET http://localhost:8080/api/admins/orders?orderStatus=CANCELLED&startDate=2026-01-01&endDate=2026-06-30&minTotalAmount=10000&maxTotalAmount=50000&page=0&size=10
+
+### 관리자 주문 검색 - 상품명 SQL 확인용
+GET http://127.0.0.1:8080/api/admins/orders?orderStatus=PAID&startDate=2026-01-01&endDate=2026-06-30&minTotalAmount=10000&maxTotalAmount=50000&productName=target&page=0&size=10
+Authorization: Bearer {{accessToken}}

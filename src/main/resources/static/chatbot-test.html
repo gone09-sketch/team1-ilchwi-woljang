@@ -1,0 +1,346 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot Test</title>
+    <style>
+        :root {
+            --bg: #f4f6f8;
+            --surface: #ffffff;
+            --line: #d9dee7;
+            --text: #1f2937;
+            --muted: #667085;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --danger: #c2410c;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Arial, "Noto Sans KR", sans-serif;
+        }
+
+        .app {
+            width: min(920px, 100%);
+            min-height: 100vh;
+            margin: 0 auto;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            background: var(--surface);
+            border-left: 1px solid var(--line);
+            border-right: 1px solid var(--line);
+        }
+
+        header {
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 20px;
+            line-height: 1.3;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status {
+            color: var(--muted);
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .messages {
+            padding: 22px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .message {
+            max-width: min(680px, 92%);
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            color: #ffffff;
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .message.bot {
+            align-self: flex-start;
+            background: #f8fafc;
+        }
+
+        .composer {
+            border-top: 1px solid var(--line);
+            padding: 16px 22px 18px;
+            display: grid;
+            gap: 10px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 88px;
+            max-height: 220px;
+            resize: vertical;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 12px;
+            color: var(--text);
+            font: inherit;
+            line-height: 1.5;
+        }
+
+        textarea:focus {
+            outline: 2px solid rgba(37, 99, 235, 0.25);
+            border-color: var(--primary);
+        }
+
+        .composer-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .counter {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .counter.over {
+            color: var(--danger);
+            font-weight: 700;
+        }
+
+        button {
+            min-width: 96px;
+            height: 40px;
+            border: 0;
+            border-radius: 8px;
+            color: #ffffff;
+            background: var(--primary);
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button:hover:not(:disabled) {
+            background: var(--primary-dark);
+        }
+
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+        }
+
+        button.secondary {
+            min-width: 76px;
+            color: var(--text);
+            background: #eef2f7;
+            border: 1px solid var(--line);
+        }
+
+        button.secondary:hover:not(:disabled) {
+            background: #e2e8f0;
+        }
+
+        @media (max-width: 640px) {
+            .app {
+                border: 0;
+            }
+
+            header,
+            .messages,
+            .composer {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+
+            header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .status {
+                white-space: normal;
+            }
+
+            .header-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+<main class="app">
+    <header>
+        <h1>AI Chatbot Test</h1>
+        <div class="header-actions">
+            <div class="status" id="status">Ready</div>
+            <button class="secondary" type="button" id="newChatButton">새 대화</button>
+        </div>
+    </header>
+
+    <section class="messages" id="messages" aria-live="polite"></section>
+
+    <form class="composer" id="chatForm">
+        <textarea
+                id="messageInput"
+                name="message"
+                maxlength="2000"
+                placeholder="문의 내용을 입력해주세요."
+                autocomplete="off"
+        ></textarea>
+        <div class="composer-footer">
+            <div class="counter" id="counter">0 / 2000</div>
+            <button type="submit" id="sendButton" disabled>Send</button>
+        </div>
+    </form>
+</main>
+
+<script>
+    const API_BASE_URL = "http://localhost:8080";
+    const MAX_MESSAGE_LENGTH = 2000;
+    const messages = document.getElementById("messages");
+    const statusText = document.getElementById("status");
+    const form = document.getElementById("chatForm");
+    const input = document.getElementById("messageInput");
+    const counter = document.getElementById("counter");
+    const sendButton = document.getElementById("sendButton");
+    const newChatButton = document.getElementById("newChatButton");
+    const CONVERSATION_ID_KEY = "chatbotConversationId";
+    let isWaiting = false;
+
+    function getConversationId() {
+        let conversationId = localStorage.getItem(CONVERSATION_ID_KEY);
+
+        if (!conversationId) {
+            conversationId = crypto.randomUUID();
+            localStorage.setItem(CONVERSATION_ID_KEY, conversationId);
+        }
+
+        return conversationId;
+    }
+
+    function setStatus(text) {
+        statusText.textContent = text;
+    }
+
+    function addMessage(text, sender) {
+        const bubble = document.createElement("div");
+        bubble.className = `message ${sender}`;
+        bubble.textContent = text;
+        messages.appendChild(bubble);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function updateInputState() {
+        const length = input.value.length;
+        const isBlank = input.value.trim().length === 0;
+        const isOver = length > MAX_MESSAGE_LENGTH;
+
+        counter.textContent = `${length} / ${MAX_MESSAGE_LENGTH}`;
+        counter.classList.toggle("over", isOver);
+        sendButton.disabled = isWaiting || isBlank || isOver;
+    }
+
+    async function loadWelcome() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/ai/chatbot/welcome`);
+            const body = await response.json();
+
+            if (!response.ok || !body.success) {
+                throw new Error(body.message || "Welcome request failed.");
+            }
+
+            addMessage(body.data, "bot");
+        } catch (error) {
+            addMessage("챗봇 인삿말을 불러오지 못했습니다.", "bot");
+        }
+    }
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const message = input.value.trim();
+        if (!message || message.length > MAX_MESSAGE_LENGTH) {
+            return;
+        }
+
+        addMessage(message, "user");
+        input.value = "";
+        isWaiting = true;
+        updateInputState();
+        setStatus("Waiting for response...");
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/ai/chatbot`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    conversationId: getConversationId(),
+                    message
+                })
+            });
+            const body = await response.json();
+
+            if (!response.ok || !body.success) {
+                throw new Error(body.message || "Chatbot request failed.");
+            }
+
+            addMessage(body.data.answer, "bot");
+            setStatus("Ready");
+        } catch (error) {
+            addMessage("답변을 가져오지 못했습니다. 서버 로그를 확인해주세요.", "bot");
+            setStatus("Error");
+        } finally {
+            isWaiting = false;
+            updateInputState();
+        }
+    });
+
+    newChatButton.addEventListener("click", () => {
+        localStorage.removeItem(CONVERSATION_ID_KEY);
+        messages.replaceChildren();
+        setStatus("Ready");
+        input.value = "";
+        isWaiting = false;
+        updateInputState();
+        loadWelcome();
+    });
+
+    input.addEventListener("input", updateInputState);
+
+    updateInputState();
+    loadWelcome();
+</script>
+</body>
+</html>

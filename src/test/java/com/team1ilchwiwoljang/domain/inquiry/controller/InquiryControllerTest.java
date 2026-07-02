@@ -1,0 +1,299 @@
+package com.team1ilchwiwoljang.domain.inquiry.controller;
+
+import com.team1ilchwiwoljang.common.config.SecurityConfig;
+import com.team1ilchwiwoljang.common.response.PageResponse;
+import com.team1ilchwiwoljang.common.security.JwtAuthenticationFilter;
+import com.team1ilchwiwoljang.common.security.JwtTokenPayload;
+import com.team1ilchwiwoljang.common.security.JwtTokenProvider;
+import com.team1ilchwiwoljang.common.security.SecurityErrorResponseHandler;
+import org.springframework.http.HttpHeaders;
+import tools.jackson.databind.ObjectMapper;
+import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryAnswerRequest;
+import com.team1ilchwiwoljang.domain.inquiry.dto.request.InquiryCreateRequest;
+import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryAdminResponse;
+import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryAnswerResponse;
+import com.team1ilchwiwoljang.domain.inquiry.dto.response.InquiryCreateResponse;
+import com.team1ilchwiwoljang.domain.inquiry.entity.InquiryStatus;
+import com.team1ilchwiwoljang.domain.inquiry.service.InquiryService;
+import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
+import com.team1ilchwiwoljang.domain.member.service.MemberService;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(InquiryController.class)
+@Import({
+        SecurityConfig.class,
+        JwtAuthenticationFilter.class,
+        SecurityErrorResponseHandler.class
+})
+class InquiryControllerTest {
+
+    private static final Long MEMBER_ID = 1L;
+    private static final String ACCESS_TOKEN = "valid-access-token";
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockitoBean
+    private InquiryService inquiryService;
+
+    @MockitoBean
+    private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private MemberService memberService;
+
+    @Test
+    @DisplayName("관리자가 문의 목록을 요청하면 200 OK와 함께 페이징된 문의 목록을 반환한다")
+    void given_admin_whenGetAdminInquiries_thenStatus200() throws Exception {
+        // given
+        LocalDateTime createdAt = LocalDateTime.of(2026, 6, 25, 14, 30);
+        InquiryAdminResponse inquiry = new InquiryAdminResponse(
+                1L,
+                MEMBER_ID,
+                "배송 문의",
+                "언제 배송되나요?",
+                null,
+                null,
+                InquiryStatus.WAITING,
+                createdAt,
+                null
+        );
+        PageResponse<InquiryAdminResponse> pageResponse =
+                new PageResponse<>(List.of(inquiry), 0, 20, 1L, 1, true);
+
+        givenValidAdminAccessToken();
+        given(inquiryService.getAdminInquiries(any()))
+                .willReturn(pageResponse);
+
+        // when & then
+        mockMvc.perform(get("/api/admins/inquiry")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN)
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].id").value(1L))
+                .andExpect(jsonPath("$.data.content[0].memberId").value(MEMBER_ID))
+                .andExpect(jsonPath("$.data.content[0].title").value("배송 문의"))
+                .andExpect(jsonPath("$.data.content[0].content").value("언제 배송되나요?"))
+                .andExpect(jsonPath("$.data.content[0].status").value("WAITING"))
+                .andExpect(jsonPath("$.data.totalElements").value(1L));
+    }
+
+    @Test
+    @DisplayName("인증된 사용자가 올바른 요청을 보내면 201 Created와 함께 문의 응답을 반환한다")
+    void given_validRequest_whenCreateInquiry_thenStatus201() throws Exception {
+        // given
+        InquiryCreateRequest request = new InquiryCreateRequest("문의 제목", "문의 내용");
+
+        InquiryCreateResponse response = new InquiryCreateResponse(
+                1L,
+                MEMBER_ID,
+                "문의 제목",
+                "문의 내용",
+                InquiryStatus.WAITING,
+                LocalDateTime.now()
+        );
+
+        givenValidAccessToken();
+
+        given(inquiryService.createInquiry(eq(MEMBER_ID), any(InquiryCreateRequest.class)))
+                .willReturn(response);
+
+        // when & then
+        mockMvc.perform(post("/api/members/inquiry")
+                        .with(csrf())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("요청이 성공했습니다."))
+                .andExpect(jsonPath("$.data.id").value(1L))
+                .andExpect(jsonPath("$.data.title").value("문의 제목"))
+                .andExpect(jsonPath("$.data.content").value("문의 내용"))
+                .andExpect(jsonPath("$.data.status").value("WAITING"));
+    }
+
+    @Test
+    @DisplayName("문의 제목이 빈 값이면 400 Bad Request를 반환한다")
+    void given_blankTitle_whenCreateInquiry_thenStatus400() throws Exception {
+        // given
+        InquiryCreateRequest request = new InquiryCreateRequest("", "문의 내용");
+
+        givenValidAccessToken();
+
+        // when & then
+        mockMvc.perform(post("/api/members/inquiry")
+                        .with(csrf())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("title"));
+    }
+
+    @Test
+    @DisplayName("문의 내용이 빈 값이면 400 Bad Request를 반환한다")
+    void given_blankContent_whenCreateInquiry_thenStatus400() throws Exception {
+        // given
+        InquiryCreateRequest request = new InquiryCreateRequest("문의 제목", " ");
+
+        givenValidAccessToken();
+
+        // when & then
+        mockMvc.perform(post("/api/members/inquiry")
+                        .with(csrf())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("content"));
+    }
+
+    @Test
+    @DisplayName("인증되지 않은 사용자가 요청을 보내면 401 Unauthorized를 반환한다")
+    void given_noAuth_whenCreateInquiry_thenStatus401() throws Exception {
+        // given
+        InquiryCreateRequest request = new InquiryCreateRequest("문의 제목", "문의 내용");
+
+        // when & then
+        mockMvc.perform(post("/api/members/inquiry")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("관리자가 올바른 답변 요청을 보내면 200 OK와 함께 답변 처리된 문의 응답을 반환한다")
+    void given_validAnswerRequest_whenAnswerInquiry_thenStatus200() throws Exception {
+        // given
+        Long inquiryId = 1L;
+        Long adminId = MEMBER_ID;
+        InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "답변 내용");
+        InquiryAnswerResponse response = new InquiryAnswerResponse(
+                inquiryId,
+                1L,
+                "문의 제목",
+                "문의 내용",
+                adminId,
+                "답변 내용",
+                InquiryStatus.ANSWERED,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
+
+        givenValidAdminAccessToken();
+        given(inquiryService.answerInquiry(eq(MEMBER_ID), any(InquiryAnswerRequest.class)))
+                .willReturn(response);
+
+        // when & then
+        mockMvc.perform(post("/api/admins/inquiry")
+                        .with(csrf())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("요청이 성공했습니다."))
+                .andExpect(jsonPath("$.data.id").value(inquiryId))
+                .andExpect(jsonPath("$.data.adminId").value(adminId))
+                .andExpect(jsonPath("$.data.answer").value("답변 내용"))
+                .andExpect(jsonPath("$.data.status").value("ANSWERED"));
+    }
+
+    @Test
+    @DisplayName("답변 내용이 빈 값이면 400 Bad Request를 반환한다")
+    void given_blankAnswer_whenAnswerInquiry_thenStatus400() throws Exception {
+        // given
+        Long inquiryId = 1L;
+        InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "");
+
+        givenValidAdminAccessToken();
+
+        // when & then
+        mockMvc.perform(post("/api/admins/inquiry")
+                        .with(csrf())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("answer"));
+    }
+
+    @Test
+    @DisplayName("문의 ID가 누락되면 400 Bad Request를 반환한다")
+    void given_nullInquiryId_whenAnswerInquiry_thenStatus400() throws Exception {
+        // given
+        InquiryAnswerRequest request = new InquiryAnswerRequest(null, "답변 내용");
+
+        givenValidAdminAccessToken();
+
+        // when & then
+        mockMvc.perform(post("/api/admins/inquiry")
+                        .with(csrf())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("inquiryId"));
+    }
+
+    @Test
+    @DisplayName("인증되지 않은 사용자가 답변 등록 요청을 보내면 401 Unauthorized를 반환한다")
+    void given_noAuth_whenAnswerInquiry_thenStatus401() throws Exception {
+        // given
+        Long inquiryId = 1L;
+        InquiryAnswerRequest request = new InquiryAnswerRequest(inquiryId, "답변 내용");
+
+        // when & then
+        mockMvc.perform(post("/api/admins/inquiry")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private void givenValidAccessToken() {
+        given(jwtTokenProvider.parseAccessToken(ACCESS_TOKEN))
+                .willReturn(new JwtTokenPayload(MEMBER_ID, MemberRole.MEMBER));
+        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
+    }
+
+    private void givenValidAdminAccessToken() {
+        given(jwtTokenProvider.parseAccessToken(ACCESS_TOKEN))
+                .willReturn(new JwtTokenPayload(MEMBER_ID, MemberRole.ADMIN));
+        given(memberService.existsActiveMember(MEMBER_ID)).willReturn(true);
+    }
+}
