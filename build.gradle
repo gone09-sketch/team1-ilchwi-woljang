@@ -24,6 +24,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-web' // Spring MVC, Tomcat, Jackson/JSON 모듈 자동 포함
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
 
     // Spring Boot 4.1.0(Spring 7.x)은 기본적으로 Jackson 3.x(tools.jackson)를 내포하므로,
     // 프로젝트가 기존 com.fasterxml.jackson(Jackson 2.x)을 사용하도록 명시적 의존성 선언이 필수적입니다.
