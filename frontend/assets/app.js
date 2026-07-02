@@ -282,6 +282,10 @@ function bindEvents() {
   elements.refreshOrders.addEventListener("click", () => loadOrders(true));
   elements.refreshAdminOrders.addEventListener("click", () => loadAdminOrders(true));
   elements.refreshAdminInquiries.addEventListener("click", () => loadAdminInquiries(true));
+  elements.chatWidgetToggle.addEventListener("click", () => toggleChatWidget(!state.chatWidget.open));
+  elements.chatWidgetClose.addEventListener("click", () => toggleChatWidget(false));
+  elements.chatWidgetForm.addEventListener("submit", handleChatWidgetSubmit);
+  elements.chatWidgetConnectButton.addEventListener("click", connectToAgent);
 }
 
 function handleDocumentClick(event) {
@@ -2122,9 +2126,9 @@ async function initChatBotMode() {
   state.chatWidget.conversationId = Date.now().toString();
   elements.chatWidgetModeLabel.textContent = "AI 챗봇";
   elements.chatWidgetConnectButton.hidden = false;
-
+  
   addChatWidgetMessage("AI 챗봇과 연결 중입니다...", "chat-widget-message system");
-
+  
   try {
     const response = await requestApi("/api/ai/chatbot/welcome");
     state.chatWidget.messages = []; // Clear system message
@@ -2139,9 +2143,9 @@ async function handleChatWidgetSubmit(event) {
   event.preventDefault();
   const text = elements.chatWidgetInput.value.trim();
   if (!text) return;
-
+  
   elements.chatWidgetInput.value = "";
-
+  
   if (state.chatWidget.mode === "bot") {
     addChatWidgetMessage(text, "chat-widget-message from-user");
     try {
@@ -2173,14 +2177,14 @@ async function connectToAgent() {
     toggleChatWidget(false);
     return;
   }
-
+  
   elements.chatWidgetConnectButton.hidden = true;
   state.chatWidget.mode = "agent";
   elements.chatWidgetModeLabel.textContent = "상담원 연결";
-
+  
   state.chatWidget.messages = [];
   addChatWidgetMessage("상담원과 연결 중입니다...", "chat-widget-message system");
-
+  
   let chatRoomId;
   let roomStatus;
   try {
@@ -2197,18 +2201,18 @@ async function connectToAgent() {
       return;
     }
   }
-
+  
   state.chatWidget.chatRoomId = chatRoomId;
-
+  
   if (roomStatus === "COMPLETED") {
     elements.chatWidgetInput.disabled = true;
   } else {
     elements.chatWidgetInput.disabled = false;
   }
-
+  
   try {
     const messages = await requestApi(`/api/chat/rooms/${chatRoomId}/messages`, { auth: true });
-
+    
     state.chatWidget.messages = [];
     let lastId = 0;
     messages.forEach(msg => {
@@ -2216,15 +2220,15 @@ async function connectToAgent() {
       state.chatWidget.messages.push({ text: msg.message, type });
       if (msg.messageId > lastId) lastId = msg.messageId;
     });
-
+    
     state.chatWidget.lastReceivedMessageId = lastId;
-
+    
     if (state.chatWidget.messages.length === 0) {
       addChatWidgetMessage("상담이 시작되었습니다. 메시지를 남겨주세요.", "chat-widget-message system");
     } else {
       renderChatWidgetMessages();
     }
-
+    
     connectStompClient(chatRoomId);
   } catch (error) {
     addChatWidgetMessage("채팅 이력을 불러오는데 실패했습니다.", "chat-widget-message system");
@@ -2235,9 +2239,9 @@ function connectStompClient(chatRoomId) {
   if (state.chatWidget.socket) {
     state.chatWidget.socket.deactivate();
   }
-
+  
   const brokerURL = API_BASE_URL.replace(/^http/, 'ws') + '/ws/chat';
-
+  
   const client = new window.StompJs.Client({
     brokerURL: brokerURL,
     connectHeaders: {
@@ -2287,29 +2291,3 @@ function connectStompClient(chatRoomId) {
 }
 
 
-// ===== Chat Widget =====
-
-function toggleChatWidget(open) {
-  state.chatWidget.open = open;
-  elements.chatWidgetPanel.hidden = !open;
-  if (open && state.chatWidget.messages.length === 0) {
-    initChatBotMode();
-  }
-}
-
-function renderChatWidgetMessages() {
-  // message.type은 호출부에서 이미 "chat-widget-message from-user" 형태로
-  // 전체 클래스 문자열을 넘긴다 — 여기서 prefix를 다시 붙이면 클래스가 중복된다.
-  elements.chatWidgetMessages.innerHTML = state.chatWidget.messages
-    .map((message) => `
-      <div class="${message.type}">${escapeHtml(message.text)}</div>
-    `)
-    .join("");
-  elements.chatWidgetMessages.scrollTop = elements.chatWidgetMessages.scrollHeight;
-}
-
-function addChatWidgetMessage(text, type) {
-  state.chatWidget.messages.push({ text, type });
-  renderChatWidgetMessages();
-}
->>>>>>> f08b66f (feat: 채팅 위젯 토글 UI 뼈대)
