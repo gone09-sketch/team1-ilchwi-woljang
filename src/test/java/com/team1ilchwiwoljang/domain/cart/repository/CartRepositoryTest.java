@@ -18,6 +18,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
 @DataJpaTest
+@Import(QueryDslConfig.class)
 @ActiveProfiles("test")
 class CartRepositoryTest {
 
