@@ -58,6 +58,27 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @GetMapping("/price-range")
+    public ResponseEntity<ApiResponse<PageResponse<ProductResponse>>> getProductsByPriceRange(
+            @Min(0) @RequestParam int minPrice,
+            @Min(0) @RequestParam int maxPrice,
+            @Min(0) @RequestParam(defaultValue = "0") int page,
+            @Min(1) @RequestParam(defaultValue = "20") int size
+    ) {
+        PageResponse<ProductResponse> responses = PageResponse.from(productService.getProductsByPriceRange(minPrice, maxPrice, page, size));
+        return ResponseEntity.ok(ApiResponse.success(responses));
+    }
+
+    @GetMapping("/search-fulltext")
+    public ResponseEntity<ApiResponse<PageResponse<ProductSearchItemResponse>>> searchProductsFullText(
+            @RequestParam String keyword,
+            @Min(0) @RequestParam(defaultValue = "0") int page,
+            @Min(1) @RequestParam(defaultValue = "20") int size
+    ) {
+        PageResponse<ProductSearchItemResponse> response = productService.searchProductsFullText(keyword, page, size);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     @GetMapping("/popular")
     public ResponseEntity<ApiResponse<List<PopularProductResponse>>> getPopularProducts(
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int limit
