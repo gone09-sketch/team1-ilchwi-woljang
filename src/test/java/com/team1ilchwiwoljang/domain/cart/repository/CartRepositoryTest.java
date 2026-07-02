@@ -21,7 +21,6 @@ import org.springframework.test.context.ActiveProfiles;
 @DataJpaTest
 @Import(QueryDslConfig.class)
 @ActiveProfiles("test")
-@Import(QueryDslConfig.class)
 class CartRepositoryTest {
 
     @Autowired

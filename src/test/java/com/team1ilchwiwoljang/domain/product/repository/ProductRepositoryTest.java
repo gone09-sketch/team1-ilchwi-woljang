@@ -19,7 +19,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @Import(QueryDslConfig.class)
 @ActiveProfiles("test")
-@Import(QueryDslConfig.class)
 class ProductRepositoryTest {
 
     @Autowired
