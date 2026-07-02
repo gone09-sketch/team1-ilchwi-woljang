@@ -1,5 +1,6 @@
 package com.team1ilchwiwoljang.domain.chat.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -8,6 +9,7 @@ import static org.mockito.Mockito.verify;
 
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
+import com.team1ilchwiwoljang.domain.chat.dto.response.ChatMessageResponse;
 import com.team1ilchwiwoljang.domain.chat.entity.ChatMessage;
 import com.team1ilchwiwoljang.domain.chat.entity.ChatRoom;
 import com.team1ilchwiwoljang.domain.chat.entity.ChatRoomStatus;
@@ -15,12 +17,14 @@ import com.team1ilchwiwoljang.domain.chat.repository.ChatMessageRepository;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class ChatMessageServiceTest {
@@ -36,6 +40,49 @@ class ChatMessageServiceTest {
 
     @Mock
     private MemberService memberService;
+
+    @Test
+    @DisplayName("afterMessageId가 없으면 채팅방 메시지를 전체 조회한다")
+    void givenNoAfterMessageId_whenGetMessages_thenFindAllMessages() {
+        Long memberId = 1L;
+        Long chatRoomId = 10L;
+        ChatRoom chatRoom = createChatRoom(chatRoomId);
+
+        given(chatRoomService.getAccessibleChatRoom(memberId, MemberRole.MEMBER, chatRoomId))
+                .willReturn(chatRoom);
+        given(chatMessageRepository.findAllWithSenderByChatRoomId(chatRoomId))
+                .willReturn(List.of());
+
+        List<ChatMessageResponse> response =
+                chatMessageService.getMessages(memberId, MemberRole.MEMBER, chatRoomId, null);
+
+        assertThat(response).isEmpty();
+        verify(chatMessageRepository).findAllWithSenderByChatRoomId(chatRoomId);
+        verify(chatMessageRepository, never())
+                .findAllWithSenderByChatRoomIdAndIdGreaterThan(any(), any());
+    }
+
+    @Test
+    @DisplayName("afterMessageId가 있으면 해당 메시지 ID 이후 메시지만 조회한다")
+    void givenAfterMessageId_whenGetMessages_thenFindMessagesAfterId() {
+        Long memberId = 1L;
+        Long chatRoomId = 10L;
+        Long afterMessageId = 100L;
+        ChatRoom chatRoom = createChatRoom(chatRoomId);
+
+        given(chatRoomService.getAccessibleChatRoom(memberId, MemberRole.MEMBER, chatRoomId))
+                .willReturn(chatRoom);
+        given(chatMessageRepository.findAllWithSenderByChatRoomIdAndIdGreaterThan(chatRoomId, afterMessageId))
+                .willReturn(List.of());
+
+        List<ChatMessageResponse> response =
+                chatMessageService.getMessages(memberId, MemberRole.MEMBER, chatRoomId, afterMessageId);
+
+        assertThat(response).isEmpty();
+        verify(chatMessageRepository)
+                .findAllWithSenderByChatRoomIdAndIdGreaterThan(chatRoomId, afterMessageId);
+        verify(chatMessageRepository, never()).findAllWithSenderByChatRoomId(chatRoomId);
+    }
 
     @Test
     @DisplayName("이미 완료된 채팅방에는 메시지를 저장할 수 없다")
@@ -85,5 +132,12 @@ class ChatMessageServiceTest {
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.VALIDATION_FAILED);
 
         verify(chatMessageRepository, never()).save(any(ChatMessage.class));
+    }
+
+    private ChatRoom createChatRoom(Long chatRoomId) {
+        Member member = Member.create("member@example.com", "password", "member", "010-1234-5678");
+        ChatRoom chatRoom = ChatRoom.create(member);
+        ReflectionTestUtils.setField(chatRoom, "id", chatRoomId);
+        return chatRoom;
     }
 }

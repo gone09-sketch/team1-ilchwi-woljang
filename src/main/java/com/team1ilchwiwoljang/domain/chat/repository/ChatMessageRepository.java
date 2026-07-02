@@ -25,6 +25,26 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     List<ChatMessage> findAllWithSenderByChatRoomId(@Param("chatRoomId") Long chatRoomId);
 
     /**
+     * 재연결 이후 미수신 메시지를 복구할 때 사용합니다.
+     * 클라이언트가 마지막으로 받은 messageId를 afterMessageId로 보내면,
+     * 해당 id보다 나중에 저장된 일반 채팅 메시지만 조회합니다.
+     * 시스템 메시지는 DB에 저장하지 않으므로 이 조회 결과에 포함되지 않습니다.
+     */
+    @Query("""
+        SELECT message
+        FROM ChatMessage message
+        JOIN FETCH message.sender
+        JOIN FETCH message.chatRoom
+        WHERE message.chatRoom.id = :chatRoomId
+          AND message.id > :afterMessageId
+        ORDER BY message.createdAt ASC
+        """)
+    List<ChatMessage> findAllWithSenderByChatRoomIdAndIdGreaterThan(
+            @Param("chatRoomId") Long chatRoomId,
+            @Param("afterMessageId") Long afterMessageId
+    );
+
+    /**
      * 특정 채팅방에 저장된 실제 채팅 메시지가 하나라도 있는지 확인합니다.
      * 시스템 메시지는 DB에 저장하지 않으므로,
      * 여기서 확인하는 메시지는 고객/관리자가 실제로 주고받은 ChatMessage만 의미합니다.

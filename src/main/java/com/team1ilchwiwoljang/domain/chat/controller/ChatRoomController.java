@@ -83,13 +83,20 @@ public class ChatRoomController {
     @GetMapping("/{chatRoomId}/messages")
     public ResponseEntity<ApiResponse<List<ChatMessageResponse>>> getMessages(
             @Auth AuthMember authMember,
-            @PathVariable Long chatRoomId
+            @PathVariable Long chatRoomId,
+            @RequestParam(required = false) Long afterMessageId
     ) {
+        /*
+         * afterMessageId는 STOMP 재연결 후 미수신 일반 메시지를 복구하기 위한 선택 파라미터입니다.
+         * 값이 없으면 기존처럼 채팅방 전체 메시지를 조회하고,
+         * 값이 있으면 해당 messageId 이후에 저장된 메시지만 조회합니다.
+         */
         List<ChatMessageResponse> response =
                 chatMessageService.getMessages(
                         authMember.memberId(),
                         authMember.role(),
-                        chatRoomId
+                        chatRoomId,
+                        afterMessageId
                 );
 
         return ResponseEntity.ok(ApiResponse.success(response));

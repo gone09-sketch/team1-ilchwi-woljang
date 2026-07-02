@@ -33,13 +33,35 @@ public class ChatMessageService {
 
     @Transactional(readOnly = true)
     public List<ChatMessageResponse> getMessages(Long memberId, MemberRole role, Long chatRoomId) {
+        return getMessages(memberId, role, chatRoomId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ChatMessageResponse> getMessages(
+            Long memberId,
+            MemberRole role,
+            Long chatRoomId,
+            Long afterMessageId
+    ) {
         /*
          * MEMBER가 본인 채팅방이 아닌 chatRoomId로 접근하면 FORBIDDEN 예외를 던집니다.
          * ADMIN은 모든 채팅방 접근을 허용합니다.
          */
         ChatRoom chatRoom = chatRoomService.getAccessibleChatRoom(memberId, role, chatRoomId);
 
-        return chatMessageRepository.findAllWithSenderByChatRoomId(chatRoom.getId())
+        /*
+         * afterMessageId가 없으면 기존처럼 전체 메시지를 조회합니다.
+         * afterMessageId가 있으면 네트워크 재연결 중 놓친 일반 채팅 메시지만 복구할 수 있도록
+         * 해당 messageId보다 나중에 저장된 메시지만 조회합니다.
+         */
+        List<ChatMessage> messages = afterMessageId == null
+                ? chatMessageRepository.findAllWithSenderByChatRoomId(chatRoom.getId())
+                : chatMessageRepository.findAllWithSenderByChatRoomIdAndIdGreaterThan(
+                        chatRoom.getId(),
+                        afterMessageId
+                );
+
+        return messages
                 .stream()
                 .map(ChatMessageResponse::from)
                 .toList();
@@ -47,7 +69,6 @@ public class ChatMessageService {
 
     /**
      * 채팅방에 실제 채팅 메시지가 이미 저장되어 있는지 확인합니다.
-     *
      * 입장 시스템 메시지 정책:
      * - 저장된 메시지가 0개이면 입장 시스템 메시지를 보냅니다.
      * - 저장된 메시지가 1개 이상이면 이미 상담이 시작된 것으로 보고 보내지 않습니다.
