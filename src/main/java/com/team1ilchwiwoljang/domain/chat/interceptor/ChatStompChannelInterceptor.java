@@ -34,15 +34,16 @@ public class ChatStompChannelInterceptor implements ChannelInterceptor {
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String MEMBER_ID_ATTRIBUTE = "memberId";
     private static final String ROLE_ATTRIBUTE = "role";
-    private final JwtTokenProvider jwtTokenProvider;
-    private final MemberService memberService;
-    private final ChatRoomService chatRoomService;
 
     /*
      * 채팅방 구독 destination prefix입니다.
      * 이 prefix로 시작하는 SUBSCRIBE 요청만 채팅방 접근 권한 검증 대상으로 봅니다.
      */
     private static final String CHAT_ROOM_SUB_PREFIX = "/sub/chat/rooms/";
+
+    private final JwtTokenProvider jwtTokenProvider;
+    private final MemberService memberService;
+    private final ChatRoomService chatRoomService;
 
     /**
      * 클라이언트가 서버로 보내는 STOMP frame이 실제 메시지 처리 로직으로 전달되기 전에 실행됩니다.

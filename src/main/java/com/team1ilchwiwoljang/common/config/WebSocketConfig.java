@@ -12,12 +12,10 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 
 /**
  * STOMP 기반 WebSocket 설정입니다.
- * STOMP에서는 Spring MessageBroker가 destination 기준으로 구독자에게 메시지를 전달합니다.
- *
- * 현재 destination 설계:
- * 1. 클라이언트 연결 endpoint: /ws/chat
- * 2. 클라이언트가 서버로 메시지 발행: /pub/chat/rooms/{chatRoomId}/messages
- * 3. 클라이언트가 채팅방 메시지 구독: /sub/chat/rooms/{chatRoomId}
+ * 현재 destination 규칙:
+ * - WebSocket/STOMP 연결 endpoint: /ws/chat
+ * - 클라이언트 메시지 발행: /pub/chat/rooms/{chatRoomId}/messages
+ * - 클라이언트 메시지 구독: /sub/chat/rooms/{chatRoomId}
  */
 @Configuration
 @EnableWebSocketMessageBroker
@@ -31,28 +29,33 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        /*
+         * STOMP 연결 endpoint입니다.
+         * 클라이언트는 이 endpoint로 WebSocket 연결을 맺은 뒤,
+         * STOMP CONNECT frame을 보냅니다.
+         */
         registry.addEndpoint("/ws/chat")
                 .setAllowedOriginPatterns(allowedOriginPatterns);
     }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        // /pub 으로 시작하는 destination은 Controller의 @MessageMapping으로 라우팅됩니다.
+        /*
+         * 클라이언트가 /pub 으로 시작하는 destination에 SEND하면
+         * Spring이 @MessageMapping Controller로 라우팅합니다.
+         */
         registry.setApplicationDestinationPrefixes("/pub");
 
-        // /sub 으로 시작하는 destination은 MessageBroker가 구독자에게 직접 전달합니다.
+        /*
+         * 클라이언트가 /sub 으로 시작하는 destination을 SUBSCRIBE하면
+         * SimpleBroker가 해당 destination 구독자에게 메시지를 전달합니다.
+         */
         registry.enableSimpleBroker("/sub");
     }
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        /*
-         * 클라이언트에서 서버로 들어오는 STOMP 프레임을 가로챕니다.
-         *
-         * 여기서 처리할 것:
-         * 1. CONNECT 시점 JWT 인증
-         * 2. SUBSCRIBE 시점 채팅방 접근 권한 검증
-         */
+        // 클라이언트에서 서버로 들어오는 STOMP frame을 가로챕니다.
         registration.interceptors(chatStompChannelInterceptor);
     }
 }

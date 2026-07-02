@@ -83,7 +83,7 @@ public class SecurityConfig {
             /*
              * STOMP WebSocket handshake endpoint입니다.
              * HTTP Security에서는 통과시키고,
-             * 실제 JWT 인증은 STOMP CONNECT 프레임에서 처리합니다.
+             * 실제 JWT 인증은 ChatStompChannelInterceptor가 STOMP CONNECT frame에서 처리합니다.
              */
             "/ws/chat",
 
