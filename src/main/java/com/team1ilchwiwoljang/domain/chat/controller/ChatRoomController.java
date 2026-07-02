@@ -3,12 +3,15 @@ package com.team1ilchwiwoljang.domain.chat.controller;
 import com.team1ilchwiwoljang.common.response.ApiResponse;
 import com.team1ilchwiwoljang.common.security.annotation.Auth;
 import com.team1ilchwiwoljang.common.security.auth.AuthMember;
+import com.team1ilchwiwoljang.domain.chat.dto.request.ChatRoomUpdateStatusRequest;
 import com.team1ilchwiwoljang.domain.chat.dto.response.ChatMessageResponse;
 import com.team1ilchwiwoljang.domain.chat.dto.response.ChatRoomListResponse;
 import com.team1ilchwiwoljang.domain.chat.dto.response.ChatRoomResponse;
 import com.team1ilchwiwoljang.domain.chat.entity.ChatRoom;
+import com.team1ilchwiwoljang.domain.chat.entity.ChatRoomStatus;
 import com.team1ilchwiwoljang.domain.chat.service.ChatMessageService;
 import com.team1ilchwiwoljang.domain.chat.service.ChatRoomService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -57,15 +60,17 @@ public class ChatRoomController {
     }
 
     /**
-     * 관리자가 모든 회원 채팅방 목록을 조회합니다.
-     * MEMBER가 호출하면 ChatRoomService에서 FORBIDDEN 예외가 발생합니다.
+     * 관리자가 고객 채팅방 목록을 조회합니다.
+     * status 쿼리 파라미터가 없으면 전체 조회,
+     * status 쿼리 파라미터가 있으면 상태별 조회 합니다.
      */
     @GetMapping
     public ResponseEntity<ApiResponse<List<ChatRoomListResponse>>> getAllChatRooms(
-            @Auth AuthMember authMember
+            @Auth AuthMember authMember,
+            @RequestParam(required = false) ChatRoomStatus status
     ) {
         List<ChatRoomListResponse> response =
-                chatRoomService.getAllChatRooms(authMember.role());
+                chatRoomService.getChatRooms(authMember.role(), status);
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -88,5 +93,25 @@ public class ChatRoomController {
                 );
 
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * 관리자가 고객 채팅방의 상담 상태를 변경합니다.
+     * 일반 회원이 호출하면 FORBIDDEN 예외가 발생합니다.
+     * 잘못된 상태 전이이면 INVALID_CHAT_ROOM_STATUS_TRANSITION 예외가 발생합니다.
+     */
+    @PatchMapping("/{chatRoomId}/status")
+    public ResponseEntity<ApiResponse<ChatRoomResponse>> changeChatRoomStatus(
+            @Auth AuthMember authMember,
+            @PathVariable Long chatRoomId,
+            @Valid @RequestBody ChatRoomUpdateStatusRequest request
+    ) {
+        ChatRoom chatRoom = chatRoomService.changeChatRoomStatus(
+                authMember.role(),
+                chatRoomId,
+                request.status()
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(ChatRoomResponse.from(chatRoom)));
     }
 }
