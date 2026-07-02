@@ -54,6 +54,8 @@ Authorization: Bearer {accessToken}
 - `GET /api/products` 🔄 PR#64
 - `GET /api/products/{productId}` 🔄 PR#65
 - `GET /api/products/search` 🔄 PR#59
+- `GET /api/search/popular` 🔄 PR#43
+
 
 관리자 API는 `ADMIN` 역할이 필요하다.
 
@@ -152,6 +154,8 @@ Authorization: Bearer {accessToken}
 | 🔄 PR#64 | 상품 | 상품 목록 조회 | `GET` | `/api/products` |
 | 🔄 PR#65 | 상품 | 상품 상세 조회 | `GET` | `/api/products/{productId}` |
 | 🔄 PR#68 | 주문 | 장바구니 주문서 미리보기 | `GET` | `/api/orders/preview` |
+| 🔄 PR#43 | 검색 | 인기 검색어 조회 | `GET` | `/api/search/popular` |
+
 
 ---
 
@@ -1036,6 +1040,45 @@ null
 | 코드 | HTTP | 발생 조건 |
 | --- | --- | --- |
 | `VALIDATION_FAILED` | 400 | keyword 누락 |
+
+---
+
+### 인기 검색어 조회 🔄 PR#43
+
+누적 검색 횟수 기준 인기 검색어 TOP N을 반환한다.
+
+- Method: `GET`
+- Path: `/api/search/popular`
+- 인증: 불필요
+- HTTP Status: `200 OK`
+
+#### Query Parameters
+
+| 이름 | 타입 | 필수 | 기본값 | 설명 |
+| --- | --- | --- | --- | --- |
+| `limit` | int | N | `10` | 반환할 인기 검색어 수 (1 ~ 100) |
+
+#### Response Data
+
+```json
+[
+  {
+    "keyword": "셔츠",
+    "searchCount": 482
+  },
+  {
+    "keyword": "청바지",
+    "searchCount": 310
+  }
+]
+```
+
+#### Errors
+
+| 코드 | HTTP | 발생 조건 |
+| --- | --- | --- |
+| `VALIDATION_FAILED` | 400 | limit < 1 또는 limit > 100 |
+
 
 ---
 

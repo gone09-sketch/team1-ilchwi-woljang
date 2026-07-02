@@ -10,9 +10,12 @@ import com.team1ilchwiwoljang.domain.product.dto.response.ProductSearchItemRespo
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse;
+import com.team1ilchwiwoljang.domain.product.dto.response.PopularProductsCacheDto;
 import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
+import com.team1ilchwiwoljang.domain.search.service.SearchKeywordService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +23,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -27,6 +31,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final SearchKeywordService searchKeywordService;
     private final PopularProductCacheService popularProductCacheService;
 
     /**
@@ -103,6 +108,13 @@ public class ProductService {
             throw new BusinessException(ErrorCode.VALIDATION_FAILED);
         }
 
+        try {
+            searchKeywordService.incrementSearchCount(normalizedKeyword);
+        } catch (Exception e) {
+            log.warn("인기 검색어 카운트 증가 실패. 검색 결과 반환은 계속 진행합니다. keyword={}, error={}",
+                    normalizedKeyword, e.getMessage());
+        }
+
         return PageResponse.from(
                 productRepository.findByNameContainingIgnoreCaseAndStatusNot(
                         normalizedKeyword,
@@ -133,8 +145,8 @@ public class ProductService {
      * 캐시에서 최대 100개의 인기 상품을 단일 키로 가져온 후, 요청된 limit 만큼 메모리에서 잘라서 반환하여 100% 캐시 히트를 보장합니다.
      */
     public List<PopularProductResponse> getPopularProducts(int limit) {
-        List<PopularProductResponse> cachedPopularProducts = popularProductCacheService.getCachedPopularProducts();
-        return cachedPopularProducts.stream()
+        PopularProductsCacheDto cachedDto = popularProductCacheService.getCachedPopularProducts();
+        return cachedDto.products().stream()
                 .limit(limit)
                 .toList();
     }
