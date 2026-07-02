@@ -349,7 +349,7 @@
 
                 <p class="hint">
                     연결 URL은 <code>/ws/chat?chatRoomId=...&accessToken=...</code> 형식입니다.
-                    인증/인가 검증은 <code>ChatHandshakeInterceptor</code>가 처리합니다.
+                    브라우저 WebSocket API 제약으로 토큰을 query string에 싣지만, 이 테스트 페이지는 local 프로파일에서만 제공합니다.
                 </p>
             </div>
         </section>
@@ -763,8 +763,9 @@
                 return;
             }
 
-            appendMessage(`저장된 메시지 ${body.data.length}개를 조회했습니다.`, "system");
-            body.data.forEach(appendChatMessage);
+            const page = body.data;
+            appendMessage(`저장된 메시지 ${page.content.length}개를 조회했습니다. page=${page.page}, size=${page.size}`, "system");
+            page.content.forEach(appendChatMessage);
         } catch (error) {
             appendMessage("메시지 조회 요청 오류: " + getFetchErrorMessage(error), "error");
         }
@@ -798,8 +799,9 @@
                 return;
             }
 
-            appendMessage(`전체 채팅방 ${body.data.length}개를 조회했습니다.`, "system");
-            body.data.forEach((room) => {
+            const page = body.data;
+            appendMessage(`전체 채팅방 ${page.content.length}개를 조회했습니다. page=${page.page}, size=${page.size}`, "system");
+            page.content.forEach((room) => {
                 appendMessage(
                         `chatRoomId=${room.chatRoomId}, memberId=${room.memberId}, status=${room.status}, updatedAt=${formatDateTime(room.updatedAt)}, createdAt=${formatDateTime(room.createdAt)}`,
                         "system"
@@ -885,7 +887,14 @@
 
     function appendWebSocketMessage(data) {
         try {
-            appendChatMessage(JSON.parse(data));
+            const parsed = JSON.parse(data);
+
+            if (parsed.success === false) {
+                appendMessage(`WebSocket 오류 응답: ${parsed.code} - ${parsed.message}`, "error");
+                return;
+            }
+
+            appendChatMessage(parsed);
         } catch (error) {
             appendMessage(data);
         }

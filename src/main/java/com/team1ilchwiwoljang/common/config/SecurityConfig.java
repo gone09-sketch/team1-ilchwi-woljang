@@ -112,6 +112,7 @@ public class SecurityConfig {
                 // Controller에 도착하기 전에 JWT를 먼저 검증합니다.
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
+
         return http.build();
     }
 }

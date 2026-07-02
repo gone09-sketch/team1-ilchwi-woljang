@@ -54,7 +54,16 @@ public class ChatRoomService {
             throw new BusinessException(ErrorCode.CHAT_ROOM_ALREADY_EXISTS);
         }
 
-        return chatRoomRepository.save(ChatRoom.create(member));
+        try {
+            /*
+             * existsByMember_Id 검사는 사용자에게 빠르게 중복을 알려주기 위한 1차 방어입니다.
+             * 동시에 같은 회원이 생성 요청을 보내면 둘 다 exists 검사를 통과할 수 있으므로,
+             * DB unique 제약 위반도 CHAT_ROOM_ALREADY_EXISTS로 변환합니다.
+             */
+            return chatRoomRepository.saveAndFlush(ChatRoom.create(member));
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(ErrorCode.CHAT_ROOM_ALREADY_EXISTS);
+        }
     }
 
     /**

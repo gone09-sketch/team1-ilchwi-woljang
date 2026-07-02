@@ -48,6 +48,7 @@ public enum ErrorCode {
     // chat
     CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "채팅방을 찾을 수 없습니다."),
     CHAT_ROOM_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 채팅방이 존재합니다."),
+    CHAT_MESSAGE_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "채팅 메시지 전송에 실패했습니다.");
     COMPLETED_CHAT_ROOM_MESSAGE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "완료된 채팅방에는 메시지를 보낼 수 없습니다."),
     INVALID_CHAT_ROOM_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "변경할 수 없는 채팅방 상태입니다.");
 

@@ -54,6 +54,8 @@ public class ChatHandshakeInterceptor implements HandshakeInterceptor {
         /*
          * 클라이언트가 요청한 URI를 가져옵니다
          * 예: /ws/chat?chatRoomId=1&accessToken=xxx
+         * 브라우저 WebSocket API는 임의 Authorization 헤더를 넣기 어렵기 때문에 query parameter를 사용합니다.
+         * 토큰이 로그에 남지 않도록 전체 URI 대신 path만 기록합니다.
          */
         URI uri = request.getURI();
 
@@ -84,6 +86,13 @@ public class ChatHandshakeInterceptor implements HandshakeInterceptor {
             chatRoomId = Long.valueOf(chatRoomIdValue);
         } catch (NumberFormatException e) {
             log.warn("WebSocket handshake 실패: chatRoomId 형식 오류, chatRoomId={}", chatRoomIdValue);
+
+            response.setStatusCode(HttpStatus.BAD_REQUEST);
+            return false;
+        }
+
+        if (chatRoomId < 1) {
+            log.warn("WebSocket handshake 실패: chatRoomId 범위 오류, chatRoomId={}", chatRoomId);
 
             response.setStatusCode(HttpStatus.BAD_REQUEST);
             return false;
@@ -128,13 +137,14 @@ public class ChatHandshakeInterceptor implements HandshakeInterceptor {
             chatRoom = chatRoomService.getAccessibleChatRoom(memberId, role, chatRoomId);
         } catch (BusinessException e) {
             log.warn(
-                    "WebSocket handshake 실패: 채팅방 접근 권한 없음, memberId={}, role={}, chatRoomId={}",
+                    "WebSocket handshake 실패: 채팅방 접근 검증 실패, memberId={}, role={}, chatRoomId={}, errorCode={}",
                     memberId,
                     role,
-                    chatRoomId
+                    chatRoomId,
+                    e.getErrorCode().name()
             );
 
-            response.setStatusCode(HttpStatus.FORBIDDEN);
+            response.setStatusCode(e.getErrorCode().getStatus());
             return false;
         }
 
