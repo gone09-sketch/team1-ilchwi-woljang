@@ -2,13 +2,13 @@ package com.team1ilchwiwoljang.domain.cart.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.team1ilchwiwoljang.common.config.QueryDslConfig;
 import com.team1ilchwiwoljang.domain.cart.entity.Cart;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import jakarta.persistence.PersistenceUnitUtil;
 import java.util.List;
-import com.team1ilchwiwoljang.common.config.QueryDslConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

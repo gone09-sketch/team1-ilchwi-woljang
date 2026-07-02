@@ -4,6 +4,9 @@ spring:
     username: ${MYSQL_TEST_DB_USERNAME:root}
     password: ${MYSQL_TEST_DB_PASSWORD:}
     driver-class-name: org.h2.Driver
+    hikari:
+      minimum-idle: 30
+      maximum-pool-size: 30
 
   jpa:
     open-in-view: false

@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceTest {
@@ -66,11 +67,12 @@ class ProductServiceTest {
         // given
         Long categoryId = 1L;
         Category category = Category.create("상의", null);
+        ReflectionTestUtils.setField(category, "id", categoryId);
         Product product1 = Product.create("티셔츠", 10000, 100, ProductStatus.ON_SALE, "편안한 티셔츠", category);
         Product product2 = Product.create("맨투맨", 20000, 50, ProductStatus.ON_SALE, "따뜻한 맨투맨", category);
 
-        given(categoryRepository.existsById(categoryId)).willReturn(true);
-        given(productRepository.findByCategoryIdAndStatus(eq(categoryId), eq(ProductStatus.ON_SALE), any(Pageable.class)))
+        given(categoryRepository.findById(categoryId)).willReturn(Optional.of(category));
+        given(productRepository.findByCategoryIdInAndStatus(eq(List.of(categoryId)), eq(ProductStatus.ON_SALE), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of(product1, product2)));
 
         // when
@@ -83,11 +85,43 @@ class ProductServiceTest {
     }
 
     @Test
+    @DisplayName("루트 카테고리 ID로 조회하면 자식 카테고리 상품까지 함께 조회한다.")
+    void getProductsByRootCategoryWithChildren() {
+        // given
+        Long rootCategoryId = 1L;
+        Long childCategoryId = 2L;
+        Category rootCategory = Category.createRoot("패션/잡화");
+        ReflectionTestUtils.setField(rootCategory, "id", rootCategoryId);
+        Category childCategory = Category.createChild("신발", rootCategory);
+        ReflectionTestUtils.setField(childCategory, "id", childCategoryId);
+        Product product = Product.create("운동화", 59000, 20, ProductStatus.ON_SALE, "편한 운동화", childCategory);
+
+        given(categoryRepository.findById(rootCategoryId)).willReturn(Optional.of(rootCategory));
+        given(productRepository.findByCategoryIdInAndStatus(
+                eq(List.of(rootCategoryId, childCategoryId)),
+                eq(ProductStatus.ON_SALE),
+                any(Pageable.class)
+        )).willReturn(new PageImpl<>(List.of(product)));
+
+        // when
+        Page<ProductResponse> result = productService.getProductsByCategory(rootCategoryId, "newest", 0, 20);
+
+        // then
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).name()).isEqualTo("운동화");
+        then(productRepository).should().findByCategoryIdInAndStatus(
+                eq(List.of(rootCategoryId, childCategoryId)),
+                eq(ProductStatus.ON_SALE),
+                any(Pageable.class)
+        );
+    }
+
+    @Test
     @DisplayName("존재하지 않는 카테고리 ID로 조회 시 예외가 발생한다.")
     void getProductsByNotExistsCategory() {
         // given
         Long invalidCategoryId = 999L;
-        given(categoryRepository.existsById(invalidCategoryId)).willReturn(false);
+        given(categoryRepository.findById(invalidCategoryId)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> productService.getProductsByCategory(invalidCategoryId, "newest", 0, 20))

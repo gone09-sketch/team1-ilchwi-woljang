@@ -3,6 +3,7 @@ package com.team1ilchwiwoljang.domain.product.service;
 import com.team1ilchwiwoljang.domain.category.entity.Category;
 import com.team1ilchwiwoljang.domain.category.repository.CategoryRepository;
 import com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse;
+import com.team1ilchwiwoljang.domain.product.dto.response.PopularProductsCacheDto;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
@@ -87,9 +88,8 @@ class ProductServiceIntegrationTest {
 
         // 3. 호출 후 캐시에 데이터가 정상적으로 탑재되었는지 확인
         assertThat(cache.get("all")).isNotNull();
-        @SuppressWarnings("unchecked")
-        List<PopularProductResponse> cachedValue = (List<PopularProductResponse>) cache.get("all").get();
-        assertThat(cachedValue).isEqualTo(firstCall);
+        PopularProductsCacheDto cachedValue = (PopularProductsCacheDto) cache.get("all").get();
+        assertThat(cachedValue.products()).isEqualTo(firstCall);
 
         // 4. 상품의 판매량을 임의로 변경합니다. (하지만 캐시로 인해 결과는 바뀌지 않아야 함)
         productB.increaseSalesCount(200); // B 판매량을 90 -> 290개로 대폭 늘려 B가 더 인기가 많아지게 함
