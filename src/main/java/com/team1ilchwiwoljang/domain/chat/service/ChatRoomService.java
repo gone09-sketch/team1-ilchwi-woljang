@@ -91,9 +91,13 @@ public class ChatRoomService {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 
+        /*
+         * status가 없으면 전체 목록을 updatedAt 최신순으로 조회하고,
+         * status가 있으면 해당 상태만 updatedAt 최신순으로 조회합니다.
+         */
         List<ChatRoom> chatRooms = status == null
-                ? chatRoomRepository.findAllByOrderByCreatedAtDesc()
-                : chatRoomRepository.findAllByStatusOrderByCreatedAtDesc(status);
+                ? chatRoomRepository.findAllWithMemberOrderByUpdatedAtDesc()
+                : chatRoomRepository.findAllWithMemberByStatusOrderByUpdatedAtDesc(status);
 
         return chatRooms.stream()
                 .map(ChatRoomListResponse::from)
