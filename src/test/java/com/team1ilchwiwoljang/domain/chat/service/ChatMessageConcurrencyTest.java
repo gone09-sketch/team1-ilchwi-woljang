@@ -49,8 +49,8 @@ class ChatMessageConcurrencyTest {
     }
 
     @Test
-    @DisplayName("채팅방 완료 처리와 메시지 저장이 경합해도 완료 이후 메시지는 저장되지 않아야 한다")
-    void givenChatRoomCompletionRacesWithMessageSave_whenMessageTransactionSawWaitingStatus_thenDoNotSaveMessage()
+    @DisplayName("채팅방 완료 처리와 메시지 저장이 경합하면 상태 검증을 통과한 메시지는 마지막 메시지로 저장될 수 있다")
+    void givenChatRoomCompletionRacesWithMessageSave_whenMessagePassedStatusCheck_thenSaveAsLastMessage()
             throws Exception {
         Member member = memberRepository.save(
                 Member.create("chat-concurrency@example.com", "password", "member", "010-1234-5678")
@@ -125,7 +125,8 @@ class ChatMessageConcurrencyTest {
         List<ChatMessage> savedMessages = chatMessageRepository.findAllWithSenderByChatRoomId(chatRoomId);
 
         assertThat(completedChatRoom.getStatus()).isEqualTo(ChatRoomStatus.COMPLETED);
-        assertThat(savedMessages).isEmpty();
+        assertThat(savedMessages).hasSize(1);
+        assertThat(savedMessages.get(0).getContent()).isEqualTo("완료 처리와 경합한 메시지");
     }
 
     private void await(CountDownLatch latch) {
