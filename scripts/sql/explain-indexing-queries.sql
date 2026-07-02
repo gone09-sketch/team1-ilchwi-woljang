@@ -86,10 +86,14 @@ EXPLAIN
 SELECT *
 FROM products
 WHERE category_id = (
-    SELECT MIN(id)
-    FROM categories
+    SELECT child.id
+    FROM categories child
+    JOIN categories root
+        ON root.id = child.parent_id
+    WHERE root.name = '전자기기'
+      AND child.name = '노트북'
+    LIMIT 1
 )
   AND status = 'ON_SALE'
 ORDER BY created_at DESC, id DESC
 LIMIT 20 OFFSET 0;
-

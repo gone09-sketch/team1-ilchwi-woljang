@@ -3,7 +3,7 @@
 --
 -- Full mode default:
 -- - members: 30,000 (29,990 MEMBER, 10 ADMIN)
--- - categories: 50
+-- - categories: 20 (5 roots, 15 children)
 -- - products: 1,000,000
 -- - orders: 1,000,000
 -- - order_items: 2,000,000
@@ -11,13 +11,19 @@
 -- Target login account:
 -- - email: target@test.com
 -- - raw password: Test1234!
+-- Admin login accounts:
+-- - email: admin01@test.com ~ admin10@test.com
+-- - raw password: Test1234!
 
-SET @target_email = 'target@test.com';
+SET NAMES utf8mb4;
+
+SET @target_email = _utf8mb4'target@test.com' COLLATE utf8mb4_unicode_ci;
 SET @dummy_password = '$2y$10$Ec9O2XWgpKzSXt1jaIO.yuIjdgAX4umqI8N1H4dWBrkvzvABkIKAy';
 
 SET @member_count = 30000;
 SET @admin_count = 10;
-SET @category_count = 50;
+SET @category_count = 20;
+SET @leaf_category_count = 15;
 SET @product_count = 1000000;
 SET @order_count = 1000000;
 SET @target_order_count = 40;
@@ -124,6 +130,38 @@ SELECT
 FROM seq
 WHERE n < @admin_count;
 
+DROP TEMPORARY TABLE IF EXISTS category_seed;
+CREATE TEMPORARY TABLE category_seed (
+    root_order INT NOT NULL,
+    child_order INT NOT NULL,
+    root_name VARCHAR(50) NOT NULL,
+    child_name VARCHAR(50) NOT NULL,
+    PRIMARY KEY (root_order, child_order)
+) ENGINE = MEMORY;
+
+INSERT INTO category_seed (
+    root_order,
+    child_order,
+    root_name,
+    child_name
+)
+VALUES
+    (1, 1, '전자기기', '노트북'),
+    (1, 2, '전자기기', 'PC주변기기'),
+    (1, 3, '전자기기', '모바일/액세서리'),
+    (2, 1, '생활용품', '청소용품'),
+    (2, 2, '생활용품', '주방용품'),
+    (2, 3, '생활용품', '욕실용품'),
+    (3, 1, '뷰티', '스킨케어'),
+    (3, 2, '뷰티', '메이크업'),
+    (3, 3, '뷰티', '헤어/바디'),
+    (4, 1, '식품', '건강식품'),
+    (4, 2, '식품', '과자/간식'),
+    (4, 3, '식품', '음료'),
+    (5, 1, '패션/잡화', '신발'),
+    (5, 2, '패션/잡화', '가방/소품'),
+    (5, 3, '패션/잡화', '스포츠/레저');
+
 INSERT INTO categories (
     name,
     parent_id,
@@ -131,16 +169,57 @@ INSERT INTO categories (
     updated_at
 )
 SELECT
-    CONCAT('Category-', LPAD(n + 1, 2, '0')),
+    roots.root_name,
     NULL,
     NOW(),
     NOW()
-FROM seq
-WHERE n < @category_count;
+FROM (
+    SELECT DISTINCT
+        root_order,
+        root_name
+    FROM category_seed
+) roots
+ORDER BY roots.root_order;
 
-SET @first_category_id = (
-    SELECT MIN(id)
-    FROM categories
+INSERT INTO categories (
+    name,
+    parent_id,
+    created_at,
+    updated_at
+)
+SELECT
+    cs.child_name,
+    root.id,
+    NOW(),
+    NOW()
+FROM category_seed cs
+JOIN categories root
+    ON root.name = cs.root_name
+   AND root.parent_id IS NULL
+ORDER BY cs.root_order, cs.child_order;
+
+DROP TEMPORARY TABLE IF EXISTS product_category_map;
+CREATE TEMPORARY TABLE product_category_map AS
+SELECT
+    ROW_NUMBER() OVER (ORDER BY cs.root_order, cs.child_order) - 1 AS rn,
+    child.id AS category_id,
+    cs.root_name,
+    cs.child_name
+FROM category_seed cs
+JOIN categories root
+    ON root.name = cs.root_name
+   AND root.parent_id IS NULL
+JOIN categories child
+    ON child.name = cs.child_name
+   AND child.parent_id = root.id
+ORDER BY cs.root_order, cs.child_order;
+
+ALTER TABLE product_category_map
+    ADD PRIMARY KEY (rn);
+
+SET @leaf_category_count = (
+    SELECT COUNT(*)
+    FROM product_category_map
 );
 
 INSERT INTO products (
@@ -154,17 +233,103 @@ INSERT INTO products (
     updated_at
 )
 SELECT
-    @first_category_id + (n % @category_count),
-    CASE
-        WHEN n % 1000 = 0 THEN CONCAT('게이밍 노트북 ', LPAD(n + 1, 7, '0'))
-        WHEN n % 1000 = 1 THEN CONCAT('사무용 노트북 ', LPAD(n + 1, 7, '0'))
-        WHEN n % 100 < 10 THEN CONCAT('무선 마우스 ', LPAD(n + 1, 7, '0'))
-        WHEN n % 100 < 20 THEN CONCAT('기계식 키보드 ', LPAD(n + 1, 7, '0'))
-        WHEN n % 100 < 30 THEN CONCAT('USB-C 허브 ', LPAD(n + 1, 7, '0'))
-        WHEN n % 100 < 40 THEN CONCAT('텀블러 ', LPAD(n + 1, 7, '0'))
-        WHEN n % 100 < 50 THEN CONCAT('운동화 ', LPAD(n + 1, 7, '0'))
-        ELSE CONCAT('테스트 상품 ', LPAD(n + 1, 7, '0'))
-    END,
+    pcm.category_id,
+    CONCAT(
+        CASE pcm.child_name
+            WHEN '노트북' THEN
+                CASE n % 3
+                    WHEN 0 THEN '게이밍 노트북'
+                    WHEN 1 THEN '사무용 노트북'
+                    ELSE '초경량 노트북'
+                END
+            WHEN 'PC주변기기' THEN
+                CASE n % 3
+                    WHEN 0 THEN '무선 마우스'
+                    WHEN 1 THEN '기계식 키보드'
+                    ELSE '모니터 받침대'
+                END
+            WHEN '모바일/액세서리' THEN
+                CASE n % 3
+                    WHEN 0 THEN 'USB-C 허브'
+                    WHEN 1 THEN '고속 충전기'
+                    ELSE '무선 이어폰'
+                END
+            WHEN '청소용품' THEN
+                CASE n % 3
+                    WHEN 0 THEN '다용도 세정제'
+                    WHEN 1 THEN '프리미엄 물티슈'
+                    ELSE '먼지 제거 클리너'
+                END
+            WHEN '주방용품' THEN
+                CASE n % 3
+                    WHEN 0 THEN '주방 수세미 세트'
+                    WHEN 1 THEN '실리콘 조리도구'
+                    ELSE '키친타월'
+                END
+            WHEN '욕실용품' THEN
+                CASE n % 3
+                    WHEN 0 THEN '욕실 청소 브러시'
+                    WHEN 1 THEN '샤워타월'
+                    ELSE '배수구 클리너'
+                END
+            WHEN '스킨케어' THEN
+                CASE n % 3
+                    WHEN 0 THEN '보습 크림'
+                    WHEN 1 THEN '수분 에센스'
+                    ELSE '선크림'
+                END
+            WHEN '메이크업' THEN
+                CASE n % 3
+                    WHEN 0 THEN '틴트 컬러밤'
+                    WHEN 1 THEN '쿠션 파운데이션'
+                    ELSE '아이브로우 펜슬'
+                END
+            WHEN '헤어/바디' THEN
+                CASE n % 3
+                    WHEN 0 THEN '바디로션'
+                    WHEN 1 THEN '데일리 샴푸'
+                    ELSE '헤어 트리트먼트'
+                END
+            WHEN '건강식품' THEN
+                CASE n % 3
+                    WHEN 0 THEN '저당 그래놀라'
+                    WHEN 1 THEN '멀티비타민'
+                    ELSE '단백질바'
+                END
+            WHEN '과자/간식' THEN
+                CASE n % 3
+                    WHEN 0 THEN '견과 믹스'
+                    WHEN 1 THEN '감자칩'
+                    ELSE '초코 쿠키'
+                END
+            WHEN '음료' THEN
+                CASE n % 3
+                    WHEN 0 THEN '우유 1L'
+                    WHEN 1 THEN '콤부차'
+                    ELSE '생수'
+                END
+            WHEN '신발' THEN
+                CASE n % 3
+                    WHEN 0 THEN '운동화'
+                    WHEN 1 THEN '러닝화'
+                    ELSE '슬리퍼'
+                END
+            WHEN '가방/소품' THEN
+                CASE n % 3
+                    WHEN 0 THEN '데일리 백팩'
+                    WHEN 1 THEN '에코백'
+                    ELSE '카드지갑'
+                END
+            ELSE
+                CASE n % 3
+                    WHEN 0 THEN '요가매트'
+                    WHEN 1 THEN '스포츠 양말'
+                    ELSE '트레이닝 밴드'
+                END
+        END,
+        ' ',
+        LPAD(n + 1, 7, '0')
+    ),
     1000 + ((n % 2000) * 100),
     1000000,
     CASE
@@ -172,10 +337,12 @@ SELECT
         WHEN n % 100 < 98 THEN 'OUT_OF_STOCK'
         ELSE 'STOPPED'
     END,
-    'Indexing dummy product',
+    CONCAT(pcm.root_name, ' > ', pcm.child_name, ' 카테고리 인덱싱 더미 상품'),
     DATE_SUB(NOW(), INTERVAL (n % 1095) DAY),
     NOW()
 FROM seq
+JOIN product_category_map pcm
+    ON pcm.rn = (n % @leaf_category_count)
 WHERE n < @product_count;
 
 SET @target_member_id = (
