@@ -66,6 +66,21 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(errorCode.getStatus()).body(response);
     }
 
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolationException(ConstraintViolationException e) {
+        List<ErrorResponse.FieldError> fieldErrors = e.getConstraintViolations().stream()
+                .map(violation -> {
+                    String path = violation.getPropertyPath().toString();
+                    String field = path.substring(path.lastIndexOf('.') + 1);
+                    return new ErrorResponse.FieldError(field, violation.getMessage());
+                })
+                .toList();
+
+        ErrorCode errorCode = ErrorCode.VALIDATION_FAILED;
+        ErrorResponse response = ErrorResponse.of(errorCode.name(), errorCode.getMessage(), fieldErrors);
+        return ResponseEntity.status(errorCode.getStatus()).body(response);
+    }
+
     @ExceptionHandler(org.springframework.web.bind.MissingServletRequestParameterException.class)
     public ResponseEntity<ErrorResponse> handleMissingServletRequestParameterException(
             org.springframework.web.bind.MissingServletRequestParameterException e) {
