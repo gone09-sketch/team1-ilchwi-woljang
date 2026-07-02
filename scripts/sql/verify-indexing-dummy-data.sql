@@ -77,10 +77,14 @@ ORDER BY item_count DESC
 LIMIT 20;
 
 SELECT
-    p.category_id,
+    root.name AS root_category,
+    child.name AS child_category,
     COUNT(*) AS product_count
 FROM products p
-GROUP BY p.category_id
-ORDER BY product_count DESC, p.category_id ASC
+JOIN categories child
+    ON child.id = p.category_id
+JOIN categories root
+    ON root.id = child.parent_id
+GROUP BY root.name, child.name
+ORDER BY product_count DESC, root.name ASC, child.name ASC
 LIMIT 20;
-
