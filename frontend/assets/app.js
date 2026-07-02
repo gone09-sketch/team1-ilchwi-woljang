@@ -2090,3 +2090,226 @@ document.addEventListener("input", (event) => {
 });
 
 initialize();
+
+// ===== Chat Widget =====
+
+function toggleChatWidget(open) {
+  state.chatWidget.open = open;
+  elements.chatWidgetPanel.hidden = !open;
+  if (open && state.chatWidget.messages.length === 0) {
+    initChatBotMode();
+  }
+}
+
+function renderChatWidgetMessages() {
+  // message.type은 호출부에서 이미 "chat-widget-message from-user" 형태로
+  // 전체 클래스 문자열을 넘긴다 — 여기서 prefix를 다시 붙이면 클래스가 중복된다.
+  elements.chatWidgetMessages.innerHTML = state.chatWidget.messages
+    .map((message) => `
+      <div class="${message.type}">${escapeHtml(message.text)}</div>
+    `)
+    .join("");
+  elements.chatWidgetMessages.scrollTop = elements.chatWidgetMessages.scrollHeight;
+}
+
+function addChatWidgetMessage(text, type) {
+  state.chatWidget.messages.push({ text, type });
+  renderChatWidgetMessages();
+}
+
+async function initChatBotMode() {
+  state.chatWidget.mode = "bot";
+  state.chatWidget.conversationId = Date.now().toString();
+  elements.chatWidgetModeLabel.textContent = "AI 챗봇";
+  elements.chatWidgetConnectButton.hidden = false;
+
+  addChatWidgetMessage("AI 챗봇과 연결 중입니다...", "chat-widget-message system");
+
+  try {
+    const response = await requestApi("/api/ai/chatbot/welcome");
+    state.chatWidget.messages = []; // Clear system message
+    addChatWidgetMessage(response, "chat-widget-message from-other");
+  } catch (error) {
+    state.chatWidget.messages = [];
+    addChatWidgetMessage("AI 챗봇에 연결할 수 없습니다.", "chat-widget-message system");
+  }
+}
+
+async function handleChatWidgetSubmit(event) {
+  event.preventDefault();
+  const text = elements.chatWidgetInput.value.trim();
+  if (!text) return;
+
+  elements.chatWidgetInput.value = "";
+
+  if (state.chatWidget.mode === "bot") {
+    addChatWidgetMessage(text, "chat-widget-message from-user");
+    try {
+      const response = await requestApi("/api/ai/chatbot", {
+        method: "POST",
+        body: {
+          conversationId: state.chatWidget.conversationId,
+          message: text
+        }
+      });
+      addChatWidgetMessage(response.answer, "chat-widget-message from-other");
+    } catch (error) {
+      addChatWidgetMessage("오류가 발생했습니다: " + error.message, "chat-widget-message system");
+    }
+  } else if (state.chatWidget.mode === "agent") {
+    if (state.chatWidget.socket && state.chatWidget.socket.connected) {
+      state.chatWidget.socket.publish({
+        destination: `/pub/chat/rooms/${state.chatWidget.chatRoomId}/messages`,
+        body: JSON.stringify({ content: text })
+      });
+    } else {
+      addChatWidgetMessage("연결이 끊어졌습니다. 잠시 후 다시 시도해주세요.", "chat-widget-message system");
+    }
+  }
+}
+
+async function connectToAgent() {
+  if (!requireAuth()) {
+    toggleChatWidget(false);
+    return;
+  }
+
+  elements.chatWidgetConnectButton.hidden = true;
+  state.chatWidget.mode = "agent";
+  elements.chatWidgetModeLabel.textContent = "상담원 연결";
+
+  state.chatWidget.messages = [];
+  addChatWidgetMessage("상담원과 연결 중입니다...", "chat-widget-message system");
+
+  let chatRoomId;
+  let roomStatus;
+  try {
+    const room = await requestApi("/api/chat/rooms/my", { method: "POST", auth: true });
+    chatRoomId = room.chatRoomId;
+    roomStatus = room.status;
+  } catch (error) {
+    try {
+      const room = await requestApi("/api/chat/rooms/my", { auth: true });
+      chatRoomId = room.chatRoomId;
+      roomStatus = room.status;
+    } catch (e) {
+      addChatWidgetMessage("채팅방을 생성하거나 불러오는데 실패했습니다.", "chat-widget-message system");
+      return;
+    }
+  }
+
+  state.chatWidget.chatRoomId = chatRoomId;
+
+  if (roomStatus === "COMPLETED") {
+    elements.chatWidgetInput.disabled = true;
+  } else {
+    elements.chatWidgetInput.disabled = false;
+  }
+
+  try {
+    const messages = await requestApi(`/api/chat/rooms/${chatRoomId}/messages`, { auth: true });
+
+    state.chatWidget.messages = [];
+    let lastId = 0;
+    messages.forEach(msg => {
+      const type = msg.senderRole === "ADMIN" ? "chat-widget-message from-other" : "chat-widget-message from-user";
+      state.chatWidget.messages.push({ text: msg.message, type });
+      if (msg.messageId > lastId) lastId = msg.messageId;
+    });
+
+    state.chatWidget.lastReceivedMessageId = lastId;
+
+    if (state.chatWidget.messages.length === 0) {
+      addChatWidgetMessage("상담이 시작되었습니다. 메시지를 남겨주세요.", "chat-widget-message system");
+    } else {
+      renderChatWidgetMessages();
+    }
+
+    connectStompClient(chatRoomId);
+  } catch (error) {
+    addChatWidgetMessage("채팅 이력을 불러오는데 실패했습니다.", "chat-widget-message system");
+  }
+}
+
+function connectStompClient(chatRoomId) {
+  if (state.chatWidget.socket) {
+    state.chatWidget.socket.deactivate();
+  }
+
+  const brokerURL = API_BASE_URL.replace(/^http/, 'ws') + '/ws/chat';
+
+  const client = new window.StompJs.Client({
+    brokerURL: brokerURL,
+    connectHeaders: {
+      Authorization: `Bearer ${getAccessToken()}`
+    },
+    reconnectDelay: 5000,
+    heartbeatIncoming: 4000,
+    heartbeatOutgoing: 4000,
+    onConnect: async () => {
+      try {
+        const url = `/api/chat/rooms/${chatRoomId}/messages?afterMessageId=${state.chatWidget.lastReceivedMessageId}`;
+        const messages = await requestApi(url, { auth: true });
+        messages.forEach(msg => {
+          const type = msg.senderRole === "ADMIN" ? "chat-widget-message from-other" : "chat-widget-message from-user";
+          if (msg.messageId > state.chatWidget.lastReceivedMessageId) {
+            state.chatWidget.lastReceivedMessageId = msg.messageId;
+            addChatWidgetMessage(msg.message, type);
+          }
+        });
+      } catch (e) {
+        // Ignore fetch errors during reconnect
+      }
+
+      client.subscribe(`/sub/chat/rooms/${chatRoomId}`, (message) => {
+        const data = JSON.parse(message.body);
+        const type = data.senderRole === "ADMIN" ? "chat-widget-message from-other" : "chat-widget-message from-user";
+        if (data.messageId > state.chatWidget.lastReceivedMessageId) {
+          state.chatWidget.lastReceivedMessageId = data.messageId;
+          addChatWidgetMessage(data.message, type);
+        }
+      });
+      state.chatWidget.subscribed = true;
+    },
+    onStompError: (frame) => {
+      const code = frame.headers['message'];
+      if (code === 'COMPLETED_CHAT_ROOM_MESSAGE_NOT_ALLOWED') {
+        addChatWidgetMessage("상담이 종료되어 메시지를 보낼 수 없습니다.", "chat-widget-message system");
+        elements.chatWidgetInput.disabled = true;
+      } else {
+        addChatWidgetMessage("메시지 전송에 실패했습니다.", "chat-widget-message system");
+      }
+    }
+  });
+
+  client.activate();
+  state.chatWidget.socket = client;
+}
+
+
+// ===== Chat Widget =====
+
+function toggleChatWidget(open) {
+  state.chatWidget.open = open;
+  elements.chatWidgetPanel.hidden = !open;
+  if (open && state.chatWidget.messages.length === 0) {
+    initChatBotMode();
+  }
+}
+
+function renderChatWidgetMessages() {
+  // message.type은 호출부에서 이미 "chat-widget-message from-user" 형태로
+  // 전체 클래스 문자열을 넘긴다 — 여기서 prefix를 다시 붙이면 클래스가 중복된다.
+  elements.chatWidgetMessages.innerHTML = state.chatWidget.messages
+    .map((message) => `
+      <div class="${message.type}">${escapeHtml(message.text)}</div>
+    `)
+    .join("");
+  elements.chatWidgetMessages.scrollTop = elements.chatWidgetMessages.scrollHeight;
+}
+
+function addChatWidgetMessage(text, type) {
+  state.chatWidget.messages.push({ text, type });
+  renderChatWidgetMessages();
+}
+>>>>>>> f08b66f (feat: 채팅 위젯 토글 UI 뼈대)
