@@ -4,6 +4,7 @@ import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
 import com.team1ilchwiwoljang.domain.chat.dto.response.ChatRoomListResponse;
 import com.team1ilchwiwoljang.domain.chat.entity.ChatRoom;
+import com.team1ilchwiwoljang.domain.chat.entity.ChatRoomStatus;
 import com.team1ilchwiwoljang.domain.chat.repository.ChatRoomRepository;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
@@ -79,18 +80,50 @@ public class ChatRoomService {
     }
 
     /**
-     * 관리자가 모든 회원 채팅방 목록을 조회합니다.
-     * 일반 회원은 전체 채팅방 목록을 볼 수 없으므로
+     * 관리자가 고객 채팅방 목록을 조회합니다.
+     * status가 null이면 전체 채팅방을 조회하고,
+     * status가 있으면 해당 상태의 채팅방만 조회합니다.
+     * 일반 회원은 다른 고객의 채팅방 목록을 볼 수 없으므로
      * ADMIN이 아니면 FORBIDDEN 예외를 던집니다.
      */
-    public List<ChatRoomListResponse> getAllChatRooms(MemberRole role) {
+    public List<ChatRoomListResponse> getChatRooms(MemberRole role, ChatRoomStatus status) {
         if (role != MemberRole.ADMIN) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 
-        return chatRoomRepository.findAllByOrderByCreatedAtDesc()
-                .stream()
+        List<ChatRoom> chatRooms = status == null
+                ? chatRoomRepository.findAllByOrderByCreatedAtDesc()
+                : chatRoomRepository.findAllByStatusOrderByCreatedAtDesc(status);
+
+        return chatRooms.stream()
                 .map(ChatRoomListResponse::from)
                 .toList();
+    }
+
+    /**
+     * 관리자가 고객 채팅방의 상담 상태를 변경합니다.
+     * 권한 규칙:
+     * - ADMIN만 변경할 수 있습니다.
+     * - MEMBER가 호출하면 FORBIDDEN 예외를 던집니다.
+     * 상태 전이 규칙:
+     * - WAITING -> IN_PROGRESS 허용
+     * - IN_PROGRESS -> COMPLETED 허용
+     * - COMPLETED -> 다른 상태 변경 불가
+     * - 역방향 전이 불가
+     * - 동일 상태 변경 불가
+     * 실제 상태 전이 검증은 ChatRoom.changeStatus()에서 처리합니다.
+     */
+    @Transactional
+    public ChatRoom changeChatRoomStatus(MemberRole role, Long chatRoomId, ChatRoomStatus nextStatus) {
+        if (role != MemberRole.ADMIN) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+
+        ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND));
+
+        chatRoom.changeStatus(nextStatus);
+
+        return chatRoom;
     }
 }
