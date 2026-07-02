@@ -37,7 +37,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
         JOIN FETCH message.chatRoom
         WHERE message.chatRoom.id = :chatRoomId
           AND message.id > :afterMessageId
-        ORDER BY message.createdAt ASC
+        ORDER BY message.id ASC
         """)
     List<ChatMessage> findAllWithSenderByChatRoomIdAndIdGreaterThan(
             @Param("chatRoomId") Long chatRoomId,
