@@ -16,8 +16,10 @@
       <button type="button" id="signupButton" data-action="open-signup">회원가입</button>
       <span>|</span>
       <button type="button" data-action="open-inquiry">고객문의</button>
-      <span class="admin-menu-divider" hidden>|</span>
-      <button class="admin-menu-button" type="button" data-action="open-admin-orders" hidden>백오피스</button>
+      <span class="admin-only" hidden>|</span>
+      <button class="admin-only" type="button" data-action="open-admin-orders" hidden>주문/문의 관리</button>
+      <span class="admin-only" hidden>|</span>
+      <button class="admin-only" type="button" data-action="open-admin-chats" hidden>고객 채팅 관리</button>
     </div>
 
     <div class="header-main">
@@ -25,15 +27,18 @@
         일취<span>월장</span>
       </button>
 
-      <form class="search-form" id="globalSearchForm">
-        <input id="globalSearchInput" type="search" placeholder="어떤 상품을 찾으세요?" autocomplete="off">
-        <button type="submit" aria-label="검색">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="11" cy="11" r="7"></circle>
-            <path d="m16.5 16.5 4 4"></path>
-          </svg>
-        </button>
-      </form>
+      <div class="search-box header-search-box">
+        <form class="search-form" id="globalSearchForm">
+          <input id="globalSearchInput" type="search" placeholder="어떤 상품을 찾으세요?" autocomplete="off">
+          <button type="submit" aria-label="검색">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="m16.5 16.5 4 4"></path>
+            </svg>
+          </button>
+        </form>
+        <div class="popular-keywords-panel" id="globalPopularKeywords" hidden></div>
+      </div>
 
       <div class="header-icons">
         <button class="icon-button" type="button" data-view="orders" aria-label="마이페이지">
@@ -81,15 +86,18 @@
           <h1 id="listTitle">상품</h1>
         </div>
 
-        <form class="inline-search" id="inlineSearchForm">
-          <input id="inlineSearchInput" type="search" placeholder="상품 검색" autocomplete="off">
-          <button type="submit" aria-label="검색">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="11" cy="11" r="7"></circle>
-              <path d="m16.5 16.5 4 4"></path>
-            </svg>
-          </button>
-        </form>
+        <div class="search-box inline-search-box">
+          <form class="inline-search" id="inlineSearchForm">
+            <input id="inlineSearchInput" type="search" placeholder="상품 검색" autocomplete="off">
+            <button type="submit" aria-label="검색">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="m16.5 16.5 4 4"></path>
+              </svg>
+            </button>
+          </form>
+          <div class="popular-keywords-panel" id="inlinePopularKeywords" hidden></div>
+        </div>
       </div>
 
       <div class="list-tabs" id="listTabs"></div>
@@ -108,11 +116,7 @@
         <div class="empty">상품을 불러오는 중입니다.</div>
       </div>
 
-      <div class="pager">
-        <button type="button" id="prevPage">이전</button>
-        <span id="pageInfo">1 / 1</span>
-        <button type="button" id="nextPage">다음</button>
-      </div>
+      <div class="pager" id="productPager"></div>
     </section>
 
     <section class="view" id="detailView">
@@ -339,6 +343,35 @@
             <button class="primary-button" type="submit">답변 등록</button>
           </div>
         </form>
+      </article>
+    </section>
+
+    <section class="view" id="adminChatView">
+      <article class="screen-panel admin-chat-panel">
+        <div class="admin-chat-sidebar">
+          <div class="sidebar-header">
+            <h2>고객 채팅 목록</h2>
+            <button class="icon-button" type="button" id="refreshAdminChats" aria-label="새로고침">
+              <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-9-9c2.5 0 4.8 1 6.5 2.7L21 8M21 3v5h-5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            </button>
+          </div>
+          <div class="admin-chat-room-list" id="adminChatRoomList">
+            <div class="empty">진행중인 채팅이 없습니다.</div>
+          </div>
+        </div>
+        <div class="admin-chat-main">
+          <div class="admin-chat-header">
+            <h2 id="adminChatRoomTitle">채팅방을 선택해주세요</h2>
+            <button class="secondary-button" type="button" id="adminChatCompleteBtn" hidden>상담 종료</button>
+          </div>
+          <div class="admin-chat-messages" id="adminChatMessages">
+            <div class="empty">좌측에서 채팅방을 선택하면 메시지를 확인할 수 있습니다.</div>
+          </div>
+          <form class="admin-chat-form" id="adminChatForm">
+            <input type="text" id="adminChatInput" placeholder="메시지를 입력하세요" autocomplete="off" disabled>
+            <button class="primary-button" type="submit" id="adminChatSendBtn" disabled>전송</button>
+          </form>
+        </div>
       </article>
     </section>
 
