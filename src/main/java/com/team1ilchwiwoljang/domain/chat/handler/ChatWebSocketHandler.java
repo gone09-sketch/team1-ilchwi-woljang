@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.team1ilchwiwoljang.domain.chat.dto.response.ChatMessageResponse;
+import com.team1ilchwiwoljang.domain.chat.dto.response.ChatSystemMessageResponse;
 import com.team1ilchwiwoljang.domain.chat.service.ChatMessageService;
 import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,14 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         Long chatRoomId = getChatRoomId(session);
+        MemberRole role = getRole(session);
+
+        /*
+         * 현재 채팅방에 이미 저장된 실제 채팅 메시지가 있는지 확인합니다.
+         * 시스템 메시지는 DB에 저장하지 않으므로,
+         * 여기서 확인하는 메시지는 고객/관리자가 실제로 주고받은 채팅 메시지만 의미합니다.
+         */
+        boolean hasMessages = chatMessageService.hasMessages(chatRoomId);
 
         /*
          * chatRoomId에 해당하는 세션 목록이 없으면 새로 만들고,
@@ -48,7 +57,19 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 .computeIfAbsent(chatRoomId, id -> ConcurrentHashMap.newKeySet())
                 .add(session);
 
-        session.sendMessage(new TextMessage("채팅방에 연결되었습니다. chatRoomId=" + chatRoomId));
+        /*
+         * 입장 시스템 메시지 정책:
+         * - 입장 시점에 저장된 실제 메시지가 0개이면 시스템 메시지를 전송합니다.
+         * - 메시지를 보내지 않고 나갔다가 다시 들어온 경우에도 여전히 메시지 0개이므로
+         *   다시 최초 입장처럼 시스템 메시지를 전송합니다.
+         * - 실제 메시지가 1개 이상 저장된 이후에는 재입장해도 시스템 메시지를 보내지 않습니다.
+         */
+        if (!hasMessages) {
+            broadcastSystemMessage(
+                    chatRoomId,
+                    ChatSystemMessageResponse.entered(chatRoomId, role)
+            );
+        }
     }
 
     @Override
@@ -125,6 +146,26 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
      */
     private MemberRole getRole(WebSocketSession session) {
         return (MemberRole) session.getAttributes().get("role");
+    }
+
+    /**
+     * 같은 채팅방에 연결된 모든 WebSocket 세션에게 시스템 메시지를 전송합니다.
+     * 시스템 메시지는 DB에 저장하지 않습니다.
+     * 현재 WebSocket 접속 이벤트를 실시간으로 알려주기 위한 용도입니다.
+     */
+    private void broadcastSystemMessage(
+            Long chatRoomId,
+            ChatSystemMessageResponse systemMessage
+    ) throws Exception {
+        String payload = objectMapper.writeValueAsString(systemMessage);
+
+        Set<WebSocketSession> sessions = roomSessions.getOrDefault(chatRoomId, Set.of());
+
+        for (WebSocketSession targetSession : sessions) {
+            if (targetSession.isOpen()) {
+                targetSession.sendMessage(new TextMessage(payload));
+            }
+        }
     }
 }
 
