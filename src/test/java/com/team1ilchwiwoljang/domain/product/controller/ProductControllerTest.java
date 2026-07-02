@@ -208,4 +208,30 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.errors[0].field").value("limit"));
     }
+
+    @Test
+    @DisplayName("가격 범위 조회 시 minPrice가 음수면 400 Bad Request를 반환한다.")
+    void given_negativeMinPrice_whenGetProductsByPriceRange_thenStatus400() throws Exception {
+        mockMvc.perform(get("/api/products/price-range")
+                        .param("minPrice", "-1")
+                        .param("maxPrice", "10000"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("minPrice"));
+    }
+
+    @Test
+    @DisplayName("가격 범위 조회 시 minPrice가 maxPrice보다 크면 400 Bad Request를 반환한다.")
+    void given_minPriceGreaterThanMaxPrice_whenGetProductsByPriceRange_thenStatus400() throws Exception {
+        given(productService.getProductsByPriceRange(20000, 10000, 0, 20))
+                .willThrow(new BusinessException(ErrorCode.INVALID_PRICE_RANGE));
+
+        mockMvc.perform(get("/api/products/price-range")
+                        .param("minPrice", "20000")
+                        .param("maxPrice", "10000"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("INVALID_PRICE_RANGE"));
+    }
 }

@@ -22,6 +22,7 @@ public enum ErrorCode {
 
     // product
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
+    INVALID_PRICE_RANGE(HttpStatus.BAD_REQUEST, "최소 가격이 최대 가격보다 클 수 없습니다."),
 
     // cart
     INVALID_QUANTITY(HttpStatus.BAD_REQUEST, "수량은 1개 이상이어야 합니다."),

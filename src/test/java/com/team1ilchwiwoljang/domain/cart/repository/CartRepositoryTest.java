@@ -9,7 +9,6 @@ import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import jakarta.persistence.PersistenceUnitUtil;
 import java.util.List;
-import com.team1ilchwiwoljang.common.config.QueryDslConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

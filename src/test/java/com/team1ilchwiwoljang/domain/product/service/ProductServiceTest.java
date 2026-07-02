@@ -198,4 +198,18 @@ class ProductServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.PRODUCT_NOT_FOUND);
     }
+
+    @Test
+    @DisplayName("minPrice가 maxPrice보다 크면 INVALID_PRICE_RANGE 예외가 발생한다")
+    void given_minPriceGreaterThanMaxPrice_whenGetProductsByPriceRange_thenThrowInvalidPriceRange() {
+        // given
+        int minPrice = 20000;
+        int maxPrice = 10000;
+
+        // when & then
+        assertThatThrownBy(() -> productService.getProductsByPriceRange(minPrice, maxPrice, 0, 20))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_PRICE_RANGE);
+    }
 }
