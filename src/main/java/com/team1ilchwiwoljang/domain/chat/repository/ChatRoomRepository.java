@@ -38,7 +38,7 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
         FROM ChatRoom chatRoom
         JOIN FETCH chatRoom.member
         WHERE chatRoom.status = :status
-        ORDER BY chatRoom.createdAt DESC, chatRoom.createdAt DESC
+        ORDER BY chatRoom.updatedAt DESC, chatRoom.createdAt DESC
         """)
     List<ChatRoom> findAllWithMemberByStatusOrderByUpdatedAtDesc(
             @Param("status") ChatRoomStatus status
