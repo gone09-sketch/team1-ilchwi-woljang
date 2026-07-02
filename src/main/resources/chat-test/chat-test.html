@@ -346,8 +346,24 @@
                 appendServerMessage(frame.body);
                 return;
             }
-            if (frame.command === "ERROR") appendError("STOMP ERROR: " + (frame.body || JSON.stringify(frame.headers)));
+            if (frame.command === "ERROR") {
+                appendStompError(frame);
+            }
         });
+    }
+
+    function appendStompError(frame) {
+        try {
+            const error = JSON.parse(frame.body || "{}");
+            if (error.code && error.message) {
+                appendError(`STOMP ERROR: ${error.code} - ${error.message}`);
+                return;
+            }
+        } catch (parseError) {
+            // 서버가 JSON ErrorResponse가 아닌 기본 ERROR frame을 보낸 경우 기존 방식으로 표시합니다.
+        }
+
+        appendError("STOMP ERROR: " + (frame.body || JSON.stringify(frame.headers)));
     }
 
     function subscribeCurrentRoom() {
