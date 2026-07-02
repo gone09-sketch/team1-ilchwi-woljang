@@ -16,6 +16,18 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
             select c
             from Cart c
             join fetch c.product
+            where c.id = :cartItemId
+              and c.member.id = :memberId
+            """)
+    Optional<Cart> findByIdAndMemberIdWithProduct(
+            @Param("cartItemId") Long cartItemId,
+            @Param("memberId") Long memberId
+    );
+
+    @Query("""
+            select c
+            from Cart c
+            join fetch c.product
             where c.member.id = :memberId
             order by c.id desc
             """)
