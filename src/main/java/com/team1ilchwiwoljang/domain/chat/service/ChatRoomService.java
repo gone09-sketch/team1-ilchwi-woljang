@@ -8,11 +8,12 @@ import com.team1ilchwiwoljang.domain.chat.repository.ChatRoomRepository;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
+import com.team1ilchwiwoljang.common.response.PageResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 /**
  * 채팅방 생성, 조회, WebSocket 접속 권한 검증을 담당하는 서비스입니다.
@@ -53,7 +54,16 @@ public class ChatRoomService {
             throw new BusinessException(ErrorCode.CHAT_ROOM_ALREADY_EXISTS);
         }
 
-        return chatRoomRepository.save(ChatRoom.create(member));
+        try {
+            /*
+             * existsByMember_Id 검사는 사용자에게 빠르게 중복을 알려주기 위한 1차 방어입니다.
+             * 동시에 같은 회원이 생성 요청을 보내면 둘 다 exists 검사를 통과할 수 있으므로,
+             * DB unique 제약 위반도 CHAT_ROOM_ALREADY_EXISTS로 변환합니다.
+             */
+            return chatRoomRepository.saveAndFlush(ChatRoom.create(member));
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(ErrorCode.CHAT_ROOM_ALREADY_EXISTS);
+        }
     }
 
     /**
@@ -83,14 +93,18 @@ public class ChatRoomService {
      * 일반 회원은 전체 채팅방 목록을 볼 수 없으므로
      * ADMIN이 아니면 FORBIDDEN 예외를 던집니다.
      */
-    public List<ChatRoomListResponse> getAllChatRooms(MemberRole role) {
+    public PageResponse<ChatRoomListResponse> getAllChatRooms(MemberRole role, int page, int size) {
         if (role != MemberRole.ADMIN) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 
-        return chatRoomRepository.findAllByOrderByCreatedAtDesc()
-                .stream()
-                .map(ChatRoomListResponse::from)
-                .toList();
+        /*
+         * 관리자 화면은 시간이 지나면 채팅방 수가 계속 늘어날 수 있으므로 전체 조회 대신 페이지 단위로 제한합니다.
+         * 정렬은 기존 API와 동일하게 최신 생성 채팅방이 먼저 오도록 Repository 메서드 이름에 유지합니다.
+         */
+        return PageResponse.from(
+                chatRoomRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, size))
+                        .map(ChatRoomListResponse::from)
+        );
     }
 }

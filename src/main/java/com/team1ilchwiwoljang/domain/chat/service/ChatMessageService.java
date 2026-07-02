@@ -2,16 +2,17 @@ package com.team1ilchwiwoljang.domain.chat.service;
 
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
+import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.domain.chat.dto.response.ChatMessageResponse;
 import com.team1ilchwiwoljang.domain.chat.entity.ChatMessage;
 import com.team1ilchwiwoljang.domain.chat.entity.ChatRoom;
 import com.team1ilchwiwoljang.domain.chat.repository.ChatMessageRepository;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.member.entity.MemberRole;
-import java.util.List;
 
 import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,17 +33,30 @@ public class ChatMessageService {
     private final MemberService memberService;
 
     @Transactional(readOnly = true)
-    public List<ChatMessageResponse> getMessages(Long memberId, MemberRole role, Long chatRoomId) {
+    public PageResponse<ChatMessageResponse> getMessages(
+            Long memberId,
+            MemberRole role,
+            Long chatRoomId,
+            int page,
+            int size
+    ) {
         /*
          * MEMBER가 본인 채팅방이 아닌 chatRoomId로 접근하면 FORBIDDEN 예외를 던집니다.
          * ADMIN은 모든 채팅방 접근을 허용합니다.
          */
         ChatRoom chatRoom = chatRoomService.getAccessibleChatRoom(memberId, role, chatRoomId);
 
-        return chatMessageRepository.findAllByChatRoomIdOrderByCreatedAtAsc(chatRoom.getId())
-                .stream()
-                .map(ChatMessageResponse::from)
-                .toList();
+        /*
+         * 채팅 메시지는 방이 오래 유지될수록 계속 누적되므로 전체 조회를 피합니다.
+         * 대화 흐름을 유지하기 위해 페이지 안에서는 기존처럼 createdAt 오름차순을 사용합니다.
+         */
+        return PageResponse.from(
+                chatMessageRepository.findAllByChatRoomIdOrderByCreatedAtAsc(
+                                chatRoom.getId(),
+                                PageRequest.of(page, size)
+                        )
+                        .map(ChatMessageResponse::from)
+        );
     }
 
     /**

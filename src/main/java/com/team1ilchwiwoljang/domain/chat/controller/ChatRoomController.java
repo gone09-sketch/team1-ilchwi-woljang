@@ -1,6 +1,7 @@
 package com.team1ilchwiwoljang.domain.chat.controller;
 
 import com.team1ilchwiwoljang.common.response.ApiResponse;
+import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.common.security.annotation.Auth;
 import com.team1ilchwiwoljang.common.security.auth.AuthMember;
 import com.team1ilchwiwoljang.domain.chat.dto.response.ChatMessageResponse;
@@ -9,12 +10,18 @@ import com.team1ilchwiwoljang.domain.chat.dto.response.ChatRoomResponse;
 import com.team1ilchwiwoljang.domain.chat.entity.ChatRoom;
 import com.team1ilchwiwoljang.domain.chat.service.ChatMessageService;
 import com.team1ilchwiwoljang.domain.chat.service.ChatRoomService;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 채팅방 생성과 조회를 담당하는 Controller입니다.
@@ -22,6 +29,7 @@ import java.util.List;
  * WebSocket 연결 전에 회원에게 할당된 chatRoomId를 알아야 하므로
  * HTTP API로 채팅방을 먼저 생성하거나 조회합니다.
  */
+@Validated
 @RestController
 @RequestMapping("/api/chat/rooms")
 @RequiredArgsConstructor
@@ -59,13 +67,16 @@ public class ChatRoomController {
     /**
      * 관리자가 모든 회원 채팅방 목록을 조회합니다.
      * MEMBER가 호출하면 ChatRoomService에서 FORBIDDEN 예외가 발생합니다.
+     * 채팅방은 계속 늘어나는 데이터이므로 page/size로 한 번에 조회할 양을 제한합니다.
      */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<ChatRoomListResponse>>> getAllChatRooms(
-            @Auth AuthMember authMember
+    public ResponseEntity<ApiResponse<PageResponse<ChatRoomListResponse>>> getAllChatRooms(
+            @Auth AuthMember authMember,
+            @Min(0) @RequestParam(defaultValue = "0") int page,
+            @Min(1) @Max(100) @RequestParam(defaultValue = "20") int size
     ) {
-        List<ChatRoomListResponse> response =
-                chatRoomService.getAllChatRooms(authMember.role());
+        PageResponse<ChatRoomListResponse> response =
+                chatRoomService.getAllChatRooms(authMember.role(), page, size);
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -74,17 +85,22 @@ public class ChatRoomController {
      * 특정 채팅방의 메시지를 조회합니다.
      * MEMBER는 본인 채팅방 메시지만 조회할 수 있습니다.
      * ADMIN은 모든 채팅방 메시지를 조회할 수 있습니다.
+     * 메시지는 누적 데이터이므로 page/size로 한 번에 조회할 양을 제한합니다.
      */
     @GetMapping("/{chatRoomId}/messages")
-    public ResponseEntity<ApiResponse<List<ChatMessageResponse>>> getMessages(
+    public ResponseEntity<ApiResponse<PageResponse<ChatMessageResponse>>> getMessages(
             @Auth AuthMember authMember,
-            @PathVariable Long chatRoomId
+            @Min(1) @PathVariable Long chatRoomId,
+            @Min(0) @RequestParam(defaultValue = "0") int page,
+            @Min(1) @Max(100) @RequestParam(defaultValue = "20") int size
     ) {
-        List<ChatMessageResponse> response =
+        PageResponse<ChatMessageResponse> response =
                 chatMessageService.getMessages(
                         authMember.memberId(),
                         authMember.role(),
-                        chatRoomId
+                        chatRoomId,
+                        page,
+                        size
                 );
 
         return ResponseEntity.ok(ApiResponse.success(response));
