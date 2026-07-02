@@ -1904,12 +1904,17 @@ function statusLabel(product) {
   return product.status || "상태 미확인";
 }
 
-function productVisual(product) {
-  if (product?.imageUrl) {
-    const alt = product.name || "상품 이미지";
-    return `<img class="product-image" src="${escapeHtml(product.imageUrl)}" alt="${escapeHtml(alt)}" loading="lazy">`;
+function getImageUrl(imageUrl) {
+  const path = imageUrl || "/images/default-product.png";
+  if (path.startsWith("http")) {
+    return path;
   }
-  return productIcon(product);
+  return `${API_BASE_URL}${path}`;
+}
+
+function productVisual(product) {
+  const alt = product?.name || "상품 이미지";
+  return `<img class="product-image" src="${escapeHtml(getImageUrl(product?.imageUrl))}" alt="${escapeHtml(alt)}" loading="lazy">`;
 }
 
 function productIcon(product) {

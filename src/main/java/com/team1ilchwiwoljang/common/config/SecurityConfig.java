@@ -111,6 +111,12 @@ public class SecurityConfig {
                                         "/api/search/popular"
                                 ).permitAll()
 
+                                .requestMatchers(
+                                        // 상품 이미지 등 정적 리소스는 로그인 없이 볼 수 있게 허용
+                                        HttpMethod.GET,
+                                        "/images/**"
+                                ).permitAll()
+
                         .requestMatchers("/api/admins/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
