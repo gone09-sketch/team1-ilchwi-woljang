@@ -99,9 +99,11 @@ public class SecurityConfig {
              */
             "/chat-test.html",
 
-            // Spring 내부 에러 경로
             "/error",
-            "/error/**"
+            "/error/**",
+            "/api/ai/chatbot",
+            "/api/ai/chatbot/**",
+            "/chatbot-test.html"
     };
 
     private static final String[] PUBLIC_GET_ENDPOINTS = {
