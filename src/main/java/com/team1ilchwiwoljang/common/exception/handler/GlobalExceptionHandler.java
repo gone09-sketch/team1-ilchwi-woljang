@@ -6,7 +6,7 @@ import com.team1ilchwiwoljang.common.response.ErrorResponse;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.ResponseEntity;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -107,5 +107,31 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(errorCode.getStatus())
                 .body(ErrorResponse.of(errorCode.name(), errorCode.getMessage()));
+    }
+
+    /**
+     * RequestParam 또는 PathVariable 타입 변환에 실패했을 때 처리합니다.
+     * 클라이언트가 잘못된 요청 값을 보낸 상황이므로
+     * 500 INTERNAL_SERVER_ERROR가 아니라
+     * 400 BAD_REQUEST 계열의 INVALID_ENUM_VALUE로 응답합니다.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatchException(
+            MethodArgumentTypeMismatchException e
+    ) {
+        /*
+         * status=BAD_STATUS처럼 허용되지 않은 enum 값이 들어온 경우
+         * INVALID_ENUM_VALUE를 사용해 클라이언트 요청 오류로 내려줍니다.
+         */
+        ErrorCode errorCode = ErrorCode.INVALID_ENUM_VALUE;
+
+        ErrorResponse response = ErrorResponse.of(
+                errorCode.name(),
+                errorCode.getMessage()
+        );
+
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(response);
     }
 }

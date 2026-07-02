@@ -1,35 +1,30 @@
 package com.team1ilchwiwoljang.domain.chat.controller;
 
 import com.team1ilchwiwoljang.common.response.ApiResponse;
-import com.team1ilchwiwoljang.common.response.PageResponse;
 import com.team1ilchwiwoljang.common.security.annotation.Auth;
 import com.team1ilchwiwoljang.common.security.auth.AuthMember;
+import com.team1ilchwiwoljang.domain.chat.dto.request.ChatRoomUpdateStatusRequest;
 import com.team1ilchwiwoljang.domain.chat.dto.response.ChatMessageResponse;
 import com.team1ilchwiwoljang.domain.chat.dto.response.ChatRoomListResponse;
 import com.team1ilchwiwoljang.domain.chat.dto.response.ChatRoomResponse;
 import com.team1ilchwiwoljang.domain.chat.entity.ChatRoom;
+import com.team1ilchwiwoljang.domain.chat.entity.ChatRoomStatus;
 import com.team1ilchwiwoljang.domain.chat.service.ChatMessageService;
 import com.team1ilchwiwoljang.domain.chat.service.ChatRoomService;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 채팅방 생성과 조회를 담당하는 Controller입니다.
- * 순수 WebSocket 연결 자체는 /ws/chat에서 처리하지만,
- * WebSocket 연결 전에 회원에게 할당된 chatRoomId를 알아야 하므로
+ * STOMP WebSocket 연결 자체는 /ws/chat에서 처리하지만,
+ * STOMP 구독 전에 회원에게 할당된 chatRoomId를 알아야 하므로
  * HTTP API로 채팅방을 먼저 생성하거나 조회합니다.
  */
-@Validated
 @RestController
 @RequestMapping("/api/chat/rooms")
 @RequiredArgsConstructor
@@ -45,11 +40,11 @@ public class ChatRoomController {
     public ResponseEntity<ApiResponse<ChatRoomResponse>> createMyChatRoom(
             @Auth AuthMember authMember
     ) {
-        ChatRoom chatRoom = chatRoomService.createMyChatRoom(authMember.memberId());
+        ChatRoomResponse chatRoom = chatRoomService.createMyChatRoom(authMember.memberId());
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success(ChatRoomResponse.from(chatRoom)));
+                .body(ApiResponse.success(chatRoom));
     }
 
     /**
@@ -59,24 +54,23 @@ public class ChatRoomController {
     public ResponseEntity<ApiResponse<ChatRoomResponse>> getMyChatRoom(
             @Auth AuthMember authMember
     ) {
-        ChatRoom chatRoom = chatRoomService.getMyChatRoom(authMember.memberId());
+        ChatRoomResponse chatRoom = chatRoomService.getMyChatRoom(authMember.memberId());
 
-        return ResponseEntity.ok(ApiResponse.success(ChatRoomResponse.from(chatRoom)));
+        return ResponseEntity.ok(ApiResponse.success(chatRoom));
     }
 
     /**
-     * 관리자가 모든 회원 채팅방 목록을 조회합니다.
-     * MEMBER가 호출하면 ChatRoomService에서 FORBIDDEN 예외가 발생합니다.
-     * 채팅방은 계속 늘어나는 데이터이므로 page/size로 한 번에 조회할 양을 제한합니다.
+     * 관리자가 고객 채팅방 목록을 조회합니다.
+     * status 쿼리 파라미터가 없으면 전체 조회,
+     * status 쿼리 파라미터가 있으면 상태별 조회 합니다.
      */
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<ChatRoomListResponse>>> getAllChatRooms(
+    public ResponseEntity<ApiResponse<List<ChatRoomListResponse>>> getAllChatRooms(
             @Auth AuthMember authMember,
-            @Min(0) @RequestParam(defaultValue = "0") int page,
-            @Min(1) @Max(100) @RequestParam(defaultValue = "20") int size
+            @RequestParam(required = false) ChatRoomStatus status
     ) {
-        PageResponse<ChatRoomListResponse> response =
-                chatRoomService.getAllChatRooms(authMember.role(), page, size);
+        List<ChatRoomListResponse> response =
+                chatRoomService.getChatRooms(authMember.role(), status);
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -85,24 +79,46 @@ public class ChatRoomController {
      * 특정 채팅방의 메시지를 조회합니다.
      * MEMBER는 본인 채팅방 메시지만 조회할 수 있습니다.
      * ADMIN은 모든 채팅방 메시지를 조회할 수 있습니다.
-     * 메시지는 누적 데이터이므로 page/size로 한 번에 조회할 양을 제한합니다.
      */
     @GetMapping("/{chatRoomId}/messages")
-    public ResponseEntity<ApiResponse<PageResponse<ChatMessageResponse>>> getMessages(
+    public ResponseEntity<ApiResponse<List<ChatMessageResponse>>> getMessages(
             @Auth AuthMember authMember,
-            @Min(1) @PathVariable Long chatRoomId,
-            @Min(0) @RequestParam(defaultValue = "0") int page,
-            @Min(1) @Max(100) @RequestParam(defaultValue = "20") int size
+            @PathVariable Long chatRoomId,
+            @RequestParam(required = false) Long afterMessageId
     ) {
-        PageResponse<ChatMessageResponse> response =
+        /*
+         * afterMessageId는 STOMP 재연결 후 미수신 일반 메시지를 복구하기 위한 선택 파라미터입니다.
+         * 값이 없으면 기존처럼 채팅방 전체 메시지를 조회하고,
+         * 값이 있으면 해당 messageId 이후에 저장된 메시지만 조회합니다.
+         */
+        List<ChatMessageResponse> response =
                 chatMessageService.getMessages(
                         authMember.memberId(),
                         authMember.role(),
                         chatRoomId,
-                        page,
-                        size
+                        afterMessageId
                 );
 
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * 관리자가 고객 채팅방의 상담 상태를 변경합니다.
+     * 일반 회원이 호출하면 FORBIDDEN 예외가 발생합니다.
+     * 잘못된 상태 전이이면 INVALID_CHAT_ROOM_STATUS_TRANSITION 예외가 발생합니다.
+     */
+    @PatchMapping("/{chatRoomId}/status")
+    public ResponseEntity<ApiResponse<ChatRoomResponse>> changeChatRoomStatus(
+            @Auth AuthMember authMember,
+            @PathVariable Long chatRoomId,
+            @Valid @RequestBody ChatRoomUpdateStatusRequest request
+    ) {
+        ChatRoomResponse chatRoom = chatRoomService.changeChatRoomStatus(
+                authMember.role(),
+                chatRoomId,
+                request.status()
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(chatRoom));
     }
 }
