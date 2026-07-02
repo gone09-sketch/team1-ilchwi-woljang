@@ -86,6 +86,15 @@ public class ChatMessageService {
         ChatRoom chatRoom = chatRoomService.getAccessibleChatRoom(senderId, role, chatRoomId);
 
         /*
+         * 메시지를 저장하기 전에 채팅방 상태를 확인합니다.
+         * 완료된 채팅방은 상담 생명주기가 끝난 상태이므로
+         * 고객과 관리자 모두 더 이상 메시지를 보낼 수 없습니다.
+         */
+        if (chatRoom.isCompleted()) {
+            throw new BusinessException(ErrorCode.COMPLETED_CHAT_ROOM_MESSAGE_NOT_ALLOWED);
+        }
+
+        /*
          * 메시지를 보낸 회원을 조회합니다.
          * findById는 탈퇴하지 않은 활성 회원만 조회하므로,
          * 삭제된 회원의 메시지 저장을 막을 수 있습니다.

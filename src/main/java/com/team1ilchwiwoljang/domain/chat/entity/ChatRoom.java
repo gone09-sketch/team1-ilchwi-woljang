@@ -63,4 +63,11 @@ public class ChatRoom extends BaseEntity {
 
         this.status = nextStatus;
     }
+
+    /**
+     * 채팅방 상담이 완료 상태인지 확인합니다.
+     */
+    public boolean isCompleted() {
+        return this.status == ChatRoomStatus.COMPLETED;
+    }
 }
