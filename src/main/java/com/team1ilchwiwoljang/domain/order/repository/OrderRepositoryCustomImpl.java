@@ -294,8 +294,9 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
     private OrderSpecifier<?>[] getAdminOrderSpecifiers(Sort sort, QOrder order) {
         List<OrderSpecifier<?>> specifiers = getSortSpecifiers(sort, order);
 
-        // 관리자 목록은 대용량 조회 인덱싱 실험 기준에 맞춰 기본 정렬을 id DESC로 둔다.
-        if (specifiers.isEmpty()) {
+        // id 정렬이 없으면 id DESC를 tiebreaker로 추가해 페이지 경계 중복·누락을 방지한다.
+        boolean hasIdSort = sort.stream().anyMatch(s -> "id".equals(s.getProperty()));
+        if (!hasIdSort) {
             specifiers.add(new OrderSpecifier<>(com.querydsl.core.types.Order.DESC, order.id));
         }
 

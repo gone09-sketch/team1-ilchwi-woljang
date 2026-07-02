@@ -67,8 +67,26 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public PageResponse<AdminOrderSearchResponse> getAdminOrders(AdminOrderSearchCondition condition, Pageable pageable) {
+        validateAdminOrderSearchCondition(condition);
         Page<Order> orderPage = orderRepository.findAdminOrders(condition, pageable);
         return PageResponse.from(orderPage.map(AdminOrderSearchResponse::from));
+    }
+
+    private void validateAdminOrderSearchCondition(AdminOrderSearchCondition condition) {
+        if (condition.startDate() != null && condition.endDate() != null
+                && condition.startDate().isAfter(condition.endDate())) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+        if (condition.minTotalAmount() != null && condition.minTotalAmount() < 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+        if (condition.maxTotalAmount() != null && condition.maxTotalAmount() < 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
+        if (condition.minTotalAmount() != null && condition.maxTotalAmount() != null
+                && condition.minTotalAmount() > condition.maxTotalAmount()) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED);
+        }
     }
 
     @Transactional(readOnly = true)
