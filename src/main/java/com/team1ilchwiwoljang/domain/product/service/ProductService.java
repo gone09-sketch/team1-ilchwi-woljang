@@ -2,6 +2,7 @@ package com.team1ilchwiwoljang.domain.product.service;
 
 import com.team1ilchwiwoljang.common.exception.BusinessException;
 import com.team1ilchwiwoljang.common.exception.ErrorCode;
+import com.team1ilchwiwoljang.domain.category.entity.Category;
 import com.team1ilchwiwoljang.domain.category.repository.CategoryRepository;
 import com.team1ilchwiwoljang.domain.product.dto.ProductResponse;
 import com.team1ilchwiwoljang.domain.product.dto.response.ProductDetailResponse;
@@ -11,6 +12,7 @@ import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse;
 import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -76,14 +78,16 @@ public class ProductService {
             int page,
             int size
     ) {
-        if (!categoryRepository.existsById(categoryId)) {
-            throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
-        }
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
 
         Pageable pageable = PageRequest.of(page, size, resolveSort(sort));
+        List<Long> categoryIds = new ArrayList<>();
+        categoryIds.add(category.getId());
+        category.getChildren().forEach(child -> categoryIds.add(child.getId()));
 
-        return productRepository.findByCategoryIdAndStatus(
-                        categoryId,
+        return productRepository.findByCategoryIdInAndStatus(
+                        categoryIds,
                         ProductStatus.ON_SALE,
                         pageable
                 )
