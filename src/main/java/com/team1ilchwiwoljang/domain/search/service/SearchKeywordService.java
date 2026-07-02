@@ -1,6 +1,7 @@
 package com.team1ilchwiwoljang.domain.search.service;
 
 import com.team1ilchwiwoljang.domain.search.dto.response.SearchKeywordPopularResponse;
+import com.team1ilchwiwoljang.domain.search.dto.response.PopularKeywordsCacheDto;
 import com.team1ilchwiwoljang.domain.search.repository.SearchKeywordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,8 +52,8 @@ public class SearchKeywordService {
      * 캐시에서 최대 100개를 단일 키 'all'로 조회한 후, 요청된 limit 만큼 메모리에서 잘라 반환하여 100% 캐시 히트율을 확보합니다.
      */
     public List<SearchKeywordPopularResponse> getPopularKeywords(int limit) {
-        List<SearchKeywordPopularResponse> cachedPopularKeywords = popularKeywordCacheService.getCachedPopularKeywords();
-        return cachedPopularKeywords.stream()
+        PopularKeywordsCacheDto cachedDto = popularKeywordCacheService.getCachedPopularKeywords();
+        return cachedDto.keywords().stream()
                 .limit(limit)
                 .toList();
     }

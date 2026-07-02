@@ -10,6 +10,7 @@ import com.team1ilchwiwoljang.domain.product.dto.response.ProductSearchItemRespo
 import com.team1ilchwiwoljang.domain.product.entity.Product;
 import com.team1ilchwiwoljang.domain.product.entity.ProductStatus;
 import com.team1ilchwiwoljang.domain.product.dto.response.PopularProductResponse;
+import com.team1ilchwiwoljang.domain.product.dto.response.PopularProductsCacheDto;
 import com.team1ilchwiwoljang.domain.product.repository.ProductRepository;
 import com.team1ilchwiwoljang.domain.search.service.SearchKeywordService;
 import java.util.List;
@@ -144,8 +145,8 @@ public class ProductService {
      * 캐시에서 최대 100개의 인기 상품을 단일 키로 가져온 후, 요청된 limit 만큼 메모리에서 잘라서 반환하여 100% 캐시 히트를 보장합니다.
      */
     public List<PopularProductResponse> getPopularProducts(int limit) {
-        List<PopularProductResponse> cachedPopularProducts = popularProductCacheService.getCachedPopularProducts();
-        return cachedPopularProducts.stream()
+        PopularProductsCacheDto cachedDto = popularProductCacheService.getCachedPopularProducts();
+        return cachedDto.products().stream()
                 .limit(limit)
                 .toList();
     }

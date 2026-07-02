@@ -125,7 +125,7 @@ class SearchKeywordServiceIntegrationTest {
         CountDownLatch readyLatch = new CountDownLatch(threadCount);
         CountDownLatch startLatch = new CountDownLatch(1);
 
-        List<Future<?>> futures = IntStream.range(0, threadCount)
+        List<Future<Object>> futures = IntStream.range(0, threadCount)
                 .mapToObj(i -> executorService.submit(() -> {
                     readyLatch.countDown();
                     startLatch.await();
@@ -138,7 +138,7 @@ class SearchKeywordServiceIntegrationTest {
         assertThat(readyLatch.await(5, TimeUnit.SECONDS)).isTrue();
         startLatch.countDown();
 
-        for (Future<?> future : futures) {
+        for (Future<Object> future : futures) {
             future.get(5, TimeUnit.SECONDS);
         }
 
