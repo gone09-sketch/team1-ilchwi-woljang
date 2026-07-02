@@ -86,9 +86,17 @@ public class ChatMessageService {
         ChatRoom chatRoom = chatRoomService.getAccessibleChatRoom(senderId, role, chatRoomId);
 
         /*
-         * 메시지를 저장하기 전에 채팅방 상태를 확인합니다.
-         * 완료된 채팅방은 상담 생명주기가 끝난 상태이므로
-         * 고객과 관리자 모두 더 이상 메시지를 보낼 수 없습니다.
+         * 완료된 채팅방에는 메시지를 저장하지 않습니다.
+         * 동시성 정책:
+         * - 상담 완료 처리 전에 ChatRoom 상태 검증을 통과해 처리 중이던 메시지는
+         *   마지막 메시지로 저장될 수 있습니다.
+         * - 상담 완료 처리가 DB에 반영된 이후 새로 들어온 메시지는 차단합니다.
+         *
+         * 현재 정책에서는 완료 처리와 메시지 저장을 DB 락으로 강하게 직렬화하지 않습니다.
+         * 따라서 ChatRoom row에 PESSIMISTIC_WRITE 락을 걸지 않습니다.
+         *
+         * 추후 "완료 처리와 경합하는 메시지도 절대 저장되면 안 된다"는 정책으로 변경될 경우,
+         * 비관적 락 또는 낙관적 락 도입을 다시 검토합니다.
          */
         if (chatRoom.isCompleted()) {
             throw new BusinessException(ErrorCode.COMPLETED_CHAT_ROOM_MESSAGE_NOT_ALLOWED);
