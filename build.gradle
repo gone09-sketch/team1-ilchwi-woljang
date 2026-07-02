@@ -26,6 +26,15 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
 
+    // Explicit Jackson dependencies for CacheConfig compilation
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.1'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.1'
+    implementation 'com.fasterxml.jackson.module:jackson-module-parameter-names:2.17.1'
+
+    // Cache
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
     // Spring Retry
     implementation 'org.springframework.retry:spring-retry:2.0.11'
     implementation 'org.springframework:spring-aspects'

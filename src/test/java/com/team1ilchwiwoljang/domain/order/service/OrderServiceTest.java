@@ -163,6 +163,7 @@ class OrderServiceTest {
         assertThat(response.orderItems().get(0).quantity()).isEqualTo(2L);
         assertThat(response.orderItems().get(0).totalPrice()).isEqualTo(20_000L);
         assertThat(product.getStock()).isEqualTo(8);
+        assertThat(product.getSalesCount()).isEqualTo(2);
         verify(orderRepository).save(any(Order.class));
         verify(orderItemRepository).save(any(OrderItem.class));
     }
@@ -234,7 +235,7 @@ class OrderServiceTest {
         Cart secondCart = createCart(20L, member, secondProduct, 1);
 
         given(memberService.getMember(memberId)).willReturn(member);
-        given(cartService.getOrderCartItems(memberId, request.cartIds()))
+        given(cartService.getOrderCartItemsWithoutProduct(memberId, request.cartIds()))
                 .willReturn(List.of(firstCart, secondCart));
         given(productService.getProductWithPessimisticLock(firstProduct.getId())).willReturn(firstProduct);
         given(productService.getProductWithPessimisticLock(secondProduct.getId())).willReturn(secondProduct);
@@ -250,7 +251,9 @@ class OrderServiceTest {
         assertThat(response.orderItems().get(0).quantity()).isEqualTo(2L);
         assertThat(response.orderItems().get(0).totalPrice()).isEqualTo(20_000L);
         assertThat(firstProduct.getStock()).isEqualTo(8);
+        assertThat(firstProduct.getSalesCount()).isEqualTo(2);
         assertThat(secondProduct.getStock()).isEqualTo(9);
+        assertThat(secondProduct.getSalesCount()).isEqualTo(1);
         verify(orderRepository).save(any(Order.class));
         verify(orderItemRepository).saveAll(any());
         verify(cartService).deleteOrderCartItems(List.of(firstCart, secondCart));
@@ -265,7 +268,7 @@ class OrderServiceTest {
         Product product = createProduct(100L, "keyboard", 10_000, 1, ProductStatus.ON_SALE);
         Cart cart = createCart(10L, member, product, 2);
         given(memberService.getMember(memberId)).willReturn(member);
-        given(cartService.getOrderCartItems(memberId, request.cartIds())).willReturn(List.of(cart));
+        given(cartService.getOrderCartItemsWithoutProduct(memberId, request.cartIds())).willReturn(List.of(cart));
         given(productService.getProductWithPessimisticLock(product.getId())).willReturn(product);
 
         assertThatThrownBy(() -> orderService.createCartOrder(memberId, request))
@@ -282,7 +285,7 @@ class OrderServiceTest {
         Product product = createProduct(100L, "keyboard", 10_000, 10, ProductStatus.STOPPED);
         Cart cart = createCart(10L, member, product, 1);
         given(memberService.getMember(memberId)).willReturn(member);
-        given(cartService.getOrderCartItems(memberId, request.cartIds())).willReturn(List.of(cart));
+        given(cartService.getOrderCartItemsWithoutProduct(memberId, request.cartIds())).willReturn(List.of(cart));
         given(productService.getProductWithPessimisticLock(product.getId())).willReturn(product);
 
         assertThatThrownBy(() -> orderService.createCartOrder(memberId, request))
