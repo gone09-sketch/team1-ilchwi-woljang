@@ -52,21 +52,31 @@ public class CacheConfig implements CachingConfigurer {
 
     @Bean
     @Profile("!test")
-    @SuppressWarnings("removal")
-    public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
-        // record 역직렬화를 완벽하게 지원하고 사람이 읽을 수 있는 JSON으로 캐시를 관리하도록 직렬화기 지정
-        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(objectMapper);
+    public GenericJackson2JsonRedisSerializer redisCacheValueSerializer() {
+        return new GenericJackson2JsonRedisSerializer(objectMapper);
+    }
 
+    @Bean
+    @Profile("!test")
+    public CacheManager cacheManager(
+            RedisConnectionFactory connectionFactory,
+            GenericJackson2JsonRedisSerializer redisCacheValueSerializer
+    ) {
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(redisCacheValueSerializer))
                 .entryTtl(Duration.ofMinutes(30));
 
-        // 인기 상품 캐시 개별 설정: Enum 값에 따라 TTL 설정
         Map<String, RedisCacheConfiguration> customConfigs = new HashMap<>();
+        // 인기 상품 캐시 개별 설정
         customConfigs.put(
                 CacheType.POPULAR_PRODUCTS.getCacheName(),
                 defaultConfig.entryTtl(Duration.ofMinutes(CacheType.POPULAR_PRODUCTS.getExpiredAfterWriteMin()))
+        );
+        // 인기 검색어 캐시 개별 설정
+        customConfigs.put(
+                CacheType.POPULAR_KEYWORDS.getCacheName(),
+                defaultConfig.entryTtl(Duration.ofMinutes(CacheType.POPULAR_KEYWORDS.getExpiredAfterWriteMin()))
         );
 
         return RedisCacheManager.builder(connectionFactory)
@@ -79,7 +89,10 @@ public class CacheConfig implements CachingConfigurer {
     @Profile("test")
     public CacheManager testCacheManager() {
         // 테스트 환경에서는 Redis 의존성 없이 가볍게 ConcurrentMapCacheManager를 사용합니다.
-        return new ConcurrentMapCacheManager(CacheType.POPULAR_PRODUCTS.getCacheName());
+        return new ConcurrentMapCacheManager(
+                CacheType.POPULAR_PRODUCTS.getCacheName(),
+                CacheType.POPULAR_KEYWORDS.getCacheName()
+        );
     }
 
     @Override

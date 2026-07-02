@@ -2,6 +2,7 @@ package com.team1ilchwiwoljang.domain.cart.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.team1ilchwiwoljang.common.config.QueryDslConfig;
 import com.team1ilchwiwoljang.domain.cart.entity.Cart;
 import com.team1ilchwiwoljang.domain.member.entity.Member;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
@@ -20,6 +21,7 @@ import org.springframework.test.context.ActiveProfiles;
 @DataJpaTest
 @Import(QueryDslConfig.class)
 @ActiveProfiles("test")
+@Import(QueryDslConfig.class)
 class CartRepositoryTest {
 
     @Autowired

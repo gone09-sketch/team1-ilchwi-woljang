@@ -81,6 +81,25 @@ public class CartService {
         return new CartResponse(items, cartTotalPrice);
     }
 
+    @Transactional
+    public CartItemResponse updateCartItemQuantity(Long memberId, Long cartItemId, int quantity) {
+        Cart cart = getMemberCartItem(memberId, cartItemId);
+        Product product = cart.getProduct();
+
+        if (quantity > product.getStock()) {
+            throw new BusinessException(ErrorCode.CART_ITEM_QUANTITY_EXCEEDED);
+        }
+
+        cart.changeQuantity(quantity);
+        return toItemResponse(cart);
+    }
+
+    @Transactional
+    public void deleteCartItem(Long memberId, Long cartItemId) {
+        Cart cart = getMemberCartItem(memberId, cartItemId);
+        cartRepository.delete(cart);
+    }
+
     /**
      * 장바구니 주문 생성에 사용할 장바구니 상품 목록을 조회합니다.
      * 주문 생성은 명시적으로 선택된 장바구니 상품만 대상으로 하므로 cartIds가 비어 있으면 실패합니다.
@@ -168,6 +187,11 @@ public class CartService {
         }
 
         return cartItems;
+    }
+
+    private Cart getMemberCartItem(Long memberId, Long cartItemId) {
+        return cartRepository.findByIdAndMemberIdWithProduct(cartItemId, memberId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND));
     }
 
     private CartItemResponse toItemResponse(Cart cart) {

@@ -16,6 +16,7 @@ import com.team1ilchwiwoljang.domain.member.service.MemberService;
 import com.team1ilchwiwoljang.domain.order.dto.request.CartOrderRequest;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderPreviewRequest;
 import com.team1ilchwiwoljang.domain.order.dto.request.DirectOrderRequest;
+import com.team1ilchwiwoljang.domain.order.dto.response.AdminOrderDetailResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.DirectOrderPreviewResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderPreviewResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderResponse;
@@ -42,7 +43,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.team1ilchwiwoljang.common.response.PageResponse;
+import com.team1ilchwiwoljang.domain.order.dto.request.AdminOrderSearchCondition;
 import com.team1ilchwiwoljang.domain.order.dto.request.OrderSearchCondition;
+import com.team1ilchwiwoljang.domain.order.dto.response.AdminOrderSearchResponse;
 import com.team1ilchwiwoljang.domain.order.dto.response.OrderHistoryResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -473,6 +476,107 @@ class OrderServiceTest {
         // then
         assertThat(result.content()).isEmpty();
         assertThat(result.totalElements()).isEqualTo(0);
+        verify(orderItemRepository, never()).findByOrderIdIn(any());
+    }
+
+    @Test
+    @DisplayName("관리자 전체 주문 검색 결과를 관리자 응답 DTO로 변환한다")
+    void given_adminOrderSearchCondition_whenGetAdminOrders_thenReturnPagedAdminOrderResponse() {
+        // given
+        Long memberId = 1L;
+        Pageable pageable = PageRequest.of(0, 20);
+
+        Member member = Member.create("member@example.com", "password", "member", "010-1234-5678");
+        ReflectionTestUtils.setField(member, "id", memberId);
+
+        Order order = Order.create(member, "TARGET-ORDER-000002", 20000L, 20000L);
+        ReflectionTestUtils.setField(order, "id", 100L);
+        ReflectionTestUtils.setField(order, "orderStatus", OrderStatus.PAID);
+        ReflectionTestUtils.setField(order, "createdAt", LocalDateTime.of(2026, 6, 30, 12, 0));
+        ReflectionTestUtils.setField(order, "paidAt", LocalDateTime.of(2026, 6, 30, 12, 10));
+
+        AdminOrderSearchCondition condition = new AdminOrderSearchCondition(
+                null,
+                null,
+                OrderStatus.PAID,
+                10000L,
+                500000L,
+                "TARGET-ORDER-000002", // orderNumber: 관리자 주문번호 검색은 정확 검색으로 처리한다.
+                null,                  // productName: 상품명 검색 조건은 사용하지 않는다.
+                null                   // memberId: 특정 회원 검색 조건은 사용하지 않는다.
+        );
+
+        Page<Order> orderPage = new PageImpl<>(List.of(order), pageable, 1);
+
+        given(orderRepository.findAdminOrders(eq(condition), eq(pageable))).willReturn(orderPage);
+
+        // when
+        PageResponse<AdminOrderSearchResponse> result = orderService.getAdminOrders(condition, pageable);
+
+        // then
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.totalElements()).isEqualTo(1);
+        assertThat(result.content().get(0).orderId()).isEqualTo(100L);
+        assertThat(result.content().get(0).orderNumber()).isEqualTo("TARGET-ORDER-000002");
+        assertThat(result.content().get(0).memberId()).isEqualTo(memberId);
+        assertThat(result.content().get(0).totalAmount()).isEqualTo(20000L);
+        assertThat(result.content().get(0).pgAmount()).isEqualTo(20000L);
+        assertThat(result.content().get(0).orderStatus()).isEqualTo("PAID");
+        assertThat(result.content().get(0).paidAt()).isEqualTo(LocalDateTime.of(2026, 6, 30, 12, 10));
+
+        // 관리자 주문 목록 조회는 주문 요약 정보만 반환한다.
+        // 주문 상품 목록은 상세 조회에서만 가져오므로 추가 order_items 조회가 없어야 한다.
+        verify(orderItemRepository, never()).findByOrderIdIn(any());
+    }
+
+    @Test
+    @DisplayName("관리자 주문 상세 조회는 주문 기본 정보와 주문 상품 목록을 반환한다")
+    void givenOrderId_whenGetAdminOrderDetail_thenReturnOrderWithItems() {
+        // given
+        Long orderId = 100L;
+        Long memberId = 1L;
+
+        Member member = createMember(memberId);
+        Order order = Order.create(member, "TARGET-ORDER-000002", 30000L, 30000L);
+        ReflectionTestUtils.setField(order, "id", orderId);
+        ReflectionTestUtils.setField(order, "orderStatus", OrderStatus.PAID);
+        ReflectionTestUtils.setField(order, "createdAt", LocalDateTime.of(2026, 6, 30, 12, 0));
+        ReflectionTestUtils.setField(order, "paidAt", LocalDateTime.of(2026, 6, 30, 12, 10));
+
+        Product product = createProduct(10L, "게이밍 노트북", 10000, 10, ProductStatus.ON_SALE);
+        OrderItem orderItem = OrderItem.create(order, product, "게이밍 노트북", 10000L, 2L, 20000L, null, null);
+
+        given(orderRepository.findById(orderId)).willReturn(Optional.of(order));
+        given(orderItemRepository.findByOrderIdIn(List.of(orderId))).willReturn(List.of(orderItem));
+
+        // when
+        AdminOrderDetailResponse result = orderService.getAdminOrderDetail(orderId);
+
+        // then
+        assertThat(result.orderId()).isEqualTo(orderId);
+        assertThat(result.orderNumber()).isEqualTo("TARGET-ORDER-000002");
+        assertThat(result.memberId()).isEqualTo(memberId);
+        assertThat(result.totalAmount()).isEqualTo(30000L);
+        assertThat(result.pgAmount()).isEqualTo(30000L);
+        assertThat(result.orderStatus()).isEqualTo("PAID");
+        assertThat(result.createdAt()).isEqualTo(LocalDateTime.of(2026, 6, 30, 12, 0));
+        assertThat(result.paidAt()).isEqualTo(LocalDateTime.of(2026, 6, 30, 12, 10));
+        assertThat(result.orderItems()).hasSize(1);
+        assertThat(result.orderItems().get(0).productName()).isEqualTo("게이밍 노트북");
+        assertThat(result.orderItems().get(0).quantity()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("관리자 주문 상세 조회 대상 주문이 없으면 ORDER_NOT_FOUND 예외를 던진다")
+    void givenMissingOrderId_whenGetAdminOrderDetail_thenThrowOrderNotFound() {
+        // given
+        Long orderId = 999L;
+        given(orderRepository.findById(orderId)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> orderService.getAdminOrderDetail(orderId))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage(ErrorCode.ORDER_NOT_FOUND.getMessage());
         verify(orderItemRepository, never()).findByOrderIdIn(any());
     }
 

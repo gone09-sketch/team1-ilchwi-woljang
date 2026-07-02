@@ -1,5 +1,6 @@
 package com.team1ilchwiwoljang.domain.product.repository;
 
+import com.team1ilchwiwoljang.common.config.QueryDslConfig;
 import com.team1ilchwiwoljang.domain.category.entity.Category;
 import com.team1ilchwiwoljang.domain.category.repository.CategoryRepository;
 import com.team1ilchwiwoljang.domain.product.entity.Product;
@@ -18,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @Import(QueryDslConfig.class)
 @ActiveProfiles("test")
+@Import(QueryDslConfig.class)
 class ProductRepositoryTest {
 
     @Autowired
