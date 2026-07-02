@@ -23,4 +23,14 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
         ORDER BY message.createdAt ASC
         """)
     List<ChatMessage> findAllWithSenderByChatRoomId(@Param("chatRoomId") Long chatRoomId);
+
+    /**
+     * 특정 채팅방에 저장된 실제 채팅 메시지가 하나라도 있는지 확인합니다.
+     * 시스템 입장 메시지를 보낼지 판단할 때 사용합니다.
+     * 정책:
+     * - 채팅방에 저장된 메시지가 아직 0개이면 입장 시스템 메시지를 보냅니다.
+     * - 저장된 메시지가 1개 이상이면 이미 상담이 시작된 것으로 보고
+     *   재입장 시에는 시스템 메시지를 다시 보내지 않습니다.
+     */
+    boolean existsByChatRoom_Id(Long chatRoomId);
 }
