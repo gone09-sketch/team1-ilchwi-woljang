@@ -46,6 +46,19 @@ public class ChatMessageService {
     }
 
     /**
+     * 채팅방에 실제 채팅 메시지가 이미 저장되어 있는지 확인합니다.
+     *
+     * 입장 시스템 메시지 정책:
+     * - 저장된 메시지가 0개이면 입장 시스템 메시지를 보냅니다.
+     * - 저장된 메시지가 1개 이상이면 이미 상담이 시작된 것으로 보고 보내지 않습니다.
+     * - 시스템 메시지는 DB에 저장하지 않으므로 이 검사 결과에 포함되지 않습니다.
+     */
+    @Transactional(readOnly = true)
+    public boolean hasMessages(Long chatRoomId) {
+        return chatMessageRepository.existsByChatRoom_Id(chatRoomId);
+    }
+
+    /**
      * WebSocket으로 전달받은 채팅 메시지를 DB에 저장합니다.
      * 이 메서드는 단순히 메시지만 저장하지 않고,
      * 저장 전에 먼저 채팅방 접근 권한을 확인합니다.
